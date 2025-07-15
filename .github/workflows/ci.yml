@@ -1,0 +1,20 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '25 16 * * *'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  shared:
+    uses: amezin/js-actions-common/.github/workflows/shared-ci.yml@3946b5832865f2403b9fd7aa7ce80d34373dd66e # v1.0.9
+    permissions:
+      contents: read

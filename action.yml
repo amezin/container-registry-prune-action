@@ -1,0 +1,11 @@
+name: Prune Container Registry
+description: >-
+  Remove outdated container images from GitHub Container Registry
+
+branding:
+  color: orange
+  icon: trash-2
+
+runs:
+  using: node20
+  main: dist/index.js

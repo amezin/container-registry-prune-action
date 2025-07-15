@@ -1,0 +1,12 @@
+name: tags
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+
+jobs:
+  tag:
+    uses: amezin/js-actions-common/.github/workflows/shared-tags.yml@3946b5832865f2403b9fd7aa7ce80d34373dd66e # v1.0.9
+    permissions:
+      contents: write

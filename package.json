@@ -1,0 +1,30 @@
+{
+  "name": "container-registry-prune-action",
+  "private": true,
+  "description": "Remove outdated container images from GitHub Container Registry",
+  "homepage": "https://github.com/amezin/container-registry-prune-action#readme",
+  "bugs": {
+    "url": "https://github.com/amezin/container-registry-prune-action/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amezin/container-registry-prune-action.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "1.11.1",
+    "@actions/github": "6.0.1",
+    "@octokit/plugin-request-log": "4.0.1"
+  },
+  "devDependencies": {
+    "@amezin/eslint-config-js-actions": "1.0.9",
+    "@types/node": "20.19.7",
+    "@vercel/ncc": "0.38.3",
+    "typescript": "5.8.3"
+  },
+  "scripts": {
+    "build": "ncc build --source-map --license dependencies.txt src/main.ts",
+    "format": "prettier --write .",
+    "lint": "eslint"
+  }
+}
