@@ -6,6 +6,45 @@ branding:
   color: orange
   icon: trash-2
 
+inputs:
+  owner:
+    required: true
+    default: ${{ github.repository_owner }}
+    description: >-
+      Package owner (user or organization) name
+
+  name:
+    required: true
+    description: >-
+      Package name
+
+  untagged-retention-duration:
+    required: true
+    description: >-
+      Storage duration for untagged images, as ISO 8601 duration.
+      If more than this amount of time elapsed since last update of the image, the image will be deleted.
+
+  github-token:
+    required: true
+    default: ${{ github.token }}
+    description: >-
+      GitHub API token to use
+
+  dry-run:
+    required: true
+    default: 'false'
+    description: >-
+      Output the list of images that would be deleted, instead of deleting them
+
+outputs:
+  deleted-count:
+    description: >-
+      Deleted image count
+
+  deleted-json:
+    description: >-
+      Deleted "package versions" as JSON array
+
 runs:
   using: node20
   main: dist/index.js

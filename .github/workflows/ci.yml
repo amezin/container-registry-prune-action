@@ -18,3 +18,141 @@ jobs:
     uses: amezin/js-actions-common/.github/workflows/shared-ci.yml@3946b5832865f2403b9fd7aa7ce80d34373dd66e # v1.0.9
     permissions:
       contents: read
+
+  test:
+    needs: shared
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      PACKAGE_NAME: ${{ github.event.repository.name }}/test-${{ github.run_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
+
+      - id: meta1
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}
+
+      - id: build1
+        uses: docker/build-push-action@v6
+        with:
+          context: test
+          tags: ${{ steps.meta1.outputs.tags }}
+          labels: ${{ steps.meta1.outputs.labels }}
+          annotations: ${{ steps.meta1.outputs.annotations }}
+          cache-from: |
+            ${{ steps.meta1.outputs.tags }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}:${{ github.event.repository.default_branch }}
+          cache-to: type=inline
+          push: true
+
+      - run: sleep 2
+
+      - id: test-all-tagged
+        name: One version, tagged
+        uses: ./.
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          untagged-retention-duration: 0dT1s
+          dry-run: true
+
+      - run: test "$N_DELETED" -eq 0
+        env:
+          N_DELETED: ${{ steps.test-all-tagged.outputs.deleted-count }}
+
+      - run: test "$DELETED_JSON" = "[]"
+        env:
+          DELETED_JSON: ${{ steps.test-all-tagged.outputs.deleted-json }}
+
+      - id: meta2
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}
+
+      - id: build2
+        uses: docker/build-push-action@v6
+        with:
+          context: test
+          tags: ${{ steps.meta2.outputs.tags }}
+          labels: ${{ steps.meta2.outputs.labels }}
+          annotations: ${{ steps.meta2.outputs.annotations }}
+          cache-from: |
+            ${{ steps.meta2.outputs.tags }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}:${{ github.event.repository.default_branch }}
+          cache-to: type=inline
+          push: true
+
+      - id: test-max-age-not-reached
+        name: One version tagged, one untagged, retention duration not exceeded
+        uses: ./.
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          untagged-retention-duration: 1d
+          dry-run: true
+
+      - run: test "$N_DELETED" -eq 0
+        env:
+          N_DELETED: ${{ steps.test-max-age-not-reached.outputs.deleted-count }}
+
+      - run: test "$DELETED_JSON" = "[]"
+        env:
+          DELETED_JSON: ${{ steps.test-max-age-not-reached.outputs.deleted-json }}
+
+      - run: sleep 2
+
+      - id: test-max-age-reached-dry-run
+        name: One version tagged, one untagged, retention duration exceeded, dry-run
+        uses: ./.
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          untagged-retention-duration: 0dT1s
+          dry-run: true
+
+      - run: test "$N_DELETED" -eq 1
+        env:
+          N_DELETED: ${{ steps.test-max-age-reached-dry-run.outputs.deleted-count }}
+
+      - run: test "$(echo "$DELETED_JSON" | jq -r '.[].name')" = "$DIGEST1"
+        env:
+          DELETED_JSON: ${{ steps.test-max-age-reached-dry-run.outputs.deleted-json }}
+          DIGEST1: ${{ steps.build1.outputs.digest }}
+
+      - id: test-max-age-reached-remove
+        name: One version tagged, one untagged, retention duration exceeded, actual removal
+        uses: ./.
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          untagged-retention-duration: 0dT1s
+
+      - run: test "$N_DELETED" -eq 1
+        env:
+          N_DELETED: ${{ steps.test-max-age-reached-remove.outputs.deleted-count }}
+
+      - run: test "$(echo "$DELETED_JSON" | jq -r '.[].name')" = "$DIGEST1"
+        env:
+          DELETED_JSON: ${{ steps.test-max-age-reached-remove.outputs.deleted-json }}
+          DIGEST1: ${{ steps.build1.outputs.digest }}
+
+      - run: >-
+          test "$(gh api --jq '.[].name' "$OWNER_URL/packages/container/${PACKAGE_NAME////%2F}/versions")" = "$DIGEST2"
+        env:
+          OWNER_URL: ${{ github.event.repository.owner.url }}
+          GH_TOKEN: ${{ github.token }}
+          DIGEST2: ${{ steps.build2.outputs.digest }}
+
+      - if: always() && steps.build1.outcome == 'success'
+        run: >-
+          gh api --method DELETE "$OWNER_URL/packages/container/${PACKAGE_NAME////%2F}"
+        env:
+          OWNER_URL: ${{ github.event.repository.owner.url }}
+          GH_TOKEN: ${{ github.token }}
