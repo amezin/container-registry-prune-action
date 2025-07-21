@@ -14,9 +14,9 @@
   "dependencies": {
     "@actions/core": "1.11.1",
     "@actions/github": "6.0.1",
-    "@js-temporal/polyfill": "^0.5.1",
+    "@js-temporal/polyfill": "0.5.1",
     "@octokit/plugin-request-log": "4.0.1",
-    "@octokit/plugin-throttling": "^8.2.0"
+    "@octokit/plugin-throttling": "8.2.0"
   },
   "devDependencies": {
     "@amezin/eslint-config-js-actions": "1.0.9",
