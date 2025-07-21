@@ -1850,6 +1850,260 @@ class ExecState extends events.EventEmitter {
 
 /***/ }),
 
+/***/ 1648:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Context = void 0;
+const fs_1 = __nccwpck_require__(9896);
+const os_1 = __nccwpck_require__(857);
+class Context {
+    /**
+     * Hydrate the context from the environment
+     */
+    constructor() {
+        var _a, _b, _c;
+        this.payload = {};
+        if (process.env.GITHUB_EVENT_PATH) {
+            if ((0, fs_1.existsSync)(process.env.GITHUB_EVENT_PATH)) {
+                this.payload = JSON.parse((0, fs_1.readFileSync)(process.env.GITHUB_EVENT_PATH, { encoding: 'utf8' }));
+            }
+            else {
+                const path = process.env.GITHUB_EVENT_PATH;
+                process.stdout.write(`GITHUB_EVENT_PATH ${path} does not exist${os_1.EOL}`);
+            }
+        }
+        this.eventName = process.env.GITHUB_EVENT_NAME;
+        this.sha = process.env.GITHUB_SHA;
+        this.ref = process.env.GITHUB_REF;
+        this.workflow = process.env.GITHUB_WORKFLOW;
+        this.action = process.env.GITHUB_ACTION;
+        this.actor = process.env.GITHUB_ACTOR;
+        this.job = process.env.GITHUB_JOB;
+        this.runAttempt = parseInt(process.env.GITHUB_RUN_ATTEMPT, 10);
+        this.runNumber = parseInt(process.env.GITHUB_RUN_NUMBER, 10);
+        this.runId = parseInt(process.env.GITHUB_RUN_ID, 10);
+        this.apiUrl = (_a = process.env.GITHUB_API_URL) !== null && _a !== void 0 ? _a : `https://api.github.com`;
+        this.serverUrl = (_b = process.env.GITHUB_SERVER_URL) !== null && _b !== void 0 ? _b : `https://github.com`;
+        this.graphqlUrl =
+            (_c = process.env.GITHUB_GRAPHQL_URL) !== null && _c !== void 0 ? _c : `https://api.github.com/graphql`;
+    }
+    get issue() {
+        const payload = this.payload;
+        return Object.assign(Object.assign({}, this.repo), { number: (payload.issue || payload.pull_request || payload).number });
+    }
+    get repo() {
+        if (process.env.GITHUB_REPOSITORY) {
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            return { owner, repo };
+        }
+        if (this.payload.repository) {
+            return {
+                owner: this.payload.repository.owner.login,
+                repo: this.payload.repository.name
+            };
+        }
+        throw new Error("context.repo requires a GITHUB_REPOSITORY environment variable like 'owner/repo'");
+    }
+}
+exports.Context = Context;
+//# sourceMappingURL=context.js.map
+
+/***/ }),
+
+/***/ 3228:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getOctokit = exports.context = void 0;
+const Context = __importStar(__nccwpck_require__(1648));
+const utils_1 = __nccwpck_require__(8006);
+exports.context = new Context.Context();
+/**
+ * Returns a hydrated octokit ready to use for GitHub Actions
+ *
+ * @param     token    the repo PAT or GITHUB_TOKEN
+ * @param     options  other options to set
+ */
+function getOctokit(token, options, ...additionalPlugins) {
+    const GitHubWithPlugins = utils_1.GitHub.plugin(...additionalPlugins);
+    return new GitHubWithPlugins((0, utils_1.getOctokitOptions)(token, options));
+}
+exports.getOctokit = getOctokit;
+//# sourceMappingURL=github.js.map
+
+/***/ }),
+
+/***/ 5156:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getApiBaseUrl = exports.getProxyFetch = exports.getProxyAgentDispatcher = exports.getProxyAgent = exports.getAuthString = void 0;
+const httpClient = __importStar(__nccwpck_require__(4844));
+const undici_1 = __nccwpck_require__(6752);
+function getAuthString(token, options) {
+    if (!token && !options.auth) {
+        throw new Error('Parameter token or opts.auth is required');
+    }
+    else if (token && options.auth) {
+        throw new Error('Parameters token and opts.auth may not both be specified');
+    }
+    return typeof options.auth === 'string' ? options.auth : `token ${token}`;
+}
+exports.getAuthString = getAuthString;
+function getProxyAgent(destinationUrl) {
+    const hc = new httpClient.HttpClient();
+    return hc.getAgent(destinationUrl);
+}
+exports.getProxyAgent = getProxyAgent;
+function getProxyAgentDispatcher(destinationUrl) {
+    const hc = new httpClient.HttpClient();
+    return hc.getAgentDispatcher(destinationUrl);
+}
+exports.getProxyAgentDispatcher = getProxyAgentDispatcher;
+function getProxyFetch(destinationUrl) {
+    const httpDispatcher = getProxyAgentDispatcher(destinationUrl);
+    const proxyFetch = (url, opts) => __awaiter(this, void 0, void 0, function* () {
+        return (0, undici_1.fetch)(url, Object.assign(Object.assign({}, opts), { dispatcher: httpDispatcher }));
+    });
+    return proxyFetch;
+}
+exports.getProxyFetch = getProxyFetch;
+function getApiBaseUrl() {
+    return process.env['GITHUB_API_URL'] || 'https://api.github.com';
+}
+exports.getApiBaseUrl = getApiBaseUrl;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 8006:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getOctokitOptions = exports.GitHub = exports.defaults = exports.context = void 0;
+const Context = __importStar(__nccwpck_require__(1648));
+const Utils = __importStar(__nccwpck_require__(5156));
+// octokit + plugins
+const core_1 = __nccwpck_require__(1897);
+const plugin_rest_endpoint_methods_1 = __nccwpck_require__(4935);
+const plugin_paginate_rest_1 = __nccwpck_require__(8082);
+exports.context = new Context.Context();
+const baseUrl = Utils.getApiBaseUrl();
+exports.defaults = {
+    baseUrl,
+    request: {
+        agent: Utils.getProxyAgent(baseUrl),
+        fetch: Utils.getProxyFetch(baseUrl)
+    }
+};
+exports.GitHub = core_1.Octokit.plugin(plugin_rest_endpoint_methods_1.restEndpointMethods, plugin_paginate_rest_1.paginateRest).defaults(exports.defaults);
+/**
+ * Convience function to correctly format Octokit Options to pass into the constructor.
+ *
+ * @param     token    the repo PAT or GITHUB_TOKEN
+ * @param     options  other options to set
+ */
+function getOctokitOptions(token, options) {
+    const opts = Object.assign({}, options || {}); // Shallow clone - don't mutate the object provided by the caller
+    // Auth
+    const auth = Utils.getAuthString(token, opts);
+    if (auth) {
+        opts.auth = auth;
+    }
+    return opts;
+}
+exports.getOctokitOptions = getOctokitOptions;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
 /***/ 4552:
 /***/ (function(__unused_webpack_module, exports) {
 
@@ -3192,6 +3446,5817 @@ function copyFile(srcFile, destFile, force) {
     });
 }
 //# sourceMappingURL=io.js.map
+
+/***/ }),
+
+/***/ 7864:
+/***/ ((module) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createTokenAuth: () => createTokenAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+
+// pkg/dist-src/auth.js
+var REGEX_IS_INSTALLATION_LEGACY = /^v1\./;
+var REGEX_IS_INSTALLATION = /^ghs_/;
+var REGEX_IS_USER_TO_SERVER = /^ghu_/;
+async function auth(token) {
+  const isApp = token.split(/\./).length === 3;
+  const isInstallation = REGEX_IS_INSTALLATION_LEGACY.test(token) || REGEX_IS_INSTALLATION.test(token);
+  const isUserToServer = REGEX_IS_USER_TO_SERVER.test(token);
+  const tokenType = isApp ? "app" : isInstallation ? "installation" : isUserToServer ? "user-to-server" : "oauth";
+  return {
+    type: "token",
+    token,
+    tokenType
+  };
+}
+
+// pkg/dist-src/with-authorization-prefix.js
+function withAuthorizationPrefix(token) {
+  if (token.split(/\./).length === 3) {
+    return `bearer ${token}`;
+  }
+  return `token ${token}`;
+}
+
+// pkg/dist-src/hook.js
+async function hook(token, request, route, parameters) {
+  const endpoint = request.endpoint.merge(
+    route,
+    parameters
+  );
+  endpoint.headers.authorization = withAuthorizationPrefix(token);
+  return request(endpoint);
+}
+
+// pkg/dist-src/index.js
+var createTokenAuth = function createTokenAuth2(token) {
+  if (!token) {
+    throw new Error("[@octokit/auth-token] No token passed to createTokenAuth");
+  }
+  if (typeof token !== "string") {
+    throw new Error(
+      "[@octokit/auth-token] Token passed to createTokenAuth is not a string"
+    );
+  }
+  token = token.replace(/^(token|bearer) +/i, "");
+  return Object.assign(auth.bind(null, token), {
+    hook: hook.bind(null, token)
+  });
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 1897:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var index_exports = {};
+__export(index_exports, {
+  Octokit: () => Octokit
+});
+module.exports = __toCommonJS(index_exports);
+var import_universal_user_agent = __nccwpck_require__(3843);
+var import_before_after_hook = __nccwpck_require__(2732);
+var import_request = __nccwpck_require__(8636);
+var import_graphql = __nccwpck_require__(7);
+var import_auth_token = __nccwpck_require__(7864);
+
+// pkg/dist-src/version.js
+var VERSION = "5.2.2";
+
+// pkg/dist-src/index.js
+var noop = () => {
+};
+var consoleWarn = console.warn.bind(console);
+var consoleError = console.error.bind(console);
+function createLogger(logger = {}) {
+  if (typeof logger.debug !== "function") {
+    logger.debug = noop;
+  }
+  if (typeof logger.info !== "function") {
+    logger.info = noop;
+  }
+  if (typeof logger.warn !== "function") {
+    logger.warn = consoleWarn;
+  }
+  if (typeof logger.error !== "function") {
+    logger.error = consoleError;
+  }
+  return logger;
+}
+var userAgentTrail = `octokit-core.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`;
+var Octokit = class {
+  static {
+    this.VERSION = VERSION;
+  }
+  static defaults(defaults) {
+    const OctokitWithDefaults = class extends this {
+      constructor(...args) {
+        const options = args[0] || {};
+        if (typeof defaults === "function") {
+          super(defaults(options));
+          return;
+        }
+        super(
+          Object.assign(
+            {},
+            defaults,
+            options,
+            options.userAgent && defaults.userAgent ? {
+              userAgent: `${options.userAgent} ${defaults.userAgent}`
+            } : null
+          )
+        );
+      }
+    };
+    return OctokitWithDefaults;
+  }
+  static {
+    this.plugins = [];
+  }
+  /**
+   * Attach a plugin (or many) to your Octokit instance.
+   *
+   * @example
+   * const API = Octokit.plugin(plugin1, plugin2, plugin3, ...)
+   */
+  static plugin(...newPlugins) {
+    const currentPlugins = this.plugins;
+    const NewOctokit = class extends this {
+      static {
+        this.plugins = currentPlugins.concat(
+          newPlugins.filter((plugin) => !currentPlugins.includes(plugin))
+        );
+      }
+    };
+    return NewOctokit;
+  }
+  constructor(options = {}) {
+    const hook = new import_before_after_hook.Collection();
+    const requestDefaults = {
+      baseUrl: import_request.request.endpoint.DEFAULTS.baseUrl,
+      headers: {},
+      request: Object.assign({}, options.request, {
+        // @ts-ignore internal usage only, no need to type
+        hook: hook.bind(null, "request")
+      }),
+      mediaType: {
+        previews: [],
+        format: ""
+      }
+    };
+    requestDefaults.headers["user-agent"] = options.userAgent ? `${options.userAgent} ${userAgentTrail}` : userAgentTrail;
+    if (options.baseUrl) {
+      requestDefaults.baseUrl = options.baseUrl;
+    }
+    if (options.previews) {
+      requestDefaults.mediaType.previews = options.previews;
+    }
+    if (options.timeZone) {
+      requestDefaults.headers["time-zone"] = options.timeZone;
+    }
+    this.request = import_request.request.defaults(requestDefaults);
+    this.graphql = (0, import_graphql.withCustomRequest)(this.request).defaults(requestDefaults);
+    this.log = createLogger(options.log);
+    this.hook = hook;
+    if (!options.authStrategy) {
+      if (!options.auth) {
+        this.auth = async () => ({
+          type: "unauthenticated"
+        });
+      } else {
+        const auth = (0, import_auth_token.createTokenAuth)(options.auth);
+        hook.wrap("request", auth.hook);
+        this.auth = auth;
+      }
+    } else {
+      const { authStrategy, ...otherOptions } = options;
+      const auth = authStrategy(
+        Object.assign(
+          {
+            request: this.request,
+            log: this.log,
+            // we pass the current octokit instance as well as its constructor options
+            // to allow for authentication strategies that return a new octokit instance
+            // that shares the same internal state as the current one. The original
+            // requirement for this was the "event-octokit" authentication strategy
+            // of https://github.com/probot/octokit-auth-probot.
+            octokit: this,
+            octokitOptions: otherOptions
+          },
+          options.auth
+        )
+      );
+      hook.wrap("request", auth.hook);
+      this.auth = auth;
+    }
+    const classConstructor = this.constructor;
+    for (let i = 0; i < classConstructor.plugins.length; ++i) {
+      Object.assign(this, classConstructor.plugins[i](this, options));
+    }
+  }
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 4471:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  endpoint: () => endpoint
+});
+module.exports = __toCommonJS(dist_src_exports);
+
+// pkg/dist-src/defaults.js
+var import_universal_user_agent = __nccwpck_require__(3843);
+
+// pkg/dist-src/version.js
+var VERSION = "9.0.6";
+
+// pkg/dist-src/defaults.js
+var userAgent = `octokit-endpoint.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`;
+var DEFAULTS = {
+  method: "GET",
+  baseUrl: "https://api.github.com",
+  headers: {
+    accept: "application/vnd.github.v3+json",
+    "user-agent": userAgent
+  },
+  mediaType: {
+    format: ""
+  }
+};
+
+// pkg/dist-src/util/lowercase-keys.js
+function lowercaseKeys(object) {
+  if (!object) {
+    return {};
+  }
+  return Object.keys(object).reduce((newObj, key) => {
+    newObj[key.toLowerCase()] = object[key];
+    return newObj;
+  }, {});
+}
+
+// pkg/dist-src/util/is-plain-object.js
+function isPlainObject(value) {
+  if (typeof value !== "object" || value === null)
+    return false;
+  if (Object.prototype.toString.call(value) !== "[object Object]")
+    return false;
+  const proto = Object.getPrototypeOf(value);
+  if (proto === null)
+    return true;
+  const Ctor = Object.prototype.hasOwnProperty.call(proto, "constructor") && proto.constructor;
+  return typeof Ctor === "function" && Ctor instanceof Ctor && Function.prototype.call(Ctor) === Function.prototype.call(value);
+}
+
+// pkg/dist-src/util/merge-deep.js
+function mergeDeep(defaults, options) {
+  const result = Object.assign({}, defaults);
+  Object.keys(options).forEach((key) => {
+    if (isPlainObject(options[key])) {
+      if (!(key in defaults))
+        Object.assign(result, { [key]: options[key] });
+      else
+        result[key] = mergeDeep(defaults[key], options[key]);
+    } else {
+      Object.assign(result, { [key]: options[key] });
+    }
+  });
+  return result;
+}
+
+// pkg/dist-src/util/remove-undefined-properties.js
+function removeUndefinedProperties(obj) {
+  for (const key in obj) {
+    if (obj[key] === void 0) {
+      delete obj[key];
+    }
+  }
+  return obj;
+}
+
+// pkg/dist-src/merge.js
+function merge(defaults, route, options) {
+  if (typeof route === "string") {
+    let [method, url] = route.split(" ");
+    options = Object.assign(url ? { method, url } : { url: method }, options);
+  } else {
+    options = Object.assign({}, route);
+  }
+  options.headers = lowercaseKeys(options.headers);
+  removeUndefinedProperties(options);
+  removeUndefinedProperties(options.headers);
+  const mergedOptions = mergeDeep(defaults || {}, options);
+  if (options.url === "/graphql") {
+    if (defaults && defaults.mediaType.previews?.length) {
+      mergedOptions.mediaType.previews = defaults.mediaType.previews.filter(
+        (preview) => !mergedOptions.mediaType.previews.includes(preview)
+      ).concat(mergedOptions.mediaType.previews);
+    }
+    mergedOptions.mediaType.previews = (mergedOptions.mediaType.previews || []).map((preview) => preview.replace(/-preview/, ""));
+  }
+  return mergedOptions;
+}
+
+// pkg/dist-src/util/add-query-parameters.js
+function addQueryParameters(url, parameters) {
+  const separator = /\?/.test(url) ? "&" : "?";
+  const names = Object.keys(parameters);
+  if (names.length === 0) {
+    return url;
+  }
+  return url + separator + names.map((name) => {
+    if (name === "q") {
+      return "q=" + parameters.q.split("+").map(encodeURIComponent).join("+");
+    }
+    return `${name}=${encodeURIComponent(parameters[name])}`;
+  }).join("&");
+}
+
+// pkg/dist-src/util/extract-url-variable-names.js
+var urlVariableRegex = /\{[^{}}]+\}/g;
+function removeNonChars(variableName) {
+  return variableName.replace(/(?:^\W+)|(?:(?<!\W)\W+$)/g, "").split(/,/);
+}
+function extractUrlVariableNames(url) {
+  const matches = url.match(urlVariableRegex);
+  if (!matches) {
+    return [];
+  }
+  return matches.map(removeNonChars).reduce((a, b) => a.concat(b), []);
+}
+
+// pkg/dist-src/util/omit.js
+function omit(object, keysToOmit) {
+  const result = { __proto__: null };
+  for (const key of Object.keys(object)) {
+    if (keysToOmit.indexOf(key) === -1) {
+      result[key] = object[key];
+    }
+  }
+  return result;
+}
+
+// pkg/dist-src/util/url-template.js
+function encodeReserved(str) {
+  return str.split(/(%[0-9A-Fa-f]{2})/g).map(function(part) {
+    if (!/%[0-9A-Fa-f]/.test(part)) {
+      part = encodeURI(part).replace(/%5B/g, "[").replace(/%5D/g, "]");
+    }
+    return part;
+  }).join("");
+}
+function encodeUnreserved(str) {
+  return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+    return "%" + c.charCodeAt(0).toString(16).toUpperCase();
+  });
+}
+function encodeValue(operator, value, key) {
+  value = operator === "+" || operator === "#" ? encodeReserved(value) : encodeUnreserved(value);
+  if (key) {
+    return encodeUnreserved(key) + "=" + value;
+  } else {
+    return value;
+  }
+}
+function isDefined(value) {
+  return value !== void 0 && value !== null;
+}
+function isKeyOperator(operator) {
+  return operator === ";" || operator === "&" || operator === "?";
+}
+function getValues(context, operator, key, modifier) {
+  var value = context[key], result = [];
+  if (isDefined(value) && value !== "") {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      value = value.toString();
+      if (modifier && modifier !== "*") {
+        value = value.substring(0, parseInt(modifier, 10));
+      }
+      result.push(
+        encodeValue(operator, value, isKeyOperator(operator) ? key : "")
+      );
+    } else {
+      if (modifier === "*") {
+        if (Array.isArray(value)) {
+          value.filter(isDefined).forEach(function(value2) {
+            result.push(
+              encodeValue(operator, value2, isKeyOperator(operator) ? key : "")
+            );
+          });
+        } else {
+          Object.keys(value).forEach(function(k) {
+            if (isDefined(value[k])) {
+              result.push(encodeValue(operator, value[k], k));
+            }
+          });
+        }
+      } else {
+        const tmp = [];
+        if (Array.isArray(value)) {
+          value.filter(isDefined).forEach(function(value2) {
+            tmp.push(encodeValue(operator, value2));
+          });
+        } else {
+          Object.keys(value).forEach(function(k) {
+            if (isDefined(value[k])) {
+              tmp.push(encodeUnreserved(k));
+              tmp.push(encodeValue(operator, value[k].toString()));
+            }
+          });
+        }
+        if (isKeyOperator(operator)) {
+          result.push(encodeUnreserved(key) + "=" + tmp.join(","));
+        } else if (tmp.length !== 0) {
+          result.push(tmp.join(","));
+        }
+      }
+    }
+  } else {
+    if (operator === ";") {
+      if (isDefined(value)) {
+        result.push(encodeUnreserved(key));
+      }
+    } else if (value === "" && (operator === "&" || operator === "?")) {
+      result.push(encodeUnreserved(key) + "=");
+    } else if (value === "") {
+      result.push("");
+    }
+  }
+  return result;
+}
+function parseUrl(template) {
+  return {
+    expand: expand.bind(null, template)
+  };
+}
+function expand(template, context) {
+  var operators = ["+", "#", ".", "/", ";", "?", "&"];
+  template = template.replace(
+    /\{([^\{\}]+)\}|([^\{\}]+)/g,
+    function(_, expression, literal) {
+      if (expression) {
+        let operator = "";
+        const values = [];
+        if (operators.indexOf(expression.charAt(0)) !== -1) {
+          operator = expression.charAt(0);
+          expression = expression.substr(1);
+        }
+        expression.split(/,/g).forEach(function(variable) {
+          var tmp = /([^:\*]*)(?::(\d+)|(\*))?/.exec(variable);
+          values.push(getValues(context, operator, tmp[1], tmp[2] || tmp[3]));
+        });
+        if (operator && operator !== "+") {
+          var separator = ",";
+          if (operator === "?") {
+            separator = "&";
+          } else if (operator !== "#") {
+            separator = operator;
+          }
+          return (values.length !== 0 ? operator : "") + values.join(separator);
+        } else {
+          return values.join(",");
+        }
+      } else {
+        return encodeReserved(literal);
+      }
+    }
+  );
+  if (template === "/") {
+    return template;
+  } else {
+    return template.replace(/\/$/, "");
+  }
+}
+
+// pkg/dist-src/parse.js
+function parse(options) {
+  let method = options.method.toUpperCase();
+  let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
+  let headers = Object.assign({}, options.headers);
+  let body;
+  let parameters = omit(options, [
+    "method",
+    "baseUrl",
+    "url",
+    "headers",
+    "request",
+    "mediaType"
+  ]);
+  const urlVariableNames = extractUrlVariableNames(url);
+  url = parseUrl(url).expand(parameters);
+  if (!/^http/.test(url)) {
+    url = options.baseUrl + url;
+  }
+  const omittedParameters = Object.keys(options).filter((option) => urlVariableNames.includes(option)).concat("baseUrl");
+  const remainingParameters = omit(parameters, omittedParameters);
+  const isBinaryRequest = /application\/octet-stream/i.test(headers.accept);
+  if (!isBinaryRequest) {
+    if (options.mediaType.format) {
+      headers.accept = headers.accept.split(/,/).map(
+        (format) => format.replace(
+          /application\/vnd(\.\w+)(\.v3)?(\.\w+)?(\+json)?$/,
+          `application/vnd$1$2.${options.mediaType.format}`
+        )
+      ).join(",");
+    }
+    if (url.endsWith("/graphql")) {
+      if (options.mediaType.previews?.length) {
+        const previewsFromAcceptHeader = headers.accept.match(/(?<![\w-])[\w-]+(?=-preview)/g) || [];
+        headers.accept = previewsFromAcceptHeader.concat(options.mediaType.previews).map((preview) => {
+          const format = options.mediaType.format ? `.${options.mediaType.format}` : "+json";
+          return `application/vnd.github.${preview}-preview${format}`;
+        }).join(",");
+      }
+    }
+  }
+  if (["GET", "HEAD"].includes(method)) {
+    url = addQueryParameters(url, remainingParameters);
+  } else {
+    if ("data" in remainingParameters) {
+      body = remainingParameters.data;
+    } else {
+      if (Object.keys(remainingParameters).length) {
+        body = remainingParameters;
+      }
+    }
+  }
+  if (!headers["content-type"] && typeof body !== "undefined") {
+    headers["content-type"] = "application/json; charset=utf-8";
+  }
+  if (["PATCH", "PUT"].includes(method) && typeof body === "undefined") {
+    body = "";
+  }
+  return Object.assign(
+    { method, url, headers },
+    typeof body !== "undefined" ? { body } : null,
+    options.request ? { request: options.request } : null
+  );
+}
+
+// pkg/dist-src/endpoint-with-defaults.js
+function endpointWithDefaults(defaults, route, options) {
+  return parse(merge(defaults, route, options));
+}
+
+// pkg/dist-src/with-defaults.js
+function withDefaults(oldDefaults, newDefaults) {
+  const DEFAULTS2 = merge(oldDefaults, newDefaults);
+  const endpoint2 = endpointWithDefaults.bind(null, DEFAULTS2);
+  return Object.assign(endpoint2, {
+    DEFAULTS: DEFAULTS2,
+    defaults: withDefaults.bind(null, DEFAULTS2),
+    merge: merge.bind(null, DEFAULTS2),
+    parse
+  });
+}
+
+// pkg/dist-src/index.js
+var endpoint = withDefaults(null, DEFAULTS);
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 7:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var index_exports = {};
+__export(index_exports, {
+  GraphqlResponseError: () => GraphqlResponseError,
+  graphql: () => graphql2,
+  withCustomRequest: () => withCustomRequest
+});
+module.exports = __toCommonJS(index_exports);
+var import_request3 = __nccwpck_require__(8636);
+var import_universal_user_agent = __nccwpck_require__(3843);
+
+// pkg/dist-src/version.js
+var VERSION = "7.1.1";
+
+// pkg/dist-src/with-defaults.js
+var import_request2 = __nccwpck_require__(8636);
+
+// pkg/dist-src/graphql.js
+var import_request = __nccwpck_require__(8636);
+
+// pkg/dist-src/error.js
+function _buildMessageForResponseErrors(data) {
+  return `Request failed due to following response errors:
+` + data.errors.map((e) => ` - ${e.message}`).join("\n");
+}
+var GraphqlResponseError = class extends Error {
+  constructor(request2, headers, response) {
+    super(_buildMessageForResponseErrors(response));
+    this.request = request2;
+    this.headers = headers;
+    this.response = response;
+    this.name = "GraphqlResponseError";
+    this.errors = response.errors;
+    this.data = response.data;
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+};
+
+// pkg/dist-src/graphql.js
+var NON_VARIABLE_OPTIONS = [
+  "method",
+  "baseUrl",
+  "url",
+  "headers",
+  "request",
+  "query",
+  "mediaType"
+];
+var FORBIDDEN_VARIABLE_OPTIONS = ["query", "method", "url"];
+var GHES_V3_SUFFIX_REGEX = /\/api\/v3\/?$/;
+function graphql(request2, query, options) {
+  if (options) {
+    if (typeof query === "string" && "query" in options) {
+      return Promise.reject(
+        new Error(`[@octokit/graphql] "query" cannot be used as variable name`)
+      );
+    }
+    for (const key in options) {
+      if (!FORBIDDEN_VARIABLE_OPTIONS.includes(key)) continue;
+      return Promise.reject(
+        new Error(
+          `[@octokit/graphql] "${key}" cannot be used as variable name`
+        )
+      );
+    }
+  }
+  const parsedOptions = typeof query === "string" ? Object.assign({ query }, options) : query;
+  const requestOptions = Object.keys(
+    parsedOptions
+  ).reduce((result, key) => {
+    if (NON_VARIABLE_OPTIONS.includes(key)) {
+      result[key] = parsedOptions[key];
+      return result;
+    }
+    if (!result.variables) {
+      result.variables = {};
+    }
+    result.variables[key] = parsedOptions[key];
+    return result;
+  }, {});
+  const baseUrl = parsedOptions.baseUrl || request2.endpoint.DEFAULTS.baseUrl;
+  if (GHES_V3_SUFFIX_REGEX.test(baseUrl)) {
+    requestOptions.url = baseUrl.replace(GHES_V3_SUFFIX_REGEX, "/api/graphql");
+  }
+  return request2(requestOptions).then((response) => {
+    if (response.data.errors) {
+      const headers = {};
+      for (const key of Object.keys(response.headers)) {
+        headers[key] = response.headers[key];
+      }
+      throw new GraphqlResponseError(
+        requestOptions,
+        headers,
+        response.data
+      );
+    }
+    return response.data.data;
+  });
+}
+
+// pkg/dist-src/with-defaults.js
+function withDefaults(request2, newDefaults) {
+  const newRequest = request2.defaults(newDefaults);
+  const newApi = (query, options) => {
+    return graphql(newRequest, query, options);
+  };
+  return Object.assign(newApi, {
+    defaults: withDefaults.bind(null, newRequest),
+    endpoint: newRequest.endpoint
+  });
+}
+
+// pkg/dist-src/index.js
+var graphql2 = withDefaults(import_request3.request, {
+  headers: {
+    "user-agent": `octokit-graphql.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
+  },
+  method: "POST",
+  url: "/graphql"
+});
+function withCustomRequest(customRequest) {
+  return withDefaults(customRequest, {
+    method: "POST",
+    url: "/graphql"
+  });
+}
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 8082:
+/***/ ((module) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  composePaginateRest: () => composePaginateRest,
+  isPaginatingEndpoint: () => isPaginatingEndpoint,
+  paginateRest: () => paginateRest,
+  paginatingEndpoints: () => paginatingEndpoints
+});
+module.exports = __toCommonJS(dist_src_exports);
+
+// pkg/dist-src/version.js
+var VERSION = "9.2.2";
+
+// pkg/dist-src/normalize-paginated-list-response.js
+function normalizePaginatedListResponse(response) {
+  if (!response.data) {
+    return {
+      ...response,
+      data: []
+    };
+  }
+  const responseNeedsNormalization = "total_count" in response.data && !("url" in response.data);
+  if (!responseNeedsNormalization)
+    return response;
+  const incompleteResults = response.data.incomplete_results;
+  const repositorySelection = response.data.repository_selection;
+  const totalCount = response.data.total_count;
+  delete response.data.incomplete_results;
+  delete response.data.repository_selection;
+  delete response.data.total_count;
+  const namespaceKey = Object.keys(response.data)[0];
+  const data = response.data[namespaceKey];
+  response.data = data;
+  if (typeof incompleteResults !== "undefined") {
+    response.data.incomplete_results = incompleteResults;
+  }
+  if (typeof repositorySelection !== "undefined") {
+    response.data.repository_selection = repositorySelection;
+  }
+  response.data.total_count = totalCount;
+  return response;
+}
+
+// pkg/dist-src/iterator.js
+function iterator(octokit, route, parameters) {
+  const options = typeof route === "function" ? route.endpoint(parameters) : octokit.request.endpoint(route, parameters);
+  const requestMethod = typeof route === "function" ? route : octokit.request;
+  const method = options.method;
+  const headers = options.headers;
+  let url = options.url;
+  return {
+    [Symbol.asyncIterator]: () => ({
+      async next() {
+        if (!url)
+          return { done: true };
+        try {
+          const response = await requestMethod({ method, url, headers });
+          const normalizedResponse = normalizePaginatedListResponse(response);
+          url = ((normalizedResponse.headers.link || "").match(
+            /<([^<>]+)>;\s*rel="next"/
+          ) || [])[1];
+          return { value: normalizedResponse };
+        } catch (error) {
+          if (error.status !== 409)
+            throw error;
+          url = "";
+          return {
+            value: {
+              status: 200,
+              headers: {},
+              data: []
+            }
+          };
+        }
+      }
+    })
+  };
+}
+
+// pkg/dist-src/paginate.js
+function paginate(octokit, route, parameters, mapFn) {
+  if (typeof parameters === "function") {
+    mapFn = parameters;
+    parameters = void 0;
+  }
+  return gather(
+    octokit,
+    [],
+    iterator(octokit, route, parameters)[Symbol.asyncIterator](),
+    mapFn
+  );
+}
+function gather(octokit, results, iterator2, mapFn) {
+  return iterator2.next().then((result) => {
+    if (result.done) {
+      return results;
+    }
+    let earlyExit = false;
+    function done() {
+      earlyExit = true;
+    }
+    results = results.concat(
+      mapFn ? mapFn(result.value, done) : result.value.data
+    );
+    if (earlyExit) {
+      return results;
+    }
+    return gather(octokit, results, iterator2, mapFn);
+  });
+}
+
+// pkg/dist-src/compose-paginate.js
+var composePaginateRest = Object.assign(paginate, {
+  iterator
+});
+
+// pkg/dist-src/generated/paginating-endpoints.js
+var paginatingEndpoints = [
+  "GET /advisories",
+  "GET /app/hook/deliveries",
+  "GET /app/installation-requests",
+  "GET /app/installations",
+  "GET /assignments/{assignment_id}/accepted_assignments",
+  "GET /classrooms",
+  "GET /classrooms/{classroom_id}/assignments",
+  "GET /enterprises/{enterprise}/dependabot/alerts",
+  "GET /enterprises/{enterprise}/secret-scanning/alerts",
+  "GET /events",
+  "GET /gists",
+  "GET /gists/public",
+  "GET /gists/starred",
+  "GET /gists/{gist_id}/comments",
+  "GET /gists/{gist_id}/commits",
+  "GET /gists/{gist_id}/forks",
+  "GET /installation/repositories",
+  "GET /issues",
+  "GET /licenses",
+  "GET /marketplace_listing/plans",
+  "GET /marketplace_listing/plans/{plan_id}/accounts",
+  "GET /marketplace_listing/stubbed/plans",
+  "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts",
+  "GET /networks/{owner}/{repo}/events",
+  "GET /notifications",
+  "GET /organizations",
+  "GET /orgs/{org}/actions/cache/usage-by-repository",
+  "GET /orgs/{org}/actions/permissions/repositories",
+  "GET /orgs/{org}/actions/runners",
+  "GET /orgs/{org}/actions/secrets",
+  "GET /orgs/{org}/actions/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/actions/variables",
+  "GET /orgs/{org}/actions/variables/{name}/repositories",
+  "GET /orgs/{org}/blocks",
+  "GET /orgs/{org}/code-scanning/alerts",
+  "GET /orgs/{org}/codespaces",
+  "GET /orgs/{org}/codespaces/secrets",
+  "GET /orgs/{org}/codespaces/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/copilot/billing/seats",
+  "GET /orgs/{org}/dependabot/alerts",
+  "GET /orgs/{org}/dependabot/secrets",
+  "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/events",
+  "GET /orgs/{org}/failed_invitations",
+  "GET /orgs/{org}/hooks",
+  "GET /orgs/{org}/hooks/{hook_id}/deliveries",
+  "GET /orgs/{org}/installations",
+  "GET /orgs/{org}/invitations",
+  "GET /orgs/{org}/invitations/{invitation_id}/teams",
+  "GET /orgs/{org}/issues",
+  "GET /orgs/{org}/members",
+  "GET /orgs/{org}/members/{username}/codespaces",
+  "GET /orgs/{org}/migrations",
+  "GET /orgs/{org}/migrations/{migration_id}/repositories",
+  "GET /orgs/{org}/organization-roles/{role_id}/teams",
+  "GET /orgs/{org}/organization-roles/{role_id}/users",
+  "GET /orgs/{org}/outside_collaborators",
+  "GET /orgs/{org}/packages",
+  "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
+  "GET /orgs/{org}/personal-access-token-requests",
+  "GET /orgs/{org}/personal-access-token-requests/{pat_request_id}/repositories",
+  "GET /orgs/{org}/personal-access-tokens",
+  "GET /orgs/{org}/personal-access-tokens/{pat_id}/repositories",
+  "GET /orgs/{org}/projects",
+  "GET /orgs/{org}/properties/values",
+  "GET /orgs/{org}/public_members",
+  "GET /orgs/{org}/repos",
+  "GET /orgs/{org}/rulesets",
+  "GET /orgs/{org}/rulesets/rule-suites",
+  "GET /orgs/{org}/secret-scanning/alerts",
+  "GET /orgs/{org}/security-advisories",
+  "GET /orgs/{org}/teams",
+  "GET /orgs/{org}/teams/{team_slug}/discussions",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions",
+  "GET /orgs/{org}/teams/{team_slug}/invitations",
+  "GET /orgs/{org}/teams/{team_slug}/members",
+  "GET /orgs/{org}/teams/{team_slug}/projects",
+  "GET /orgs/{org}/teams/{team_slug}/repos",
+  "GET /orgs/{org}/teams/{team_slug}/teams",
+  "GET /projects/columns/{column_id}/cards",
+  "GET /projects/{project_id}/collaborators",
+  "GET /projects/{project_id}/columns",
+  "GET /repos/{owner}/{repo}/actions/artifacts",
+  "GET /repos/{owner}/{repo}/actions/caches",
+  "GET /repos/{owner}/{repo}/actions/organization-secrets",
+  "GET /repos/{owner}/{repo}/actions/organization-variables",
+  "GET /repos/{owner}/{repo}/actions/runners",
+  "GET /repos/{owner}/{repo}/actions/runs",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs",
+  "GET /repos/{owner}/{repo}/actions/secrets",
+  "GET /repos/{owner}/{repo}/actions/variables",
+  "GET /repos/{owner}/{repo}/actions/workflows",
+  "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs",
+  "GET /repos/{owner}/{repo}/activity",
+  "GET /repos/{owner}/{repo}/assignees",
+  "GET /repos/{owner}/{repo}/branches",
+  "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations",
+  "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs",
+  "GET /repos/{owner}/{repo}/code-scanning/alerts",
+  "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances",
+  "GET /repos/{owner}/{repo}/code-scanning/analyses",
+  "GET /repos/{owner}/{repo}/codespaces",
+  "GET /repos/{owner}/{repo}/codespaces/devcontainers",
+  "GET /repos/{owner}/{repo}/codespaces/secrets",
+  "GET /repos/{owner}/{repo}/collaborators",
+  "GET /repos/{owner}/{repo}/comments",
+  "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/commits",
+  "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments",
+  "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls",
+  "GET /repos/{owner}/{repo}/commits/{ref}/check-runs",
+  "GET /repos/{owner}/{repo}/commits/{ref}/check-suites",
+  "GET /repos/{owner}/{repo}/commits/{ref}/status",
+  "GET /repos/{owner}/{repo}/commits/{ref}/statuses",
+  "GET /repos/{owner}/{repo}/contributors",
+  "GET /repos/{owner}/{repo}/dependabot/alerts",
+  "GET /repos/{owner}/{repo}/dependabot/secrets",
+  "GET /repos/{owner}/{repo}/deployments",
+  "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses",
+  "GET /repos/{owner}/{repo}/environments",
+  "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies",
+  "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps",
+  "GET /repos/{owner}/{repo}/events",
+  "GET /repos/{owner}/{repo}/forks",
+  "GET /repos/{owner}/{repo}/hooks",
+  "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries",
+  "GET /repos/{owner}/{repo}/invitations",
+  "GET /repos/{owner}/{repo}/issues",
+  "GET /repos/{owner}/{repo}/issues/comments",
+  "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/issues/events",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/events",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/labels",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/reactions",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline",
+  "GET /repos/{owner}/{repo}/keys",
+  "GET /repos/{owner}/{repo}/labels",
+  "GET /repos/{owner}/{repo}/milestones",
+  "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels",
+  "GET /repos/{owner}/{repo}/notifications",
+  "GET /repos/{owner}/{repo}/pages/builds",
+  "GET /repos/{owner}/{repo}/projects",
+  "GET /repos/{owner}/{repo}/pulls",
+  "GET /repos/{owner}/{repo}/pulls/comments",
+  "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments",
+  "GET /repos/{owner}/{repo}/releases",
+  "GET /repos/{owner}/{repo}/releases/{release_id}/assets",
+  "GET /repos/{owner}/{repo}/releases/{release_id}/reactions",
+  "GET /repos/{owner}/{repo}/rules/branches/{branch}",
+  "GET /repos/{owner}/{repo}/rulesets",
+  "GET /repos/{owner}/{repo}/rulesets/rule-suites",
+  "GET /repos/{owner}/{repo}/secret-scanning/alerts",
+  "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations",
+  "GET /repos/{owner}/{repo}/security-advisories",
+  "GET /repos/{owner}/{repo}/stargazers",
+  "GET /repos/{owner}/{repo}/subscribers",
+  "GET /repos/{owner}/{repo}/tags",
+  "GET /repos/{owner}/{repo}/teams",
+  "GET /repos/{owner}/{repo}/topics",
+  "GET /repositories",
+  "GET /repositories/{repository_id}/environments/{environment_name}/secrets",
+  "GET /repositories/{repository_id}/environments/{environment_name}/variables",
+  "GET /search/code",
+  "GET /search/commits",
+  "GET /search/issues",
+  "GET /search/labels",
+  "GET /search/repositories",
+  "GET /search/topics",
+  "GET /search/users",
+  "GET /teams/{team_id}/discussions",
+  "GET /teams/{team_id}/discussions/{discussion_number}/comments",
+  "GET /teams/{team_id}/discussions/{discussion_number}/comments/{comment_number}/reactions",
+  "GET /teams/{team_id}/discussions/{discussion_number}/reactions",
+  "GET /teams/{team_id}/invitations",
+  "GET /teams/{team_id}/members",
+  "GET /teams/{team_id}/projects",
+  "GET /teams/{team_id}/repos",
+  "GET /teams/{team_id}/teams",
+  "GET /user/blocks",
+  "GET /user/codespaces",
+  "GET /user/codespaces/secrets",
+  "GET /user/emails",
+  "GET /user/followers",
+  "GET /user/following",
+  "GET /user/gpg_keys",
+  "GET /user/installations",
+  "GET /user/installations/{installation_id}/repositories",
+  "GET /user/issues",
+  "GET /user/keys",
+  "GET /user/marketplace_purchases",
+  "GET /user/marketplace_purchases/stubbed",
+  "GET /user/memberships/orgs",
+  "GET /user/migrations",
+  "GET /user/migrations/{migration_id}/repositories",
+  "GET /user/orgs",
+  "GET /user/packages",
+  "GET /user/packages/{package_type}/{package_name}/versions",
+  "GET /user/public_emails",
+  "GET /user/repos",
+  "GET /user/repository_invitations",
+  "GET /user/social_accounts",
+  "GET /user/ssh_signing_keys",
+  "GET /user/starred",
+  "GET /user/subscriptions",
+  "GET /user/teams",
+  "GET /users",
+  "GET /users/{username}/events",
+  "GET /users/{username}/events/orgs/{org}",
+  "GET /users/{username}/events/public",
+  "GET /users/{username}/followers",
+  "GET /users/{username}/following",
+  "GET /users/{username}/gists",
+  "GET /users/{username}/gpg_keys",
+  "GET /users/{username}/keys",
+  "GET /users/{username}/orgs",
+  "GET /users/{username}/packages",
+  "GET /users/{username}/projects",
+  "GET /users/{username}/received_events",
+  "GET /users/{username}/received_events/public",
+  "GET /users/{username}/repos",
+  "GET /users/{username}/social_accounts",
+  "GET /users/{username}/ssh_signing_keys",
+  "GET /users/{username}/starred",
+  "GET /users/{username}/subscriptions"
+];
+
+// pkg/dist-src/paginating-endpoints.js
+function isPaginatingEndpoint(arg) {
+  if (typeof arg === "string") {
+    return paginatingEndpoints.includes(arg);
+  } else {
+    return false;
+  }
+}
+
+// pkg/dist-src/index.js
+function paginateRest(octokit) {
+  return {
+    paginate: Object.assign(paginate.bind(null, octokit), {
+      iterator: iterator.bind(null, octokit)
+    })
+  };
+}
+paginateRest.VERSION = VERSION;
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 6966:
+/***/ ((module) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  requestLog: () => requestLog
+});
+module.exports = __toCommonJS(dist_src_exports);
+
+// pkg/dist-src/version.js
+var VERSION = "4.0.1";
+
+// pkg/dist-src/index.js
+function requestLog(octokit) {
+  octokit.hook.wrap("request", (request, options) => {
+    octokit.log.debug("request", options);
+    const start = Date.now();
+    const requestOptions = octokit.request.endpoint.parse(options);
+    const path = requestOptions.url.replace(options.baseUrl, "");
+    return request(options).then((response) => {
+      octokit.log.info(
+        `${requestOptions.method} ${path} - ${response.status} in ${Date.now() - start}ms`
+      );
+      return response;
+    }).catch((error) => {
+      octokit.log.info(
+        `${requestOptions.method} ${path} - ${error.status} in ${Date.now() - start}ms`
+      );
+      throw error;
+    });
+  });
+}
+requestLog.VERSION = VERSION;
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 4935:
+/***/ ((module) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  legacyRestEndpointMethods: () => legacyRestEndpointMethods,
+  restEndpointMethods: () => restEndpointMethods
+});
+module.exports = __toCommonJS(dist_src_exports);
+
+// pkg/dist-src/version.js
+var VERSION = "10.4.1";
+
+// pkg/dist-src/generated/endpoints.js
+var Endpoints = {
+  actions: {
+    addCustomLabelsToSelfHostedRunnerForOrg: [
+      "POST /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    addCustomLabelsToSelfHostedRunnerForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    addSelectedRepoToOrgSecret: [
+      "PUT /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    addSelectedRepoToOrgVariable: [
+      "PUT /orgs/{org}/actions/variables/{name}/repositories/{repository_id}"
+    ],
+    approveWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/approve"
+    ],
+    cancelWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/cancel"
+    ],
+    createEnvironmentVariable: [
+      "POST /repositories/{repository_id}/environments/{environment_name}/variables"
+    ],
+    createOrUpdateEnvironmentSecret: [
+      "PUT /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}"
+    ],
+    createOrUpdateOrgSecret: ["PUT /orgs/{org}/actions/secrets/{secret_name}"],
+    createOrUpdateRepoSecret: [
+      "PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}"
+    ],
+    createOrgVariable: ["POST /orgs/{org}/actions/variables"],
+    createRegistrationTokenForOrg: [
+      "POST /orgs/{org}/actions/runners/registration-token"
+    ],
+    createRegistrationTokenForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/registration-token"
+    ],
+    createRemoveTokenForOrg: ["POST /orgs/{org}/actions/runners/remove-token"],
+    createRemoveTokenForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/remove-token"
+    ],
+    createRepoVariable: ["POST /repos/{owner}/{repo}/actions/variables"],
+    createWorkflowDispatch: [
+      "POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches"
+    ],
+    deleteActionsCacheById: [
+      "DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}"
+    ],
+    deleteActionsCacheByKey: [
+      "DELETE /repos/{owner}/{repo}/actions/caches{?key,ref}"
+    ],
+    deleteArtifact: [
+      "DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"
+    ],
+    deleteEnvironmentSecret: [
+      "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}"
+    ],
+    deleteEnvironmentVariable: [
+      "DELETE /repositories/{repository_id}/environments/{environment_name}/variables/{name}"
+    ],
+    deleteOrgSecret: ["DELETE /orgs/{org}/actions/secrets/{secret_name}"],
+    deleteOrgVariable: ["DELETE /orgs/{org}/actions/variables/{name}"],
+    deleteRepoSecret: [
+      "DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}"
+    ],
+    deleteRepoVariable: [
+      "DELETE /repos/{owner}/{repo}/actions/variables/{name}"
+    ],
+    deleteSelfHostedRunnerFromOrg: [
+      "DELETE /orgs/{org}/actions/runners/{runner_id}"
+    ],
+    deleteSelfHostedRunnerFromRepo: [
+      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}"
+    ],
+    deleteWorkflowRun: ["DELETE /repos/{owner}/{repo}/actions/runs/{run_id}"],
+    deleteWorkflowRunLogs: [
+      "DELETE /repos/{owner}/{repo}/actions/runs/{run_id}/logs"
+    ],
+    disableSelectedRepositoryGithubActionsOrganization: [
+      "DELETE /orgs/{org}/actions/permissions/repositories/{repository_id}"
+    ],
+    disableWorkflow: [
+      "PUT /repos/{owner}/{repo}/actions/workflows/{workflow_id}/disable"
+    ],
+    downloadArtifact: [
+      "GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}"
+    ],
+    downloadJobLogsForWorkflowRun: [
+      "GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs"
+    ],
+    downloadWorkflowRunAttemptLogs: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/logs"
+    ],
+    downloadWorkflowRunLogs: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/logs"
+    ],
+    enableSelectedRepositoryGithubActionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/repositories/{repository_id}"
+    ],
+    enableWorkflow: [
+      "PUT /repos/{owner}/{repo}/actions/workflows/{workflow_id}/enable"
+    ],
+    forceCancelWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel"
+    ],
+    generateRunnerJitconfigForOrg: [
+      "POST /orgs/{org}/actions/runners/generate-jitconfig"
+    ],
+    generateRunnerJitconfigForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig"
+    ],
+    getActionsCacheList: ["GET /repos/{owner}/{repo}/actions/caches"],
+    getActionsCacheUsage: ["GET /repos/{owner}/{repo}/actions/cache/usage"],
+    getActionsCacheUsageByRepoForOrg: [
+      "GET /orgs/{org}/actions/cache/usage-by-repository"
+    ],
+    getActionsCacheUsageForOrg: ["GET /orgs/{org}/actions/cache/usage"],
+    getAllowedActionsOrganization: [
+      "GET /orgs/{org}/actions/permissions/selected-actions"
+    ],
+    getAllowedActionsRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions/selected-actions"
+    ],
+    getArtifact: ["GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"],
+    getCustomOidcSubClaimForRepo: [
+      "GET /repos/{owner}/{repo}/actions/oidc/customization/sub"
+    ],
+    getEnvironmentPublicKey: [
+      "GET /repositories/{repository_id}/environments/{environment_name}/secrets/public-key"
+    ],
+    getEnvironmentSecret: [
+      "GET /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}"
+    ],
+    getEnvironmentVariable: [
+      "GET /repositories/{repository_id}/environments/{environment_name}/variables/{name}"
+    ],
+    getGithubActionsDefaultWorkflowPermissionsOrganization: [
+      "GET /orgs/{org}/actions/permissions/workflow"
+    ],
+    getGithubActionsDefaultWorkflowPermissionsRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions/workflow"
+    ],
+    getGithubActionsPermissionsOrganization: [
+      "GET /orgs/{org}/actions/permissions"
+    ],
+    getGithubActionsPermissionsRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions"
+    ],
+    getJobForWorkflowRun: ["GET /repos/{owner}/{repo}/actions/jobs/{job_id}"],
+    getOrgPublicKey: ["GET /orgs/{org}/actions/secrets/public-key"],
+    getOrgSecret: ["GET /orgs/{org}/actions/secrets/{secret_name}"],
+    getOrgVariable: ["GET /orgs/{org}/actions/variables/{name}"],
+    getPendingDeploymentsForRun: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"
+    ],
+    getRepoPermissions: [
+      "GET /repos/{owner}/{repo}/actions/permissions",
+      {},
+      { renamed: ["actions", "getGithubActionsPermissionsRepository"] }
+    ],
+    getRepoPublicKey: ["GET /repos/{owner}/{repo}/actions/secrets/public-key"],
+    getRepoSecret: ["GET /repos/{owner}/{repo}/actions/secrets/{secret_name}"],
+    getRepoVariable: ["GET /repos/{owner}/{repo}/actions/variables/{name}"],
+    getReviewsForRun: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/approvals"
+    ],
+    getSelfHostedRunnerForOrg: ["GET /orgs/{org}/actions/runners/{runner_id}"],
+    getSelfHostedRunnerForRepo: [
+      "GET /repos/{owner}/{repo}/actions/runners/{runner_id}"
+    ],
+    getWorkflow: ["GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}"],
+    getWorkflowAccessToRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions/access"
+    ],
+    getWorkflowRun: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}"],
+    getWorkflowRunAttempt: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}"
+    ],
+    getWorkflowRunUsage: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing"
+    ],
+    getWorkflowUsage: [
+      "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/timing"
+    ],
+    listArtifactsForRepo: ["GET /repos/{owner}/{repo}/actions/artifacts"],
+    listEnvironmentSecrets: [
+      "GET /repositories/{repository_id}/environments/{environment_name}/secrets"
+    ],
+    listEnvironmentVariables: [
+      "GET /repositories/{repository_id}/environments/{environment_name}/variables"
+    ],
+    listJobsForWorkflowRun: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs"
+    ],
+    listJobsForWorkflowRunAttempt: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs"
+    ],
+    listLabelsForSelfHostedRunnerForOrg: [
+      "GET /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    listLabelsForSelfHostedRunnerForRepo: [
+      "GET /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    listOrgSecrets: ["GET /orgs/{org}/actions/secrets"],
+    listOrgVariables: ["GET /orgs/{org}/actions/variables"],
+    listRepoOrganizationSecrets: [
+      "GET /repos/{owner}/{repo}/actions/organization-secrets"
+    ],
+    listRepoOrganizationVariables: [
+      "GET /repos/{owner}/{repo}/actions/organization-variables"
+    ],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/actions/secrets"],
+    listRepoVariables: ["GET /repos/{owner}/{repo}/actions/variables"],
+    listRepoWorkflows: ["GET /repos/{owner}/{repo}/actions/workflows"],
+    listRunnerApplicationsForOrg: ["GET /orgs/{org}/actions/runners/downloads"],
+    listRunnerApplicationsForRepo: [
+      "GET /repos/{owner}/{repo}/actions/runners/downloads"
+    ],
+    listSelectedReposForOrgSecret: [
+      "GET /orgs/{org}/actions/secrets/{secret_name}/repositories"
+    ],
+    listSelectedReposForOrgVariable: [
+      "GET /orgs/{org}/actions/variables/{name}/repositories"
+    ],
+    listSelectedRepositoriesEnabledGithubActionsOrganization: [
+      "GET /orgs/{org}/actions/permissions/repositories"
+    ],
+    listSelfHostedRunnersForOrg: ["GET /orgs/{org}/actions/runners"],
+    listSelfHostedRunnersForRepo: ["GET /repos/{owner}/{repo}/actions/runners"],
+    listWorkflowRunArtifacts: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts"
+    ],
+    listWorkflowRuns: [
+      "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs"
+    ],
+    listWorkflowRunsForRepo: ["GET /repos/{owner}/{repo}/actions/runs"],
+    reRunJobForWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun"
+    ],
+    reRunWorkflow: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun"],
+    reRunWorkflowFailedJobs: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs"
+    ],
+    removeAllCustomLabelsFromSelfHostedRunnerForOrg: [
+      "DELETE /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    removeAllCustomLabelsFromSelfHostedRunnerForRepo: [
+      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    removeCustomLabelFromSelfHostedRunnerForOrg: [
+      "DELETE /orgs/{org}/actions/runners/{runner_id}/labels/{name}"
+    ],
+    removeCustomLabelFromSelfHostedRunnerForRepo: [
+      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels/{name}"
+    ],
+    removeSelectedRepoFromOrgSecret: [
+      "DELETE /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    removeSelectedRepoFromOrgVariable: [
+      "DELETE /orgs/{org}/actions/variables/{name}/repositories/{repository_id}"
+    ],
+    reviewCustomGatesForRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/deployment_protection_rule"
+    ],
+    reviewPendingDeploymentsForRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"
+    ],
+    setAllowedActionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/selected-actions"
+    ],
+    setAllowedActionsRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions/selected-actions"
+    ],
+    setCustomLabelsForSelfHostedRunnerForOrg: [
+      "PUT /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    setCustomLabelsForSelfHostedRunnerForRepo: [
+      "PUT /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    setCustomOidcSubClaimForRepo: [
+      "PUT /repos/{owner}/{repo}/actions/oidc/customization/sub"
+    ],
+    setGithubActionsDefaultWorkflowPermissionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/workflow"
+    ],
+    setGithubActionsDefaultWorkflowPermissionsRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions/workflow"
+    ],
+    setGithubActionsPermissionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions"
+    ],
+    setGithubActionsPermissionsRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions"
+    ],
+    setSelectedReposForOrgSecret: [
+      "PUT /orgs/{org}/actions/secrets/{secret_name}/repositories"
+    ],
+    setSelectedReposForOrgVariable: [
+      "PUT /orgs/{org}/actions/variables/{name}/repositories"
+    ],
+    setSelectedRepositoriesEnabledGithubActionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/repositories"
+    ],
+    setWorkflowAccessToRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions/access"
+    ],
+    updateEnvironmentVariable: [
+      "PATCH /repositories/{repository_id}/environments/{environment_name}/variables/{name}"
+    ],
+    updateOrgVariable: ["PATCH /orgs/{org}/actions/variables/{name}"],
+    updateRepoVariable: [
+      "PATCH /repos/{owner}/{repo}/actions/variables/{name}"
+    ]
+  },
+  activity: {
+    checkRepoIsStarredByAuthenticatedUser: ["GET /user/starred/{owner}/{repo}"],
+    deleteRepoSubscription: ["DELETE /repos/{owner}/{repo}/subscription"],
+    deleteThreadSubscription: [
+      "DELETE /notifications/threads/{thread_id}/subscription"
+    ],
+    getFeeds: ["GET /feeds"],
+    getRepoSubscription: ["GET /repos/{owner}/{repo}/subscription"],
+    getThread: ["GET /notifications/threads/{thread_id}"],
+    getThreadSubscriptionForAuthenticatedUser: [
+      "GET /notifications/threads/{thread_id}/subscription"
+    ],
+    listEventsForAuthenticatedUser: ["GET /users/{username}/events"],
+    listNotificationsForAuthenticatedUser: ["GET /notifications"],
+    listOrgEventsForAuthenticatedUser: [
+      "GET /users/{username}/events/orgs/{org}"
+    ],
+    listPublicEvents: ["GET /events"],
+    listPublicEventsForRepoNetwork: ["GET /networks/{owner}/{repo}/events"],
+    listPublicEventsForUser: ["GET /users/{username}/events/public"],
+    listPublicOrgEvents: ["GET /orgs/{org}/events"],
+    listReceivedEventsForUser: ["GET /users/{username}/received_events"],
+    listReceivedPublicEventsForUser: [
+      "GET /users/{username}/received_events/public"
+    ],
+    listRepoEvents: ["GET /repos/{owner}/{repo}/events"],
+    listRepoNotificationsForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/notifications"
+    ],
+    listReposStarredByAuthenticatedUser: ["GET /user/starred"],
+    listReposStarredByUser: ["GET /users/{username}/starred"],
+    listReposWatchedByUser: ["GET /users/{username}/subscriptions"],
+    listStargazersForRepo: ["GET /repos/{owner}/{repo}/stargazers"],
+    listWatchedReposForAuthenticatedUser: ["GET /user/subscriptions"],
+    listWatchersForRepo: ["GET /repos/{owner}/{repo}/subscribers"],
+    markNotificationsAsRead: ["PUT /notifications"],
+    markRepoNotificationsAsRead: ["PUT /repos/{owner}/{repo}/notifications"],
+    markThreadAsDone: ["DELETE /notifications/threads/{thread_id}"],
+    markThreadAsRead: ["PATCH /notifications/threads/{thread_id}"],
+    setRepoSubscription: ["PUT /repos/{owner}/{repo}/subscription"],
+    setThreadSubscription: [
+      "PUT /notifications/threads/{thread_id}/subscription"
+    ],
+    starRepoForAuthenticatedUser: ["PUT /user/starred/{owner}/{repo}"],
+    unstarRepoForAuthenticatedUser: ["DELETE /user/starred/{owner}/{repo}"]
+  },
+  apps: {
+    addRepoToInstallation: [
+      "PUT /user/installations/{installation_id}/repositories/{repository_id}",
+      {},
+      { renamed: ["apps", "addRepoToInstallationForAuthenticatedUser"] }
+    ],
+    addRepoToInstallationForAuthenticatedUser: [
+      "PUT /user/installations/{installation_id}/repositories/{repository_id}"
+    ],
+    checkToken: ["POST /applications/{client_id}/token"],
+    createFromManifest: ["POST /app-manifests/{code}/conversions"],
+    createInstallationAccessToken: [
+      "POST /app/installations/{installation_id}/access_tokens"
+    ],
+    deleteAuthorization: ["DELETE /applications/{client_id}/grant"],
+    deleteInstallation: ["DELETE /app/installations/{installation_id}"],
+    deleteToken: ["DELETE /applications/{client_id}/token"],
+    getAuthenticated: ["GET /app"],
+    getBySlug: ["GET /apps/{app_slug}"],
+    getInstallation: ["GET /app/installations/{installation_id}"],
+    getOrgInstallation: ["GET /orgs/{org}/installation"],
+    getRepoInstallation: ["GET /repos/{owner}/{repo}/installation"],
+    getSubscriptionPlanForAccount: [
+      "GET /marketplace_listing/accounts/{account_id}"
+    ],
+    getSubscriptionPlanForAccountStubbed: [
+      "GET /marketplace_listing/stubbed/accounts/{account_id}"
+    ],
+    getUserInstallation: ["GET /users/{username}/installation"],
+    getWebhookConfigForApp: ["GET /app/hook/config"],
+    getWebhookDelivery: ["GET /app/hook/deliveries/{delivery_id}"],
+    listAccountsForPlan: ["GET /marketplace_listing/plans/{plan_id}/accounts"],
+    listAccountsForPlanStubbed: [
+      "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts"
+    ],
+    listInstallationReposForAuthenticatedUser: [
+      "GET /user/installations/{installation_id}/repositories"
+    ],
+    listInstallationRequestsForAuthenticatedApp: [
+      "GET /app/installation-requests"
+    ],
+    listInstallations: ["GET /app/installations"],
+    listInstallationsForAuthenticatedUser: ["GET /user/installations"],
+    listPlans: ["GET /marketplace_listing/plans"],
+    listPlansStubbed: ["GET /marketplace_listing/stubbed/plans"],
+    listReposAccessibleToInstallation: ["GET /installation/repositories"],
+    listSubscriptionsForAuthenticatedUser: ["GET /user/marketplace_purchases"],
+    listSubscriptionsForAuthenticatedUserStubbed: [
+      "GET /user/marketplace_purchases/stubbed"
+    ],
+    listWebhookDeliveries: ["GET /app/hook/deliveries"],
+    redeliverWebhookDelivery: [
+      "POST /app/hook/deliveries/{delivery_id}/attempts"
+    ],
+    removeRepoFromInstallation: [
+      "DELETE /user/installations/{installation_id}/repositories/{repository_id}",
+      {},
+      { renamed: ["apps", "removeRepoFromInstallationForAuthenticatedUser"] }
+    ],
+    removeRepoFromInstallationForAuthenticatedUser: [
+      "DELETE /user/installations/{installation_id}/repositories/{repository_id}"
+    ],
+    resetToken: ["PATCH /applications/{client_id}/token"],
+    revokeInstallationAccessToken: ["DELETE /installation/token"],
+    scopeToken: ["POST /applications/{client_id}/token/scoped"],
+    suspendInstallation: ["PUT /app/installations/{installation_id}/suspended"],
+    unsuspendInstallation: [
+      "DELETE /app/installations/{installation_id}/suspended"
+    ],
+    updateWebhookConfigForApp: ["PATCH /app/hook/config"]
+  },
+  billing: {
+    getGithubActionsBillingOrg: ["GET /orgs/{org}/settings/billing/actions"],
+    getGithubActionsBillingUser: [
+      "GET /users/{username}/settings/billing/actions"
+    ],
+    getGithubPackagesBillingOrg: ["GET /orgs/{org}/settings/billing/packages"],
+    getGithubPackagesBillingUser: [
+      "GET /users/{username}/settings/billing/packages"
+    ],
+    getSharedStorageBillingOrg: [
+      "GET /orgs/{org}/settings/billing/shared-storage"
+    ],
+    getSharedStorageBillingUser: [
+      "GET /users/{username}/settings/billing/shared-storage"
+    ]
+  },
+  checks: {
+    create: ["POST /repos/{owner}/{repo}/check-runs"],
+    createSuite: ["POST /repos/{owner}/{repo}/check-suites"],
+    get: ["GET /repos/{owner}/{repo}/check-runs/{check_run_id}"],
+    getSuite: ["GET /repos/{owner}/{repo}/check-suites/{check_suite_id}"],
+    listAnnotations: [
+      "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations"
+    ],
+    listForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/check-runs"],
+    listForSuite: [
+      "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs"
+    ],
+    listSuitesForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/check-suites"],
+    rerequestRun: [
+      "POST /repos/{owner}/{repo}/check-runs/{check_run_id}/rerequest"
+    ],
+    rerequestSuite: [
+      "POST /repos/{owner}/{repo}/check-suites/{check_suite_id}/rerequest"
+    ],
+    setSuitesPreferences: [
+      "PATCH /repos/{owner}/{repo}/check-suites/preferences"
+    ],
+    update: ["PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}"]
+  },
+  codeScanning: {
+    deleteAnalysis: [
+      "DELETE /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}{?confirm_delete}"
+    ],
+    getAlert: [
+      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}",
+      {},
+      { renamedParameters: { alert_id: "alert_number" } }
+    ],
+    getAnalysis: [
+      "GET /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}"
+    ],
+    getCodeqlDatabase: [
+      "GET /repos/{owner}/{repo}/code-scanning/codeql/databases/{language}"
+    ],
+    getDefaultSetup: ["GET /repos/{owner}/{repo}/code-scanning/default-setup"],
+    getSarif: ["GET /repos/{owner}/{repo}/code-scanning/sarifs/{sarif_id}"],
+    listAlertInstances: [
+      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances"
+    ],
+    listAlertsForOrg: ["GET /orgs/{org}/code-scanning/alerts"],
+    listAlertsForRepo: ["GET /repos/{owner}/{repo}/code-scanning/alerts"],
+    listAlertsInstances: [
+      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances",
+      {},
+      { renamed: ["codeScanning", "listAlertInstances"] }
+    ],
+    listCodeqlDatabases: [
+      "GET /repos/{owner}/{repo}/code-scanning/codeql/databases"
+    ],
+    listRecentAnalyses: ["GET /repos/{owner}/{repo}/code-scanning/analyses"],
+    updateAlert: [
+      "PATCH /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}"
+    ],
+    updateDefaultSetup: [
+      "PATCH /repos/{owner}/{repo}/code-scanning/default-setup"
+    ],
+    uploadSarif: ["POST /repos/{owner}/{repo}/code-scanning/sarifs"]
+  },
+  codesOfConduct: {
+    getAllCodesOfConduct: ["GET /codes_of_conduct"],
+    getConductCode: ["GET /codes_of_conduct/{key}"]
+  },
+  codespaces: {
+    addRepositoryForSecretForAuthenticatedUser: [
+      "PUT /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    addSelectedRepoToOrgSecret: [
+      "PUT /orgs/{org}/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    checkPermissionsForDevcontainer: [
+      "GET /repos/{owner}/{repo}/codespaces/permissions_check"
+    ],
+    codespaceMachinesForAuthenticatedUser: [
+      "GET /user/codespaces/{codespace_name}/machines"
+    ],
+    createForAuthenticatedUser: ["POST /user/codespaces"],
+    createOrUpdateOrgSecret: [
+      "PUT /orgs/{org}/codespaces/secrets/{secret_name}"
+    ],
+    createOrUpdateRepoSecret: [
+      "PUT /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
+    ],
+    createOrUpdateSecretForAuthenticatedUser: [
+      "PUT /user/codespaces/secrets/{secret_name}"
+    ],
+    createWithPrForAuthenticatedUser: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/codespaces"
+    ],
+    createWithRepoForAuthenticatedUser: [
+      "POST /repos/{owner}/{repo}/codespaces"
+    ],
+    deleteForAuthenticatedUser: ["DELETE /user/codespaces/{codespace_name}"],
+    deleteFromOrganization: [
+      "DELETE /orgs/{org}/members/{username}/codespaces/{codespace_name}"
+    ],
+    deleteOrgSecret: ["DELETE /orgs/{org}/codespaces/secrets/{secret_name}"],
+    deleteRepoSecret: [
+      "DELETE /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
+    ],
+    deleteSecretForAuthenticatedUser: [
+      "DELETE /user/codespaces/secrets/{secret_name}"
+    ],
+    exportForAuthenticatedUser: [
+      "POST /user/codespaces/{codespace_name}/exports"
+    ],
+    getCodespacesForUserInOrg: [
+      "GET /orgs/{org}/members/{username}/codespaces"
+    ],
+    getExportDetailsForAuthenticatedUser: [
+      "GET /user/codespaces/{codespace_name}/exports/{export_id}"
+    ],
+    getForAuthenticatedUser: ["GET /user/codespaces/{codespace_name}"],
+    getOrgPublicKey: ["GET /orgs/{org}/codespaces/secrets/public-key"],
+    getOrgSecret: ["GET /orgs/{org}/codespaces/secrets/{secret_name}"],
+    getPublicKeyForAuthenticatedUser: [
+      "GET /user/codespaces/secrets/public-key"
+    ],
+    getRepoPublicKey: [
+      "GET /repos/{owner}/{repo}/codespaces/secrets/public-key"
+    ],
+    getRepoSecret: [
+      "GET /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
+    ],
+    getSecretForAuthenticatedUser: [
+      "GET /user/codespaces/secrets/{secret_name}"
+    ],
+    listDevcontainersInRepositoryForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces/devcontainers"
+    ],
+    listForAuthenticatedUser: ["GET /user/codespaces"],
+    listInOrganization: [
+      "GET /orgs/{org}/codespaces",
+      {},
+      { renamedParameters: { org_id: "org" } }
+    ],
+    listInRepositoryForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces"
+    ],
+    listOrgSecrets: ["GET /orgs/{org}/codespaces/secrets"],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/codespaces/secrets"],
+    listRepositoriesForSecretForAuthenticatedUser: [
+      "GET /user/codespaces/secrets/{secret_name}/repositories"
+    ],
+    listSecretsForAuthenticatedUser: ["GET /user/codespaces/secrets"],
+    listSelectedReposForOrgSecret: [
+      "GET /orgs/{org}/codespaces/secrets/{secret_name}/repositories"
+    ],
+    preFlightWithRepoForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces/new"
+    ],
+    publishForAuthenticatedUser: [
+      "POST /user/codespaces/{codespace_name}/publish"
+    ],
+    removeRepositoryForSecretForAuthenticatedUser: [
+      "DELETE /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    removeSelectedRepoFromOrgSecret: [
+      "DELETE /orgs/{org}/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    repoMachinesForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces/machines"
+    ],
+    setRepositoriesForSecretForAuthenticatedUser: [
+      "PUT /user/codespaces/secrets/{secret_name}/repositories"
+    ],
+    setSelectedReposForOrgSecret: [
+      "PUT /orgs/{org}/codespaces/secrets/{secret_name}/repositories"
+    ],
+    startForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/start"],
+    stopForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/stop"],
+    stopInOrganization: [
+      "POST /orgs/{org}/members/{username}/codespaces/{codespace_name}/stop"
+    ],
+    updateForAuthenticatedUser: ["PATCH /user/codespaces/{codespace_name}"]
+  },
+  copilot: {
+    addCopilotSeatsForTeams: [
+      "POST /orgs/{org}/copilot/billing/selected_teams"
+    ],
+    addCopilotSeatsForUsers: [
+      "POST /orgs/{org}/copilot/billing/selected_users"
+    ],
+    cancelCopilotSeatAssignmentForTeams: [
+      "DELETE /orgs/{org}/copilot/billing/selected_teams"
+    ],
+    cancelCopilotSeatAssignmentForUsers: [
+      "DELETE /orgs/{org}/copilot/billing/selected_users"
+    ],
+    getCopilotOrganizationDetails: ["GET /orgs/{org}/copilot/billing"],
+    getCopilotSeatDetailsForUser: [
+      "GET /orgs/{org}/members/{username}/copilot"
+    ],
+    listCopilotSeats: ["GET /orgs/{org}/copilot/billing/seats"]
+  },
+  dependabot: {
+    addSelectedRepoToOrgSecret: [
+      "PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    createOrUpdateOrgSecret: [
+      "PUT /orgs/{org}/dependabot/secrets/{secret_name}"
+    ],
+    createOrUpdateRepoSecret: [
+      "PUT /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
+    ],
+    deleteOrgSecret: ["DELETE /orgs/{org}/dependabot/secrets/{secret_name}"],
+    deleteRepoSecret: [
+      "DELETE /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
+    ],
+    getAlert: ["GET /repos/{owner}/{repo}/dependabot/alerts/{alert_number}"],
+    getOrgPublicKey: ["GET /orgs/{org}/dependabot/secrets/public-key"],
+    getOrgSecret: ["GET /orgs/{org}/dependabot/secrets/{secret_name}"],
+    getRepoPublicKey: [
+      "GET /repos/{owner}/{repo}/dependabot/secrets/public-key"
+    ],
+    getRepoSecret: [
+      "GET /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
+    ],
+    listAlertsForEnterprise: [
+      "GET /enterprises/{enterprise}/dependabot/alerts"
+    ],
+    listAlertsForOrg: ["GET /orgs/{org}/dependabot/alerts"],
+    listAlertsForRepo: ["GET /repos/{owner}/{repo}/dependabot/alerts"],
+    listOrgSecrets: ["GET /orgs/{org}/dependabot/secrets"],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/dependabot/secrets"],
+    listSelectedReposForOrgSecret: [
+      "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories"
+    ],
+    removeSelectedRepoFromOrgSecret: [
+      "DELETE /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    setSelectedReposForOrgSecret: [
+      "PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories"
+    ],
+    updateAlert: [
+      "PATCH /repos/{owner}/{repo}/dependabot/alerts/{alert_number}"
+    ]
+  },
+  dependencyGraph: {
+    createRepositorySnapshot: [
+      "POST /repos/{owner}/{repo}/dependency-graph/snapshots"
+    ],
+    diffRange: [
+      "GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}"
+    ],
+    exportSbom: ["GET /repos/{owner}/{repo}/dependency-graph/sbom"]
+  },
+  emojis: { get: ["GET /emojis"] },
+  gists: {
+    checkIsStarred: ["GET /gists/{gist_id}/star"],
+    create: ["POST /gists"],
+    createComment: ["POST /gists/{gist_id}/comments"],
+    delete: ["DELETE /gists/{gist_id}"],
+    deleteComment: ["DELETE /gists/{gist_id}/comments/{comment_id}"],
+    fork: ["POST /gists/{gist_id}/forks"],
+    get: ["GET /gists/{gist_id}"],
+    getComment: ["GET /gists/{gist_id}/comments/{comment_id}"],
+    getRevision: ["GET /gists/{gist_id}/{sha}"],
+    list: ["GET /gists"],
+    listComments: ["GET /gists/{gist_id}/comments"],
+    listCommits: ["GET /gists/{gist_id}/commits"],
+    listForUser: ["GET /users/{username}/gists"],
+    listForks: ["GET /gists/{gist_id}/forks"],
+    listPublic: ["GET /gists/public"],
+    listStarred: ["GET /gists/starred"],
+    star: ["PUT /gists/{gist_id}/star"],
+    unstar: ["DELETE /gists/{gist_id}/star"],
+    update: ["PATCH /gists/{gist_id}"],
+    updateComment: ["PATCH /gists/{gist_id}/comments/{comment_id}"]
+  },
+  git: {
+    createBlob: ["POST /repos/{owner}/{repo}/git/blobs"],
+    createCommit: ["POST /repos/{owner}/{repo}/git/commits"],
+    createRef: ["POST /repos/{owner}/{repo}/git/refs"],
+    createTag: ["POST /repos/{owner}/{repo}/git/tags"],
+    createTree: ["POST /repos/{owner}/{repo}/git/trees"],
+    deleteRef: ["DELETE /repos/{owner}/{repo}/git/refs/{ref}"],
+    getBlob: ["GET /repos/{owner}/{repo}/git/blobs/{file_sha}"],
+    getCommit: ["GET /repos/{owner}/{repo}/git/commits/{commit_sha}"],
+    getRef: ["GET /repos/{owner}/{repo}/git/ref/{ref}"],
+    getTag: ["GET /repos/{owner}/{repo}/git/tags/{tag_sha}"],
+    getTree: ["GET /repos/{owner}/{repo}/git/trees/{tree_sha}"],
+    listMatchingRefs: ["GET /repos/{owner}/{repo}/git/matching-refs/{ref}"],
+    updateRef: ["PATCH /repos/{owner}/{repo}/git/refs/{ref}"]
+  },
+  gitignore: {
+    getAllTemplates: ["GET /gitignore/templates"],
+    getTemplate: ["GET /gitignore/templates/{name}"]
+  },
+  interactions: {
+    getRestrictionsForAuthenticatedUser: ["GET /user/interaction-limits"],
+    getRestrictionsForOrg: ["GET /orgs/{org}/interaction-limits"],
+    getRestrictionsForRepo: ["GET /repos/{owner}/{repo}/interaction-limits"],
+    getRestrictionsForYourPublicRepos: [
+      "GET /user/interaction-limits",
+      {},
+      { renamed: ["interactions", "getRestrictionsForAuthenticatedUser"] }
+    ],
+    removeRestrictionsForAuthenticatedUser: ["DELETE /user/interaction-limits"],
+    removeRestrictionsForOrg: ["DELETE /orgs/{org}/interaction-limits"],
+    removeRestrictionsForRepo: [
+      "DELETE /repos/{owner}/{repo}/interaction-limits"
+    ],
+    removeRestrictionsForYourPublicRepos: [
+      "DELETE /user/interaction-limits",
+      {},
+      { renamed: ["interactions", "removeRestrictionsForAuthenticatedUser"] }
+    ],
+    setRestrictionsForAuthenticatedUser: ["PUT /user/interaction-limits"],
+    setRestrictionsForOrg: ["PUT /orgs/{org}/interaction-limits"],
+    setRestrictionsForRepo: ["PUT /repos/{owner}/{repo}/interaction-limits"],
+    setRestrictionsForYourPublicRepos: [
+      "PUT /user/interaction-limits",
+      {},
+      { renamed: ["interactions", "setRestrictionsForAuthenticatedUser"] }
+    ]
+  },
+  issues: {
+    addAssignees: [
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/assignees"
+    ],
+    addLabels: ["POST /repos/{owner}/{repo}/issues/{issue_number}/labels"],
+    checkUserCanBeAssigned: ["GET /repos/{owner}/{repo}/assignees/{assignee}"],
+    checkUserCanBeAssignedToIssue: [
+      "GET /repos/{owner}/{repo}/issues/{issue_number}/assignees/{assignee}"
+    ],
+    create: ["POST /repos/{owner}/{repo}/issues"],
+    createComment: [
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/comments"
+    ],
+    createLabel: ["POST /repos/{owner}/{repo}/labels"],
+    createMilestone: ["POST /repos/{owner}/{repo}/milestones"],
+    deleteComment: [
+      "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}"
+    ],
+    deleteLabel: ["DELETE /repos/{owner}/{repo}/labels/{name}"],
+    deleteMilestone: [
+      "DELETE /repos/{owner}/{repo}/milestones/{milestone_number}"
+    ],
+    get: ["GET /repos/{owner}/{repo}/issues/{issue_number}"],
+    getComment: ["GET /repos/{owner}/{repo}/issues/comments/{comment_id}"],
+    getEvent: ["GET /repos/{owner}/{repo}/issues/events/{event_id}"],
+    getLabel: ["GET /repos/{owner}/{repo}/labels/{name}"],
+    getMilestone: ["GET /repos/{owner}/{repo}/milestones/{milestone_number}"],
+    list: ["GET /issues"],
+    listAssignees: ["GET /repos/{owner}/{repo}/assignees"],
+    listComments: ["GET /repos/{owner}/{repo}/issues/{issue_number}/comments"],
+    listCommentsForRepo: ["GET /repos/{owner}/{repo}/issues/comments"],
+    listEvents: ["GET /repos/{owner}/{repo}/issues/{issue_number}/events"],
+    listEventsForRepo: ["GET /repos/{owner}/{repo}/issues/events"],
+    listEventsForTimeline: [
+      "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline"
+    ],
+    listForAuthenticatedUser: ["GET /user/issues"],
+    listForOrg: ["GET /orgs/{org}/issues"],
+    listForRepo: ["GET /repos/{owner}/{repo}/issues"],
+    listLabelsForMilestone: [
+      "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels"
+    ],
+    listLabelsForRepo: ["GET /repos/{owner}/{repo}/labels"],
+    listLabelsOnIssue: [
+      "GET /repos/{owner}/{repo}/issues/{issue_number}/labels"
+    ],
+    listMilestones: ["GET /repos/{owner}/{repo}/milestones"],
+    lock: ["PUT /repos/{owner}/{repo}/issues/{issue_number}/lock"],
+    removeAllLabels: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels"
+    ],
+    removeAssignees: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/assignees"
+    ],
+    removeLabel: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}"
+    ],
+    setLabels: ["PUT /repos/{owner}/{repo}/issues/{issue_number}/labels"],
+    unlock: ["DELETE /repos/{owner}/{repo}/issues/{issue_number}/lock"],
+    update: ["PATCH /repos/{owner}/{repo}/issues/{issue_number}"],
+    updateComment: ["PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}"],
+    updateLabel: ["PATCH /repos/{owner}/{repo}/labels/{name}"],
+    updateMilestone: [
+      "PATCH /repos/{owner}/{repo}/milestones/{milestone_number}"
+    ]
+  },
+  licenses: {
+    get: ["GET /licenses/{license}"],
+    getAllCommonlyUsed: ["GET /licenses"],
+    getForRepo: ["GET /repos/{owner}/{repo}/license"]
+  },
+  markdown: {
+    render: ["POST /markdown"],
+    renderRaw: [
+      "POST /markdown/raw",
+      { headers: { "content-type": "text/plain; charset=utf-8" } }
+    ]
+  },
+  meta: {
+    get: ["GET /meta"],
+    getAllVersions: ["GET /versions"],
+    getOctocat: ["GET /octocat"],
+    getZen: ["GET /zen"],
+    root: ["GET /"]
+  },
+  migrations: {
+    cancelImport: [
+      "DELETE /repos/{owner}/{repo}/import",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.cancelImport() is deprecated, see https://docs.github.com/rest/migrations/source-imports#cancel-an-import"
+      }
+    ],
+    deleteArchiveForAuthenticatedUser: [
+      "DELETE /user/migrations/{migration_id}/archive"
+    ],
+    deleteArchiveForOrg: [
+      "DELETE /orgs/{org}/migrations/{migration_id}/archive"
+    ],
+    downloadArchiveForOrg: [
+      "GET /orgs/{org}/migrations/{migration_id}/archive"
+    ],
+    getArchiveForAuthenticatedUser: [
+      "GET /user/migrations/{migration_id}/archive"
+    ],
+    getCommitAuthors: [
+      "GET /repos/{owner}/{repo}/import/authors",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.getCommitAuthors() is deprecated, see https://docs.github.com/rest/migrations/source-imports#get-commit-authors"
+      }
+    ],
+    getImportStatus: [
+      "GET /repos/{owner}/{repo}/import",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.getImportStatus() is deprecated, see https://docs.github.com/rest/migrations/source-imports#get-an-import-status"
+      }
+    ],
+    getLargeFiles: [
+      "GET /repos/{owner}/{repo}/import/large_files",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.getLargeFiles() is deprecated, see https://docs.github.com/rest/migrations/source-imports#get-large-files"
+      }
+    ],
+    getStatusForAuthenticatedUser: ["GET /user/migrations/{migration_id}"],
+    getStatusForOrg: ["GET /orgs/{org}/migrations/{migration_id}"],
+    listForAuthenticatedUser: ["GET /user/migrations"],
+    listForOrg: ["GET /orgs/{org}/migrations"],
+    listReposForAuthenticatedUser: [
+      "GET /user/migrations/{migration_id}/repositories"
+    ],
+    listReposForOrg: ["GET /orgs/{org}/migrations/{migration_id}/repositories"],
+    listReposForUser: [
+      "GET /user/migrations/{migration_id}/repositories",
+      {},
+      { renamed: ["migrations", "listReposForAuthenticatedUser"] }
+    ],
+    mapCommitAuthor: [
+      "PATCH /repos/{owner}/{repo}/import/authors/{author_id}",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.mapCommitAuthor() is deprecated, see https://docs.github.com/rest/migrations/source-imports#map-a-commit-author"
+      }
+    ],
+    setLfsPreference: [
+      "PATCH /repos/{owner}/{repo}/import/lfs",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.setLfsPreference() is deprecated, see https://docs.github.com/rest/migrations/source-imports#update-git-lfs-preference"
+      }
+    ],
+    startForAuthenticatedUser: ["POST /user/migrations"],
+    startForOrg: ["POST /orgs/{org}/migrations"],
+    startImport: [
+      "PUT /repos/{owner}/{repo}/import",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.startImport() is deprecated, see https://docs.github.com/rest/migrations/source-imports#start-an-import"
+      }
+    ],
+    unlockRepoForAuthenticatedUser: [
+      "DELETE /user/migrations/{migration_id}/repos/{repo_name}/lock"
+    ],
+    unlockRepoForOrg: [
+      "DELETE /orgs/{org}/migrations/{migration_id}/repos/{repo_name}/lock"
+    ],
+    updateImport: [
+      "PATCH /repos/{owner}/{repo}/import",
+      {},
+      {
+        deprecated: "octokit.rest.migrations.updateImport() is deprecated, see https://docs.github.com/rest/migrations/source-imports#update-an-import"
+      }
+    ]
+  },
+  oidc: {
+    getOidcCustomSubTemplateForOrg: [
+      "GET /orgs/{org}/actions/oidc/customization/sub"
+    ],
+    updateOidcCustomSubTemplateForOrg: [
+      "PUT /orgs/{org}/actions/oidc/customization/sub"
+    ]
+  },
+  orgs: {
+    addSecurityManagerTeam: [
+      "PUT /orgs/{org}/security-managers/teams/{team_slug}"
+    ],
+    assignTeamToOrgRole: [
+      "PUT /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}"
+    ],
+    assignUserToOrgRole: [
+      "PUT /orgs/{org}/organization-roles/users/{username}/{role_id}"
+    ],
+    blockUser: ["PUT /orgs/{org}/blocks/{username}"],
+    cancelInvitation: ["DELETE /orgs/{org}/invitations/{invitation_id}"],
+    checkBlockedUser: ["GET /orgs/{org}/blocks/{username}"],
+    checkMembershipForUser: ["GET /orgs/{org}/members/{username}"],
+    checkPublicMembershipForUser: ["GET /orgs/{org}/public_members/{username}"],
+    convertMemberToOutsideCollaborator: [
+      "PUT /orgs/{org}/outside_collaborators/{username}"
+    ],
+    createCustomOrganizationRole: ["POST /orgs/{org}/organization-roles"],
+    createInvitation: ["POST /orgs/{org}/invitations"],
+    createOrUpdateCustomProperties: ["PATCH /orgs/{org}/properties/schema"],
+    createOrUpdateCustomPropertiesValuesForRepos: [
+      "PATCH /orgs/{org}/properties/values"
+    ],
+    createOrUpdateCustomProperty: [
+      "PUT /orgs/{org}/properties/schema/{custom_property_name}"
+    ],
+    createWebhook: ["POST /orgs/{org}/hooks"],
+    delete: ["DELETE /orgs/{org}"],
+    deleteCustomOrganizationRole: [
+      "DELETE /orgs/{org}/organization-roles/{role_id}"
+    ],
+    deleteWebhook: ["DELETE /orgs/{org}/hooks/{hook_id}"],
+    enableOrDisableSecurityProductOnAllOrgRepos: [
+      "POST /orgs/{org}/{security_product}/{enablement}"
+    ],
+    get: ["GET /orgs/{org}"],
+    getAllCustomProperties: ["GET /orgs/{org}/properties/schema"],
+    getCustomProperty: [
+      "GET /orgs/{org}/properties/schema/{custom_property_name}"
+    ],
+    getMembershipForAuthenticatedUser: ["GET /user/memberships/orgs/{org}"],
+    getMembershipForUser: ["GET /orgs/{org}/memberships/{username}"],
+    getOrgRole: ["GET /orgs/{org}/organization-roles/{role_id}"],
+    getWebhook: ["GET /orgs/{org}/hooks/{hook_id}"],
+    getWebhookConfigForOrg: ["GET /orgs/{org}/hooks/{hook_id}/config"],
+    getWebhookDelivery: [
+      "GET /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}"
+    ],
+    list: ["GET /organizations"],
+    listAppInstallations: ["GET /orgs/{org}/installations"],
+    listBlockedUsers: ["GET /orgs/{org}/blocks"],
+    listCustomPropertiesValuesForRepos: ["GET /orgs/{org}/properties/values"],
+    listFailedInvitations: ["GET /orgs/{org}/failed_invitations"],
+    listForAuthenticatedUser: ["GET /user/orgs"],
+    listForUser: ["GET /users/{username}/orgs"],
+    listInvitationTeams: ["GET /orgs/{org}/invitations/{invitation_id}/teams"],
+    listMembers: ["GET /orgs/{org}/members"],
+    listMembershipsForAuthenticatedUser: ["GET /user/memberships/orgs"],
+    listOrgRoleTeams: ["GET /orgs/{org}/organization-roles/{role_id}/teams"],
+    listOrgRoleUsers: ["GET /orgs/{org}/organization-roles/{role_id}/users"],
+    listOrgRoles: ["GET /orgs/{org}/organization-roles"],
+    listOrganizationFineGrainedPermissions: [
+      "GET /orgs/{org}/organization-fine-grained-permissions"
+    ],
+    listOutsideCollaborators: ["GET /orgs/{org}/outside_collaborators"],
+    listPatGrantRepositories: [
+      "GET /orgs/{org}/personal-access-tokens/{pat_id}/repositories"
+    ],
+    listPatGrantRequestRepositories: [
+      "GET /orgs/{org}/personal-access-token-requests/{pat_request_id}/repositories"
+    ],
+    listPatGrantRequests: ["GET /orgs/{org}/personal-access-token-requests"],
+    listPatGrants: ["GET /orgs/{org}/personal-access-tokens"],
+    listPendingInvitations: ["GET /orgs/{org}/invitations"],
+    listPublicMembers: ["GET /orgs/{org}/public_members"],
+    listSecurityManagerTeams: ["GET /orgs/{org}/security-managers"],
+    listWebhookDeliveries: ["GET /orgs/{org}/hooks/{hook_id}/deliveries"],
+    listWebhooks: ["GET /orgs/{org}/hooks"],
+    patchCustomOrganizationRole: [
+      "PATCH /orgs/{org}/organization-roles/{role_id}"
+    ],
+    pingWebhook: ["POST /orgs/{org}/hooks/{hook_id}/pings"],
+    redeliverWebhookDelivery: [
+      "POST /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}/attempts"
+    ],
+    removeCustomProperty: [
+      "DELETE /orgs/{org}/properties/schema/{custom_property_name}"
+    ],
+    removeMember: ["DELETE /orgs/{org}/members/{username}"],
+    removeMembershipForUser: ["DELETE /orgs/{org}/memberships/{username}"],
+    removeOutsideCollaborator: [
+      "DELETE /orgs/{org}/outside_collaborators/{username}"
+    ],
+    removePublicMembershipForAuthenticatedUser: [
+      "DELETE /orgs/{org}/public_members/{username}"
+    ],
+    removeSecurityManagerTeam: [
+      "DELETE /orgs/{org}/security-managers/teams/{team_slug}"
+    ],
+    reviewPatGrantRequest: [
+      "POST /orgs/{org}/personal-access-token-requests/{pat_request_id}"
+    ],
+    reviewPatGrantRequestsInBulk: [
+      "POST /orgs/{org}/personal-access-token-requests"
+    ],
+    revokeAllOrgRolesTeam: [
+      "DELETE /orgs/{org}/organization-roles/teams/{team_slug}"
+    ],
+    revokeAllOrgRolesUser: [
+      "DELETE /orgs/{org}/organization-roles/users/{username}"
+    ],
+    revokeOrgRoleTeam: [
+      "DELETE /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}"
+    ],
+    revokeOrgRoleUser: [
+      "DELETE /orgs/{org}/organization-roles/users/{username}/{role_id}"
+    ],
+    setMembershipForUser: ["PUT /orgs/{org}/memberships/{username}"],
+    setPublicMembershipForAuthenticatedUser: [
+      "PUT /orgs/{org}/public_members/{username}"
+    ],
+    unblockUser: ["DELETE /orgs/{org}/blocks/{username}"],
+    update: ["PATCH /orgs/{org}"],
+    updateMembershipForAuthenticatedUser: [
+      "PATCH /user/memberships/orgs/{org}"
+    ],
+    updatePatAccess: ["POST /orgs/{org}/personal-access-tokens/{pat_id}"],
+    updatePatAccesses: ["POST /orgs/{org}/personal-access-tokens"],
+    updateWebhook: ["PATCH /orgs/{org}/hooks/{hook_id}"],
+    updateWebhookConfigForOrg: ["PATCH /orgs/{org}/hooks/{hook_id}/config"]
+  },
+  packages: {
+    deletePackageForAuthenticatedUser: [
+      "DELETE /user/packages/{package_type}/{package_name}"
+    ],
+    deletePackageForOrg: [
+      "DELETE /orgs/{org}/packages/{package_type}/{package_name}"
+    ],
+    deletePackageForUser: [
+      "DELETE /users/{username}/packages/{package_type}/{package_name}"
+    ],
+    deletePackageVersionForAuthenticatedUser: [
+      "DELETE /user/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    deletePackageVersionForOrg: [
+      "DELETE /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    deletePackageVersionForUser: [
+      "DELETE /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    getAllPackageVersionsForAPackageOwnedByAnOrg: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
+      {},
+      { renamed: ["packages", "getAllPackageVersionsForPackageOwnedByOrg"] }
+    ],
+    getAllPackageVersionsForAPackageOwnedByTheAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}/versions",
+      {},
+      {
+        renamed: [
+          "packages",
+          "getAllPackageVersionsForPackageOwnedByAuthenticatedUser"
+        ]
+      }
+    ],
+    getAllPackageVersionsForPackageOwnedByAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}/versions"
+    ],
+    getAllPackageVersionsForPackageOwnedByOrg: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions"
+    ],
+    getAllPackageVersionsForPackageOwnedByUser: [
+      "GET /users/{username}/packages/{package_type}/{package_name}/versions"
+    ],
+    getPackageForAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}"
+    ],
+    getPackageForOrganization: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}"
+    ],
+    getPackageForUser: [
+      "GET /users/{username}/packages/{package_type}/{package_name}"
+    ],
+    getPackageVersionForAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    getPackageVersionForOrganization: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    getPackageVersionForUser: [
+      "GET /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    listDockerMigrationConflictingPackagesForAuthenticatedUser: [
+      "GET /user/docker/conflicts"
+    ],
+    listDockerMigrationConflictingPackagesForOrganization: [
+      "GET /orgs/{org}/docker/conflicts"
+    ],
+    listDockerMigrationConflictingPackagesForUser: [
+      "GET /users/{username}/docker/conflicts"
+    ],
+    listPackagesForAuthenticatedUser: ["GET /user/packages"],
+    listPackagesForOrganization: ["GET /orgs/{org}/packages"],
+    listPackagesForUser: ["GET /users/{username}/packages"],
+    restorePackageForAuthenticatedUser: [
+      "POST /user/packages/{package_type}/{package_name}/restore{?token}"
+    ],
+    restorePackageForOrg: [
+      "POST /orgs/{org}/packages/{package_type}/{package_name}/restore{?token}"
+    ],
+    restorePackageForUser: [
+      "POST /users/{username}/packages/{package_type}/{package_name}/restore{?token}"
+    ],
+    restorePackageVersionForAuthenticatedUser: [
+      "POST /user/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
+    ],
+    restorePackageVersionForOrg: [
+      "POST /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
+    ],
+    restorePackageVersionForUser: [
+      "POST /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
+    ]
+  },
+  projects: {
+    addCollaborator: ["PUT /projects/{project_id}/collaborators/{username}"],
+    createCard: ["POST /projects/columns/{column_id}/cards"],
+    createColumn: ["POST /projects/{project_id}/columns"],
+    createForAuthenticatedUser: ["POST /user/projects"],
+    createForOrg: ["POST /orgs/{org}/projects"],
+    createForRepo: ["POST /repos/{owner}/{repo}/projects"],
+    delete: ["DELETE /projects/{project_id}"],
+    deleteCard: ["DELETE /projects/columns/cards/{card_id}"],
+    deleteColumn: ["DELETE /projects/columns/{column_id}"],
+    get: ["GET /projects/{project_id}"],
+    getCard: ["GET /projects/columns/cards/{card_id}"],
+    getColumn: ["GET /projects/columns/{column_id}"],
+    getPermissionForUser: [
+      "GET /projects/{project_id}/collaborators/{username}/permission"
+    ],
+    listCards: ["GET /projects/columns/{column_id}/cards"],
+    listCollaborators: ["GET /projects/{project_id}/collaborators"],
+    listColumns: ["GET /projects/{project_id}/columns"],
+    listForOrg: ["GET /orgs/{org}/projects"],
+    listForRepo: ["GET /repos/{owner}/{repo}/projects"],
+    listForUser: ["GET /users/{username}/projects"],
+    moveCard: ["POST /projects/columns/cards/{card_id}/moves"],
+    moveColumn: ["POST /projects/columns/{column_id}/moves"],
+    removeCollaborator: [
+      "DELETE /projects/{project_id}/collaborators/{username}"
+    ],
+    update: ["PATCH /projects/{project_id}"],
+    updateCard: ["PATCH /projects/columns/cards/{card_id}"],
+    updateColumn: ["PATCH /projects/columns/{column_id}"]
+  },
+  pulls: {
+    checkIfMerged: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/merge"],
+    create: ["POST /repos/{owner}/{repo}/pulls"],
+    createReplyForReviewComment: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies"
+    ],
+    createReview: ["POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews"],
+    createReviewComment: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments"
+    ],
+    deletePendingReview: [
+      "DELETE /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
+    ],
+    deleteReviewComment: [
+      "DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}"
+    ],
+    dismissReview: [
+      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/dismissals"
+    ],
+    get: ["GET /repos/{owner}/{repo}/pulls/{pull_number}"],
+    getReview: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
+    ],
+    getReviewComment: ["GET /repos/{owner}/{repo}/pulls/comments/{comment_id}"],
+    list: ["GET /repos/{owner}/{repo}/pulls"],
+    listCommentsForReview: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments"
+    ],
+    listCommits: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/commits"],
+    listFiles: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/files"],
+    listRequestedReviewers: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
+    ],
+    listReviewComments: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments"
+    ],
+    listReviewCommentsForRepo: ["GET /repos/{owner}/{repo}/pulls/comments"],
+    listReviews: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews"],
+    merge: ["PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge"],
+    removeRequestedReviewers: [
+      "DELETE /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
+    ],
+    requestReviewers: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
+    ],
+    submitReview: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/events"
+    ],
+    update: ["PATCH /repos/{owner}/{repo}/pulls/{pull_number}"],
+    updateBranch: [
+      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/update-branch"
+    ],
+    updateReview: [
+      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
+    ],
+    updateReviewComment: [
+      "PATCH /repos/{owner}/{repo}/pulls/comments/{comment_id}"
+    ]
+  },
+  rateLimit: { get: ["GET /rate_limit"] },
+  reactions: {
+    createForCommitComment: [
+      "POST /repos/{owner}/{repo}/comments/{comment_id}/reactions"
+    ],
+    createForIssue: [
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/reactions"
+    ],
+    createForIssueComment: [
+      "POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions"
+    ],
+    createForPullRequestReviewComment: [
+      "POST /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions"
+    ],
+    createForRelease: [
+      "POST /repos/{owner}/{repo}/releases/{release_id}/reactions"
+    ],
+    createForTeamDiscussionCommentInOrg: [
+      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions"
+    ],
+    createForTeamDiscussionInOrg: [
+      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions"
+    ],
+    deleteForCommitComment: [
+      "DELETE /repos/{owner}/{repo}/comments/{comment_id}/reactions/{reaction_id}"
+    ],
+    deleteForIssue: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/reactions/{reaction_id}"
+    ],
+    deleteForIssueComment: [
+      "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions/{reaction_id}"
+    ],
+    deleteForPullRequestComment: [
+      "DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions/{reaction_id}"
+    ],
+    deleteForRelease: [
+      "DELETE /repos/{owner}/{repo}/releases/{release_id}/reactions/{reaction_id}"
+    ],
+    deleteForTeamDiscussion: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions/{reaction_id}"
+    ],
+    deleteForTeamDiscussionComment: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions/{reaction_id}"
+    ],
+    listForCommitComment: [
+      "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions"
+    ],
+    listForIssue: ["GET /repos/{owner}/{repo}/issues/{issue_number}/reactions"],
+    listForIssueComment: [
+      "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions"
+    ],
+    listForPullRequestReviewComment: [
+      "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions"
+    ],
+    listForRelease: [
+      "GET /repos/{owner}/{repo}/releases/{release_id}/reactions"
+    ],
+    listForTeamDiscussionCommentInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions"
+    ],
+    listForTeamDiscussionInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions"
+    ]
+  },
+  repos: {
+    acceptInvitation: [
+      "PATCH /user/repository_invitations/{invitation_id}",
+      {},
+      { renamed: ["repos", "acceptInvitationForAuthenticatedUser"] }
+    ],
+    acceptInvitationForAuthenticatedUser: [
+      "PATCH /user/repository_invitations/{invitation_id}"
+    ],
+    addAppAccessRestrictions: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
+      {},
+      { mapToData: "apps" }
+    ],
+    addCollaborator: ["PUT /repos/{owner}/{repo}/collaborators/{username}"],
+    addStatusCheckContexts: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
+      {},
+      { mapToData: "contexts" }
+    ],
+    addTeamAccessRestrictions: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
+      {},
+      { mapToData: "teams" }
+    ],
+    addUserAccessRestrictions: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
+      {},
+      { mapToData: "users" }
+    ],
+    cancelPagesDeployment: [
+      "POST /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}/cancel"
+    ],
+    checkAutomatedSecurityFixes: [
+      "GET /repos/{owner}/{repo}/automated-security-fixes"
+    ],
+    checkCollaborator: ["GET /repos/{owner}/{repo}/collaborators/{username}"],
+    checkVulnerabilityAlerts: [
+      "GET /repos/{owner}/{repo}/vulnerability-alerts"
+    ],
+    codeownersErrors: ["GET /repos/{owner}/{repo}/codeowners/errors"],
+    compareCommits: ["GET /repos/{owner}/{repo}/compare/{base}...{head}"],
+    compareCommitsWithBasehead: [
+      "GET /repos/{owner}/{repo}/compare/{basehead}"
+    ],
+    createAutolink: ["POST /repos/{owner}/{repo}/autolinks"],
+    createCommitComment: [
+      "POST /repos/{owner}/{repo}/commits/{commit_sha}/comments"
+    ],
+    createCommitSignatureProtection: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
+    ],
+    createCommitStatus: ["POST /repos/{owner}/{repo}/statuses/{sha}"],
+    createDeployKey: ["POST /repos/{owner}/{repo}/keys"],
+    createDeployment: ["POST /repos/{owner}/{repo}/deployments"],
+    createDeploymentBranchPolicy: [
+      "POST /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"
+    ],
+    createDeploymentProtectionRule: [
+      "POST /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"
+    ],
+    createDeploymentStatus: [
+      "POST /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"
+    ],
+    createDispatchEvent: ["POST /repos/{owner}/{repo}/dispatches"],
+    createForAuthenticatedUser: ["POST /user/repos"],
+    createFork: ["POST /repos/{owner}/{repo}/forks"],
+    createInOrg: ["POST /orgs/{org}/repos"],
+    createOrUpdateCustomPropertiesValues: [
+      "PATCH /repos/{owner}/{repo}/properties/values"
+    ],
+    createOrUpdateEnvironment: [
+      "PUT /repos/{owner}/{repo}/environments/{environment_name}"
+    ],
+    createOrUpdateFileContents: ["PUT /repos/{owner}/{repo}/contents/{path}"],
+    createOrgRuleset: ["POST /orgs/{org}/rulesets"],
+    createPagesDeployment: ["POST /repos/{owner}/{repo}/pages/deployments"],
+    createPagesSite: ["POST /repos/{owner}/{repo}/pages"],
+    createRelease: ["POST /repos/{owner}/{repo}/releases"],
+    createRepoRuleset: ["POST /repos/{owner}/{repo}/rulesets"],
+    createTagProtection: ["POST /repos/{owner}/{repo}/tags/protection"],
+    createUsingTemplate: [
+      "POST /repos/{template_owner}/{template_repo}/generate"
+    ],
+    createWebhook: ["POST /repos/{owner}/{repo}/hooks"],
+    declineInvitation: [
+      "DELETE /user/repository_invitations/{invitation_id}",
+      {},
+      { renamed: ["repos", "declineInvitationForAuthenticatedUser"] }
+    ],
+    declineInvitationForAuthenticatedUser: [
+      "DELETE /user/repository_invitations/{invitation_id}"
+    ],
+    delete: ["DELETE /repos/{owner}/{repo}"],
+    deleteAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions"
+    ],
+    deleteAdminBranchProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
+    ],
+    deleteAnEnvironment: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}"
+    ],
+    deleteAutolink: ["DELETE /repos/{owner}/{repo}/autolinks/{autolink_id}"],
+    deleteBranchProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection"
+    ],
+    deleteCommitComment: ["DELETE /repos/{owner}/{repo}/comments/{comment_id}"],
+    deleteCommitSignatureProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
+    ],
+    deleteDeployKey: ["DELETE /repos/{owner}/{repo}/keys/{key_id}"],
+    deleteDeployment: [
+      "DELETE /repos/{owner}/{repo}/deployments/{deployment_id}"
+    ],
+    deleteDeploymentBranchPolicy: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
+    ],
+    deleteFile: ["DELETE /repos/{owner}/{repo}/contents/{path}"],
+    deleteInvitation: [
+      "DELETE /repos/{owner}/{repo}/invitations/{invitation_id}"
+    ],
+    deleteOrgRuleset: ["DELETE /orgs/{org}/rulesets/{ruleset_id}"],
+    deletePagesSite: ["DELETE /repos/{owner}/{repo}/pages"],
+    deletePullRequestReviewProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
+    ],
+    deleteRelease: ["DELETE /repos/{owner}/{repo}/releases/{release_id}"],
+    deleteReleaseAsset: [
+      "DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}"
+    ],
+    deleteRepoRuleset: ["DELETE /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
+    deleteTagProtection: [
+      "DELETE /repos/{owner}/{repo}/tags/protection/{tag_protection_id}"
+    ],
+    deleteWebhook: ["DELETE /repos/{owner}/{repo}/hooks/{hook_id}"],
+    disableAutomatedSecurityFixes: [
+      "DELETE /repos/{owner}/{repo}/automated-security-fixes"
+    ],
+    disableDeploymentProtectionRule: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"
+    ],
+    disablePrivateVulnerabilityReporting: [
+      "DELETE /repos/{owner}/{repo}/private-vulnerability-reporting"
+    ],
+    disableVulnerabilityAlerts: [
+      "DELETE /repos/{owner}/{repo}/vulnerability-alerts"
+    ],
+    downloadArchive: [
+      "GET /repos/{owner}/{repo}/zipball/{ref}",
+      {},
+      { renamed: ["repos", "downloadZipballArchive"] }
+    ],
+    downloadTarballArchive: ["GET /repos/{owner}/{repo}/tarball/{ref}"],
+    downloadZipballArchive: ["GET /repos/{owner}/{repo}/zipball/{ref}"],
+    enableAutomatedSecurityFixes: [
+      "PUT /repos/{owner}/{repo}/automated-security-fixes"
+    ],
+    enablePrivateVulnerabilityReporting: [
+      "PUT /repos/{owner}/{repo}/private-vulnerability-reporting"
+    ],
+    enableVulnerabilityAlerts: [
+      "PUT /repos/{owner}/{repo}/vulnerability-alerts"
+    ],
+    generateReleaseNotes: [
+      "POST /repos/{owner}/{repo}/releases/generate-notes"
+    ],
+    get: ["GET /repos/{owner}/{repo}"],
+    getAccessRestrictions: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions"
+    ],
+    getAdminBranchProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
+    ],
+    getAllDeploymentProtectionRules: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"
+    ],
+    getAllEnvironments: ["GET /repos/{owner}/{repo}/environments"],
+    getAllStatusCheckContexts: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts"
+    ],
+    getAllTopics: ["GET /repos/{owner}/{repo}/topics"],
+    getAppsWithAccessToProtectedBranch: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps"
+    ],
+    getAutolink: ["GET /repos/{owner}/{repo}/autolinks/{autolink_id}"],
+    getBranch: ["GET /repos/{owner}/{repo}/branches/{branch}"],
+    getBranchProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection"
+    ],
+    getBranchRules: ["GET /repos/{owner}/{repo}/rules/branches/{branch}"],
+    getClones: ["GET /repos/{owner}/{repo}/traffic/clones"],
+    getCodeFrequencyStats: ["GET /repos/{owner}/{repo}/stats/code_frequency"],
+    getCollaboratorPermissionLevel: [
+      "GET /repos/{owner}/{repo}/collaborators/{username}/permission"
+    ],
+    getCombinedStatusForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/status"],
+    getCommit: ["GET /repos/{owner}/{repo}/commits/{ref}"],
+    getCommitActivityStats: ["GET /repos/{owner}/{repo}/stats/commit_activity"],
+    getCommitComment: ["GET /repos/{owner}/{repo}/comments/{comment_id}"],
+    getCommitSignatureProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
+    ],
+    getCommunityProfileMetrics: ["GET /repos/{owner}/{repo}/community/profile"],
+    getContent: ["GET /repos/{owner}/{repo}/contents/{path}"],
+    getContributorsStats: ["GET /repos/{owner}/{repo}/stats/contributors"],
+    getCustomDeploymentProtectionRule: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"
+    ],
+    getCustomPropertiesValues: ["GET /repos/{owner}/{repo}/properties/values"],
+    getDeployKey: ["GET /repos/{owner}/{repo}/keys/{key_id}"],
+    getDeployment: ["GET /repos/{owner}/{repo}/deployments/{deployment_id}"],
+    getDeploymentBranchPolicy: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
+    ],
+    getDeploymentStatus: [
+      "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses/{status_id}"
+    ],
+    getEnvironment: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}"
+    ],
+    getLatestPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/latest"],
+    getLatestRelease: ["GET /repos/{owner}/{repo}/releases/latest"],
+    getOrgRuleSuite: ["GET /orgs/{org}/rulesets/rule-suites/{rule_suite_id}"],
+    getOrgRuleSuites: ["GET /orgs/{org}/rulesets/rule-suites"],
+    getOrgRuleset: ["GET /orgs/{org}/rulesets/{ruleset_id}"],
+    getOrgRulesets: ["GET /orgs/{org}/rulesets"],
+    getPages: ["GET /repos/{owner}/{repo}/pages"],
+    getPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/{build_id}"],
+    getPagesDeployment: [
+      "GET /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}"
+    ],
+    getPagesHealthCheck: ["GET /repos/{owner}/{repo}/pages/health"],
+    getParticipationStats: ["GET /repos/{owner}/{repo}/stats/participation"],
+    getPullRequestReviewProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
+    ],
+    getPunchCardStats: ["GET /repos/{owner}/{repo}/stats/punch_card"],
+    getReadme: ["GET /repos/{owner}/{repo}/readme"],
+    getReadmeInDirectory: ["GET /repos/{owner}/{repo}/readme/{dir}"],
+    getRelease: ["GET /repos/{owner}/{repo}/releases/{release_id}"],
+    getReleaseAsset: ["GET /repos/{owner}/{repo}/releases/assets/{asset_id}"],
+    getReleaseByTag: ["GET /repos/{owner}/{repo}/releases/tags/{tag}"],
+    getRepoRuleSuite: [
+      "GET /repos/{owner}/{repo}/rulesets/rule-suites/{rule_suite_id}"
+    ],
+    getRepoRuleSuites: ["GET /repos/{owner}/{repo}/rulesets/rule-suites"],
+    getRepoRuleset: ["GET /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
+    getRepoRulesets: ["GET /repos/{owner}/{repo}/rulesets"],
+    getStatusChecksProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
+    ],
+    getTeamsWithAccessToProtectedBranch: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams"
+    ],
+    getTopPaths: ["GET /repos/{owner}/{repo}/traffic/popular/paths"],
+    getTopReferrers: ["GET /repos/{owner}/{repo}/traffic/popular/referrers"],
+    getUsersWithAccessToProtectedBranch: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users"
+    ],
+    getViews: ["GET /repos/{owner}/{repo}/traffic/views"],
+    getWebhook: ["GET /repos/{owner}/{repo}/hooks/{hook_id}"],
+    getWebhookConfigForRepo: [
+      "GET /repos/{owner}/{repo}/hooks/{hook_id}/config"
+    ],
+    getWebhookDelivery: [
+      "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}"
+    ],
+    listActivities: ["GET /repos/{owner}/{repo}/activity"],
+    listAutolinks: ["GET /repos/{owner}/{repo}/autolinks"],
+    listBranches: ["GET /repos/{owner}/{repo}/branches"],
+    listBranchesForHeadCommit: [
+      "GET /repos/{owner}/{repo}/commits/{commit_sha}/branches-where-head"
+    ],
+    listCollaborators: ["GET /repos/{owner}/{repo}/collaborators"],
+    listCommentsForCommit: [
+      "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments"
+    ],
+    listCommitCommentsForRepo: ["GET /repos/{owner}/{repo}/comments"],
+    listCommitStatusesForRef: [
+      "GET /repos/{owner}/{repo}/commits/{ref}/statuses"
+    ],
+    listCommits: ["GET /repos/{owner}/{repo}/commits"],
+    listContributors: ["GET /repos/{owner}/{repo}/contributors"],
+    listCustomDeploymentRuleIntegrations: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps"
+    ],
+    listDeployKeys: ["GET /repos/{owner}/{repo}/keys"],
+    listDeploymentBranchPolicies: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"
+    ],
+    listDeploymentStatuses: [
+      "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"
+    ],
+    listDeployments: ["GET /repos/{owner}/{repo}/deployments"],
+    listForAuthenticatedUser: ["GET /user/repos"],
+    listForOrg: ["GET /orgs/{org}/repos"],
+    listForUser: ["GET /users/{username}/repos"],
+    listForks: ["GET /repos/{owner}/{repo}/forks"],
+    listInvitations: ["GET /repos/{owner}/{repo}/invitations"],
+    listInvitationsForAuthenticatedUser: ["GET /user/repository_invitations"],
+    listLanguages: ["GET /repos/{owner}/{repo}/languages"],
+    listPagesBuilds: ["GET /repos/{owner}/{repo}/pages/builds"],
+    listPublic: ["GET /repositories"],
+    listPullRequestsAssociatedWithCommit: [
+      "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls"
+    ],
+    listReleaseAssets: [
+      "GET /repos/{owner}/{repo}/releases/{release_id}/assets"
+    ],
+    listReleases: ["GET /repos/{owner}/{repo}/releases"],
+    listTagProtection: ["GET /repos/{owner}/{repo}/tags/protection"],
+    listTags: ["GET /repos/{owner}/{repo}/tags"],
+    listTeams: ["GET /repos/{owner}/{repo}/teams"],
+    listWebhookDeliveries: [
+      "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries"
+    ],
+    listWebhooks: ["GET /repos/{owner}/{repo}/hooks"],
+    merge: ["POST /repos/{owner}/{repo}/merges"],
+    mergeUpstream: ["POST /repos/{owner}/{repo}/merge-upstream"],
+    pingWebhook: ["POST /repos/{owner}/{repo}/hooks/{hook_id}/pings"],
+    redeliverWebhookDelivery: [
+      "POST /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}/attempts"
+    ],
+    removeAppAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
+      {},
+      { mapToData: "apps" }
+    ],
+    removeCollaborator: [
+      "DELETE /repos/{owner}/{repo}/collaborators/{username}"
+    ],
+    removeStatusCheckContexts: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
+      {},
+      { mapToData: "contexts" }
+    ],
+    removeStatusCheckProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
+    ],
+    removeTeamAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
+      {},
+      { mapToData: "teams" }
+    ],
+    removeUserAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
+      {},
+      { mapToData: "users" }
+    ],
+    renameBranch: ["POST /repos/{owner}/{repo}/branches/{branch}/rename"],
+    replaceAllTopics: ["PUT /repos/{owner}/{repo}/topics"],
+    requestPagesBuild: ["POST /repos/{owner}/{repo}/pages/builds"],
+    setAdminBranchProtection: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
+    ],
+    setAppAccessRestrictions: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
+      {},
+      { mapToData: "apps" }
+    ],
+    setStatusCheckContexts: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
+      {},
+      { mapToData: "contexts" }
+    ],
+    setTeamAccessRestrictions: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
+      {},
+      { mapToData: "teams" }
+    ],
+    setUserAccessRestrictions: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
+      {},
+      { mapToData: "users" }
+    ],
+    testPushWebhook: ["POST /repos/{owner}/{repo}/hooks/{hook_id}/tests"],
+    transfer: ["POST /repos/{owner}/{repo}/transfer"],
+    update: ["PATCH /repos/{owner}/{repo}"],
+    updateBranchProtection: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection"
+    ],
+    updateCommitComment: ["PATCH /repos/{owner}/{repo}/comments/{comment_id}"],
+    updateDeploymentBranchPolicy: [
+      "PUT /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
+    ],
+    updateInformationAboutPagesSite: ["PUT /repos/{owner}/{repo}/pages"],
+    updateInvitation: [
+      "PATCH /repos/{owner}/{repo}/invitations/{invitation_id}"
+    ],
+    updateOrgRuleset: ["PUT /orgs/{org}/rulesets/{ruleset_id}"],
+    updatePullRequestReviewProtection: [
+      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
+    ],
+    updateRelease: ["PATCH /repos/{owner}/{repo}/releases/{release_id}"],
+    updateReleaseAsset: [
+      "PATCH /repos/{owner}/{repo}/releases/assets/{asset_id}"
+    ],
+    updateRepoRuleset: ["PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
+    updateStatusCheckPotection: [
+      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks",
+      {},
+      { renamed: ["repos", "updateStatusCheckProtection"] }
+    ],
+    updateStatusCheckProtection: [
+      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
+    ],
+    updateWebhook: ["PATCH /repos/{owner}/{repo}/hooks/{hook_id}"],
+    updateWebhookConfigForRepo: [
+      "PATCH /repos/{owner}/{repo}/hooks/{hook_id}/config"
+    ],
+    uploadReleaseAsset: [
+      "POST /repos/{owner}/{repo}/releases/{release_id}/assets{?name,label}",
+      { baseUrl: "https://uploads.github.com" }
+    ]
+  },
+  search: {
+    code: ["GET /search/code"],
+    commits: ["GET /search/commits"],
+    issuesAndPullRequests: ["GET /search/issues"],
+    labels: ["GET /search/labels"],
+    repos: ["GET /search/repositories"],
+    topics: ["GET /search/topics"],
+    users: ["GET /search/users"]
+  },
+  secretScanning: {
+    getAlert: [
+      "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"
+    ],
+    listAlertsForEnterprise: [
+      "GET /enterprises/{enterprise}/secret-scanning/alerts"
+    ],
+    listAlertsForOrg: ["GET /orgs/{org}/secret-scanning/alerts"],
+    listAlertsForRepo: ["GET /repos/{owner}/{repo}/secret-scanning/alerts"],
+    listLocationsForAlert: [
+      "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations"
+    ],
+    updateAlert: [
+      "PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"
+    ]
+  },
+  securityAdvisories: {
+    createFork: [
+      "POST /repos/{owner}/{repo}/security-advisories/{ghsa_id}/forks"
+    ],
+    createPrivateVulnerabilityReport: [
+      "POST /repos/{owner}/{repo}/security-advisories/reports"
+    ],
+    createRepositoryAdvisory: [
+      "POST /repos/{owner}/{repo}/security-advisories"
+    ],
+    createRepositoryAdvisoryCveRequest: [
+      "POST /repos/{owner}/{repo}/security-advisories/{ghsa_id}/cve"
+    ],
+    getGlobalAdvisory: ["GET /advisories/{ghsa_id}"],
+    getRepositoryAdvisory: [
+      "GET /repos/{owner}/{repo}/security-advisories/{ghsa_id}"
+    ],
+    listGlobalAdvisories: ["GET /advisories"],
+    listOrgRepositoryAdvisories: ["GET /orgs/{org}/security-advisories"],
+    listRepositoryAdvisories: ["GET /repos/{owner}/{repo}/security-advisories"],
+    updateRepositoryAdvisory: [
+      "PATCH /repos/{owner}/{repo}/security-advisories/{ghsa_id}"
+    ]
+  },
+  teams: {
+    addOrUpdateMembershipForUserInOrg: [
+      "PUT /orgs/{org}/teams/{team_slug}/memberships/{username}"
+    ],
+    addOrUpdateProjectPermissionsInOrg: [
+      "PUT /orgs/{org}/teams/{team_slug}/projects/{project_id}"
+    ],
+    addOrUpdateRepoPermissionsInOrg: [
+      "PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
+    ],
+    checkPermissionsForProjectInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/projects/{project_id}"
+    ],
+    checkPermissionsForRepoInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
+    ],
+    create: ["POST /orgs/{org}/teams"],
+    createDiscussionCommentInOrg: [
+      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments"
+    ],
+    createDiscussionInOrg: ["POST /orgs/{org}/teams/{team_slug}/discussions"],
+    deleteDiscussionCommentInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
+    ],
+    deleteDiscussionInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
+    ],
+    deleteInOrg: ["DELETE /orgs/{org}/teams/{team_slug}"],
+    getByName: ["GET /orgs/{org}/teams/{team_slug}"],
+    getDiscussionCommentInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
+    ],
+    getDiscussionInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
+    ],
+    getMembershipForUserInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/memberships/{username}"
+    ],
+    list: ["GET /orgs/{org}/teams"],
+    listChildInOrg: ["GET /orgs/{org}/teams/{team_slug}/teams"],
+    listDiscussionCommentsInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments"
+    ],
+    listDiscussionsInOrg: ["GET /orgs/{org}/teams/{team_slug}/discussions"],
+    listForAuthenticatedUser: ["GET /user/teams"],
+    listMembersInOrg: ["GET /orgs/{org}/teams/{team_slug}/members"],
+    listPendingInvitationsInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/invitations"
+    ],
+    listProjectsInOrg: ["GET /orgs/{org}/teams/{team_slug}/projects"],
+    listReposInOrg: ["GET /orgs/{org}/teams/{team_slug}/repos"],
+    removeMembershipForUserInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/memberships/{username}"
+    ],
+    removeProjectInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/projects/{project_id}"
+    ],
+    removeRepoInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
+    ],
+    updateDiscussionCommentInOrg: [
+      "PATCH /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
+    ],
+    updateDiscussionInOrg: [
+      "PATCH /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
+    ],
+    updateInOrg: ["PATCH /orgs/{org}/teams/{team_slug}"]
+  },
+  users: {
+    addEmailForAuthenticated: [
+      "POST /user/emails",
+      {},
+      { renamed: ["users", "addEmailForAuthenticatedUser"] }
+    ],
+    addEmailForAuthenticatedUser: ["POST /user/emails"],
+    addSocialAccountForAuthenticatedUser: ["POST /user/social_accounts"],
+    block: ["PUT /user/blocks/{username}"],
+    checkBlocked: ["GET /user/blocks/{username}"],
+    checkFollowingForUser: ["GET /users/{username}/following/{target_user}"],
+    checkPersonIsFollowedByAuthenticated: ["GET /user/following/{username}"],
+    createGpgKeyForAuthenticated: [
+      "POST /user/gpg_keys",
+      {},
+      { renamed: ["users", "createGpgKeyForAuthenticatedUser"] }
+    ],
+    createGpgKeyForAuthenticatedUser: ["POST /user/gpg_keys"],
+    createPublicSshKeyForAuthenticated: [
+      "POST /user/keys",
+      {},
+      { renamed: ["users", "createPublicSshKeyForAuthenticatedUser"] }
+    ],
+    createPublicSshKeyForAuthenticatedUser: ["POST /user/keys"],
+    createSshSigningKeyForAuthenticatedUser: ["POST /user/ssh_signing_keys"],
+    deleteEmailForAuthenticated: [
+      "DELETE /user/emails",
+      {},
+      { renamed: ["users", "deleteEmailForAuthenticatedUser"] }
+    ],
+    deleteEmailForAuthenticatedUser: ["DELETE /user/emails"],
+    deleteGpgKeyForAuthenticated: [
+      "DELETE /user/gpg_keys/{gpg_key_id}",
+      {},
+      { renamed: ["users", "deleteGpgKeyForAuthenticatedUser"] }
+    ],
+    deleteGpgKeyForAuthenticatedUser: ["DELETE /user/gpg_keys/{gpg_key_id}"],
+    deletePublicSshKeyForAuthenticated: [
+      "DELETE /user/keys/{key_id}",
+      {},
+      { renamed: ["users", "deletePublicSshKeyForAuthenticatedUser"] }
+    ],
+    deletePublicSshKeyForAuthenticatedUser: ["DELETE /user/keys/{key_id}"],
+    deleteSocialAccountForAuthenticatedUser: ["DELETE /user/social_accounts"],
+    deleteSshSigningKeyForAuthenticatedUser: [
+      "DELETE /user/ssh_signing_keys/{ssh_signing_key_id}"
+    ],
+    follow: ["PUT /user/following/{username}"],
+    getAuthenticated: ["GET /user"],
+    getByUsername: ["GET /users/{username}"],
+    getContextForUser: ["GET /users/{username}/hovercard"],
+    getGpgKeyForAuthenticated: [
+      "GET /user/gpg_keys/{gpg_key_id}",
+      {},
+      { renamed: ["users", "getGpgKeyForAuthenticatedUser"] }
+    ],
+    getGpgKeyForAuthenticatedUser: ["GET /user/gpg_keys/{gpg_key_id}"],
+    getPublicSshKeyForAuthenticated: [
+      "GET /user/keys/{key_id}",
+      {},
+      { renamed: ["users", "getPublicSshKeyForAuthenticatedUser"] }
+    ],
+    getPublicSshKeyForAuthenticatedUser: ["GET /user/keys/{key_id}"],
+    getSshSigningKeyForAuthenticatedUser: [
+      "GET /user/ssh_signing_keys/{ssh_signing_key_id}"
+    ],
+    list: ["GET /users"],
+    listBlockedByAuthenticated: [
+      "GET /user/blocks",
+      {},
+      { renamed: ["users", "listBlockedByAuthenticatedUser"] }
+    ],
+    listBlockedByAuthenticatedUser: ["GET /user/blocks"],
+    listEmailsForAuthenticated: [
+      "GET /user/emails",
+      {},
+      { renamed: ["users", "listEmailsForAuthenticatedUser"] }
+    ],
+    listEmailsForAuthenticatedUser: ["GET /user/emails"],
+    listFollowedByAuthenticated: [
+      "GET /user/following",
+      {},
+      { renamed: ["users", "listFollowedByAuthenticatedUser"] }
+    ],
+    listFollowedByAuthenticatedUser: ["GET /user/following"],
+    listFollowersForAuthenticatedUser: ["GET /user/followers"],
+    listFollowersForUser: ["GET /users/{username}/followers"],
+    listFollowingForUser: ["GET /users/{username}/following"],
+    listGpgKeysForAuthenticated: [
+      "GET /user/gpg_keys",
+      {},
+      { renamed: ["users", "listGpgKeysForAuthenticatedUser"] }
+    ],
+    listGpgKeysForAuthenticatedUser: ["GET /user/gpg_keys"],
+    listGpgKeysForUser: ["GET /users/{username}/gpg_keys"],
+    listPublicEmailsForAuthenticated: [
+      "GET /user/public_emails",
+      {},
+      { renamed: ["users", "listPublicEmailsForAuthenticatedUser"] }
+    ],
+    listPublicEmailsForAuthenticatedUser: ["GET /user/public_emails"],
+    listPublicKeysForUser: ["GET /users/{username}/keys"],
+    listPublicSshKeysForAuthenticated: [
+      "GET /user/keys",
+      {},
+      { renamed: ["users", "listPublicSshKeysForAuthenticatedUser"] }
+    ],
+    listPublicSshKeysForAuthenticatedUser: ["GET /user/keys"],
+    listSocialAccountsForAuthenticatedUser: ["GET /user/social_accounts"],
+    listSocialAccountsForUser: ["GET /users/{username}/social_accounts"],
+    listSshSigningKeysForAuthenticatedUser: ["GET /user/ssh_signing_keys"],
+    listSshSigningKeysForUser: ["GET /users/{username}/ssh_signing_keys"],
+    setPrimaryEmailVisibilityForAuthenticated: [
+      "PATCH /user/email/visibility",
+      {},
+      { renamed: ["users", "setPrimaryEmailVisibilityForAuthenticatedUser"] }
+    ],
+    setPrimaryEmailVisibilityForAuthenticatedUser: [
+      "PATCH /user/email/visibility"
+    ],
+    unblock: ["DELETE /user/blocks/{username}"],
+    unfollow: ["DELETE /user/following/{username}"],
+    updateAuthenticated: ["PATCH /user"]
+  }
+};
+var endpoints_default = Endpoints;
+
+// pkg/dist-src/endpoints-to-methods.js
+var endpointMethodsMap = /* @__PURE__ */ new Map();
+for (const [scope, endpoints] of Object.entries(endpoints_default)) {
+  for (const [methodName, endpoint] of Object.entries(endpoints)) {
+    const [route, defaults, decorations] = endpoint;
+    const [method, url] = route.split(/ /);
+    const endpointDefaults = Object.assign(
+      {
+        method,
+        url
+      },
+      defaults
+    );
+    if (!endpointMethodsMap.has(scope)) {
+      endpointMethodsMap.set(scope, /* @__PURE__ */ new Map());
+    }
+    endpointMethodsMap.get(scope).set(methodName, {
+      scope,
+      methodName,
+      endpointDefaults,
+      decorations
+    });
+  }
+}
+var handler = {
+  has({ scope }, methodName) {
+    return endpointMethodsMap.get(scope).has(methodName);
+  },
+  getOwnPropertyDescriptor(target, methodName) {
+    return {
+      value: this.get(target, methodName),
+      // ensures method is in the cache
+      configurable: true,
+      writable: true,
+      enumerable: true
+    };
+  },
+  defineProperty(target, methodName, descriptor) {
+    Object.defineProperty(target.cache, methodName, descriptor);
+    return true;
+  },
+  deleteProperty(target, methodName) {
+    delete target.cache[methodName];
+    return true;
+  },
+  ownKeys({ scope }) {
+    return [...endpointMethodsMap.get(scope).keys()];
+  },
+  set(target, methodName, value) {
+    return target.cache[methodName] = value;
+  },
+  get({ octokit, scope, cache }, methodName) {
+    if (cache[methodName]) {
+      return cache[methodName];
+    }
+    const method = endpointMethodsMap.get(scope).get(methodName);
+    if (!method) {
+      return void 0;
+    }
+    const { endpointDefaults, decorations } = method;
+    if (decorations) {
+      cache[methodName] = decorate(
+        octokit,
+        scope,
+        methodName,
+        endpointDefaults,
+        decorations
+      );
+    } else {
+      cache[methodName] = octokit.request.defaults(endpointDefaults);
+    }
+    return cache[methodName];
+  }
+};
+function endpointsToMethods(octokit) {
+  const newMethods = {};
+  for (const scope of endpointMethodsMap.keys()) {
+    newMethods[scope] = new Proxy({ octokit, scope, cache: {} }, handler);
+  }
+  return newMethods;
+}
+function decorate(octokit, scope, methodName, defaults, decorations) {
+  const requestWithDefaults = octokit.request.defaults(defaults);
+  function withDecorations(...args) {
+    let options = requestWithDefaults.endpoint.merge(...args);
+    if (decorations.mapToData) {
+      options = Object.assign({}, options, {
+        data: options[decorations.mapToData],
+        [decorations.mapToData]: void 0
+      });
+      return requestWithDefaults(options);
+    }
+    if (decorations.renamed) {
+      const [newScope, newMethodName] = decorations.renamed;
+      octokit.log.warn(
+        `octokit.${scope}.${methodName}() has been renamed to octokit.${newScope}.${newMethodName}()`
+      );
+    }
+    if (decorations.deprecated) {
+      octokit.log.warn(decorations.deprecated);
+    }
+    if (decorations.renamedParameters) {
+      const options2 = requestWithDefaults.endpoint.merge(...args);
+      for (const [name, alias] of Object.entries(
+        decorations.renamedParameters
+      )) {
+        if (name in options2) {
+          octokit.log.warn(
+            `"${name}" parameter is deprecated for "octokit.${scope}.${methodName}()". Use "${alias}" instead`
+          );
+          if (!(alias in options2)) {
+            options2[alias] = options2[name];
+          }
+          delete options2[name];
+        }
+      }
+      return requestWithDefaults(options2);
+    }
+    return requestWithDefaults(...args);
+  }
+  return Object.assign(withDecorations, requestWithDefaults);
+}
+
+// pkg/dist-src/index.js
+function restEndpointMethods(octokit) {
+  const api = endpointsToMethods(octokit);
+  return {
+    rest: api
+  };
+}
+restEndpointMethods.VERSION = VERSION;
+function legacyRestEndpointMethods(octokit) {
+  const api = endpointsToMethods(octokit);
+  return {
+    ...api,
+    rest: api
+  };
+}
+legacyRestEndpointMethods.VERSION = VERSION;
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 4759:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  throttling: () => throttling
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_light = __toESM(__nccwpck_require__(3251));
+var import_core = __nccwpck_require__(1897);
+
+// pkg/dist-src/version.js
+var VERSION = "8.2.0";
+
+// pkg/dist-src/wrap-request.js
+var noop = () => Promise.resolve();
+function wrapRequest(state, request, options) {
+  return state.retryLimiter.schedule(doRequest, state, request, options);
+}
+async function doRequest(state, request, options) {
+  const isWrite = options.method !== "GET" && options.method !== "HEAD";
+  const { pathname } = new URL(options.url, "http://github.test");
+  const isSearch = options.method === "GET" && pathname.startsWith("/search/");
+  const isGraphQL = pathname.startsWith("/graphql");
+  const retryCount = ~~request.retryCount;
+  const jobOptions = retryCount > 0 ? { priority: 0, weight: 0 } : {};
+  if (state.clustering) {
+    jobOptions.expiration = 1e3 * 60;
+  }
+  if (isWrite || isGraphQL) {
+    await state.write.key(state.id).schedule(jobOptions, noop);
+  }
+  if (isWrite && state.triggersNotification(pathname)) {
+    await state.notifications.key(state.id).schedule(jobOptions, noop);
+  }
+  if (isSearch) {
+    await state.search.key(state.id).schedule(jobOptions, noop);
+  }
+  const req = state.global.key(state.id).schedule(jobOptions, request, options);
+  if (isGraphQL) {
+    const res = await req;
+    if (res.data.errors != null && res.data.errors.some((error) => error.type === "RATE_LIMITED")) {
+      const error = Object.assign(new Error("GraphQL Rate Limit Exceeded"), {
+        response: res,
+        data: res.data
+      });
+      throw error;
+    }
+  }
+  return req;
+}
+
+// pkg/dist-src/generated/triggers-notification-paths.js
+var triggers_notification_paths_default = [
+  "/orgs/{org}/invitations",
+  "/orgs/{org}/invitations/{invitation_id}",
+  "/orgs/{org}/teams/{team_slug}/discussions",
+  "/orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments",
+  "/repos/{owner}/{repo}/collaborators/{username}",
+  "/repos/{owner}/{repo}/commits/{commit_sha}/comments",
+  "/repos/{owner}/{repo}/issues",
+  "/repos/{owner}/{repo}/issues/{issue_number}/comments",
+  "/repos/{owner}/{repo}/pulls",
+  "/repos/{owner}/{repo}/pulls/{pull_number}/comments",
+  "/repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies",
+  "/repos/{owner}/{repo}/pulls/{pull_number}/merge",
+  "/repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers",
+  "/repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+  "/repos/{owner}/{repo}/releases",
+  "/teams/{team_id}/discussions",
+  "/teams/{team_id}/discussions/{discussion_number}/comments"
+];
+
+// pkg/dist-src/route-matcher.js
+function routeMatcher(paths) {
+  const regexes = paths.map(
+    (path) => path.split("/").map((c) => c.startsWith("{") ? "(?:.+?)" : c).join("/")
+  );
+  const regex2 = `^(?:${regexes.map((r) => `(?:${r})`).join("|")})[^/]*$`;
+  return new RegExp(regex2, "i");
+}
+
+// pkg/dist-src/index.js
+var regex = routeMatcher(triggers_notification_paths_default);
+var triggersNotification = regex.test.bind(regex);
+var groups = {};
+var createGroups = function(Bottleneck, common) {
+  groups.global = new Bottleneck.Group({
+    id: "octokit-global",
+    maxConcurrent: 10,
+    ...common
+  });
+  groups.search = new Bottleneck.Group({
+    id: "octokit-search",
+    maxConcurrent: 1,
+    minTime: 2e3,
+    ...common
+  });
+  groups.write = new Bottleneck.Group({
+    id: "octokit-write",
+    maxConcurrent: 1,
+    minTime: 1e3,
+    ...common
+  });
+  groups.notifications = new Bottleneck.Group({
+    id: "octokit-notifications",
+    maxConcurrent: 1,
+    minTime: 3e3,
+    ...common
+  });
+};
+function throttling(octokit, octokitOptions) {
+  const {
+    enabled = true,
+    Bottleneck = import_light.default,
+    id = "no-id",
+    timeout = 1e3 * 60 * 2,
+    // Redis TTL: 2 minutes
+    connection
+  } = octokitOptions.throttle || {};
+  if (!enabled) {
+    return {};
+  }
+  const common = { connection, timeout };
+  if (groups.global == null) {
+    createGroups(Bottleneck, common);
+  }
+  const state = Object.assign(
+    {
+      clustering: connection != null,
+      triggersNotification,
+      fallbackSecondaryRateRetryAfter: 60,
+      retryAfterBaseValue: 1e3,
+      retryLimiter: new Bottleneck(),
+      id,
+      ...groups
+    },
+    octokitOptions.throttle
+  );
+  if (typeof state.onSecondaryRateLimit !== "function" || typeof state.onRateLimit !== "function") {
+    throw new Error(`octokit/plugin-throttling error:
+        You must pass the onSecondaryRateLimit and onRateLimit error handlers.
+        See https://octokit.github.io/rest.js/#throttling
+
+        const octokit = new Octokit({
+          throttle: {
+            onSecondaryRateLimit: (retryAfter, options) => {/* ... */},
+            onRateLimit: (retryAfter, options) => {/* ... */}
+          }
+        })
+    `);
+  }
+  const events = {};
+  const emitter = new Bottleneck.Events(events);
+  events.on("secondary-limit", state.onSecondaryRateLimit);
+  events.on("rate-limit", state.onRateLimit);
+  events.on(
+    "error",
+    (e) => octokit.log.warn("Error in throttling-plugin limit handler", e)
+  );
+  state.retryLimiter.on("failed", async function(error, info) {
+    const [state2, request, options] = info.args;
+    const { pathname } = new URL(options.url, "http://github.test");
+    const shouldRetryGraphQL = pathname.startsWith("/graphql") && error.status !== 401;
+    if (!(shouldRetryGraphQL || error.status === 403)) {
+      return;
+    }
+    const retryCount = ~~request.retryCount;
+    request.retryCount = retryCount;
+    options.request.retryCount = retryCount;
+    const { wantRetry, retryAfter = 0 } = await async function() {
+      if (/\bsecondary rate\b/i.test(error.message)) {
+        const retryAfter2 = Number(error.response.headers["retry-after"]) || state2.fallbackSecondaryRateRetryAfter;
+        const wantRetry2 = await emitter.trigger(
+          "secondary-limit",
+          retryAfter2,
+          options,
+          octokit,
+          retryCount
+        );
+        return { wantRetry: wantRetry2, retryAfter: retryAfter2 };
+      }
+      if (error.response.headers != null && error.response.headers["x-ratelimit-remaining"] === "0" || (error.response.data?.errors ?? []).some(
+        (error2) => error2.type === "RATE_LIMITED"
+      )) {
+        const rateLimitReset = new Date(
+          ~~error.response.headers["x-ratelimit-reset"] * 1e3
+        ).getTime();
+        const retryAfter2 = Math.max(
+          // Add one second so we retry _after_ the reset time
+          // https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
+          Math.ceil((rateLimitReset - Date.now()) / 1e3) + 1,
+          0
+        );
+        const wantRetry2 = await emitter.trigger(
+          "rate-limit",
+          retryAfter2,
+          options,
+          octokit,
+          retryCount
+        );
+        return { wantRetry: wantRetry2, retryAfter: retryAfter2 };
+      }
+      return {};
+    }();
+    if (wantRetry) {
+      request.retryCount++;
+      return retryAfter * state2.retryAfterBaseValue;
+    }
+  });
+  octokit.hook.wrap("request", wrapRequest.bind(null, state));
+  return {};
+}
+throttling.VERSION = VERSION;
+throttling.triggersNotification = triggersNotification;
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 3708:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  RequestError: () => RequestError
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_deprecation = __nccwpck_require__(4150);
+var import_once = __toESM(__nccwpck_require__(5560));
+var logOnceCode = (0, import_once.default)((deprecation) => console.warn(deprecation));
+var logOnceHeaders = (0, import_once.default)((deprecation) => console.warn(deprecation));
+var RequestError = class extends Error {
+  constructor(message, statusCode, options) {
+    super(message);
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+    this.name = "HttpError";
+    this.status = statusCode;
+    let headers;
+    if ("headers" in options && typeof options.headers !== "undefined") {
+      headers = options.headers;
+    }
+    if ("response" in options) {
+      this.response = options.response;
+      headers = options.response.headers;
+    }
+    const requestCopy = Object.assign({}, options.request);
+    if (options.request.headers.authorization) {
+      requestCopy.headers = Object.assign({}, options.request.headers, {
+        authorization: options.request.headers.authorization.replace(
+          /(?<! ) .*$/,
+          " [REDACTED]"
+        )
+      });
+    }
+    requestCopy.url = requestCopy.url.replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]").replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
+    this.request = requestCopy;
+    Object.defineProperty(this, "code", {
+      get() {
+        logOnceCode(
+          new import_deprecation.Deprecation(
+            "[@octokit/request-error] `error.code` is deprecated, use `error.status`."
+          )
+        );
+        return statusCode;
+      }
+    });
+    Object.defineProperty(this, "headers", {
+      get() {
+        logOnceHeaders(
+          new import_deprecation.Deprecation(
+            "[@octokit/request-error] `error.headers` is deprecated, use `error.response.headers`."
+          )
+        );
+        return headers || {};
+      }
+    });
+  }
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 8636:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  request: () => request
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_endpoint = __nccwpck_require__(4471);
+var import_universal_user_agent = __nccwpck_require__(3843);
+
+// pkg/dist-src/version.js
+var VERSION = "8.4.1";
+
+// pkg/dist-src/is-plain-object.js
+function isPlainObject(value) {
+  if (typeof value !== "object" || value === null)
+    return false;
+  if (Object.prototype.toString.call(value) !== "[object Object]")
+    return false;
+  const proto = Object.getPrototypeOf(value);
+  if (proto === null)
+    return true;
+  const Ctor = Object.prototype.hasOwnProperty.call(proto, "constructor") && proto.constructor;
+  return typeof Ctor === "function" && Ctor instanceof Ctor && Function.prototype.call(Ctor) === Function.prototype.call(value);
+}
+
+// pkg/dist-src/fetch-wrapper.js
+var import_request_error = __nccwpck_require__(3708);
+
+// pkg/dist-src/get-buffer-response.js
+function getBufferResponse(response) {
+  return response.arrayBuffer();
+}
+
+// pkg/dist-src/fetch-wrapper.js
+function fetchWrapper(requestOptions) {
+  var _a, _b, _c, _d;
+  const log = requestOptions.request && requestOptions.request.log ? requestOptions.request.log : console;
+  const parseSuccessResponseBody = ((_a = requestOptions.request) == null ? void 0 : _a.parseSuccessResponseBody) !== false;
+  if (isPlainObject(requestOptions.body) || Array.isArray(requestOptions.body)) {
+    requestOptions.body = JSON.stringify(requestOptions.body);
+  }
+  let headers = {};
+  let status;
+  let url;
+  let { fetch } = globalThis;
+  if ((_b = requestOptions.request) == null ? void 0 : _b.fetch) {
+    fetch = requestOptions.request.fetch;
+  }
+  if (!fetch) {
+    throw new Error(
+      "fetch is not set. Please pass a fetch implementation as new Octokit({ request: { fetch }}). Learn more at https://github.com/octokit/octokit.js/#fetch-missing"
+    );
+  }
+  return fetch(requestOptions.url, {
+    method: requestOptions.method,
+    body: requestOptions.body,
+    redirect: (_c = requestOptions.request) == null ? void 0 : _c.redirect,
+    headers: requestOptions.headers,
+    signal: (_d = requestOptions.request) == null ? void 0 : _d.signal,
+    // duplex must be set if request.body is ReadableStream or Async Iterables.
+    // See https://fetch.spec.whatwg.org/#dom-requestinit-duplex.
+    ...requestOptions.body && { duplex: "half" }
+  }).then(async (response) => {
+    url = response.url;
+    status = response.status;
+    for (const keyAndValue of response.headers) {
+      headers[keyAndValue[0]] = keyAndValue[1];
+    }
+    if ("deprecation" in headers) {
+      const matches = headers.link && headers.link.match(/<([^<>]+)>; rel="deprecation"/);
+      const deprecationLink = matches && matches.pop();
+      log.warn(
+        `[@octokit/request] "${requestOptions.method} ${requestOptions.url}" is deprecated. It is scheduled to be removed on ${headers.sunset}${deprecationLink ? `. See ${deprecationLink}` : ""}`
+      );
+    }
+    if (status === 204 || status === 205) {
+      return;
+    }
+    if (requestOptions.method === "HEAD") {
+      if (status < 400) {
+        return;
+      }
+      throw new import_request_error.RequestError(response.statusText, status, {
+        response: {
+          url,
+          status,
+          headers,
+          data: void 0
+        },
+        request: requestOptions
+      });
+    }
+    if (status === 304) {
+      throw new import_request_error.RequestError("Not modified", status, {
+        response: {
+          url,
+          status,
+          headers,
+          data: await getResponseData(response)
+        },
+        request: requestOptions
+      });
+    }
+    if (status >= 400) {
+      const data = await getResponseData(response);
+      const error = new import_request_error.RequestError(toErrorMessage(data), status, {
+        response: {
+          url,
+          status,
+          headers,
+          data
+        },
+        request: requestOptions
+      });
+      throw error;
+    }
+    return parseSuccessResponseBody ? await getResponseData(response) : response.body;
+  }).then((data) => {
+    return {
+      status,
+      url,
+      headers,
+      data
+    };
+  }).catch((error) => {
+    if (error instanceof import_request_error.RequestError)
+      throw error;
+    else if (error.name === "AbortError")
+      throw error;
+    let message = error.message;
+    if (error.name === "TypeError" && "cause" in error) {
+      if (error.cause instanceof Error) {
+        message = error.cause.message;
+      } else if (typeof error.cause === "string") {
+        message = error.cause;
+      }
+    }
+    throw new import_request_error.RequestError(message, 500, {
+      request: requestOptions
+    });
+  });
+}
+async function getResponseData(response) {
+  const contentType = response.headers.get("content-type");
+  if (/application\/json/.test(contentType)) {
+    return response.json().catch(() => response.text()).catch(() => "");
+  }
+  if (!contentType || /^text\/|charset=utf-8$/.test(contentType)) {
+    return response.text();
+  }
+  return getBufferResponse(response);
+}
+function toErrorMessage(data) {
+  if (typeof data === "string")
+    return data;
+  let suffix;
+  if ("documentation_url" in data) {
+    suffix = ` - ${data.documentation_url}`;
+  } else {
+    suffix = "";
+  }
+  if ("message" in data) {
+    if (Array.isArray(data.errors)) {
+      return `${data.message}: ${data.errors.map(JSON.stringify).join(", ")}${suffix}`;
+    }
+    return `${data.message}${suffix}`;
+  }
+  return `Unknown error: ${JSON.stringify(data)}`;
+}
+
+// pkg/dist-src/with-defaults.js
+function withDefaults(oldEndpoint, newDefaults) {
+  const endpoint2 = oldEndpoint.defaults(newDefaults);
+  const newApi = function(route, parameters) {
+    const endpointOptions = endpoint2.merge(route, parameters);
+    if (!endpointOptions.request || !endpointOptions.request.hook) {
+      return fetchWrapper(endpoint2.parse(endpointOptions));
+    }
+    const request2 = (route2, parameters2) => {
+      return fetchWrapper(
+        endpoint2.parse(endpoint2.merge(route2, parameters2))
+      );
+    };
+    Object.assign(request2, {
+      endpoint: endpoint2,
+      defaults: withDefaults.bind(null, endpoint2)
+    });
+    return endpointOptions.request.hook(request2, endpointOptions);
+  };
+  return Object.assign(newApi, {
+    endpoint: endpoint2,
+    defaults: withDefaults.bind(null, endpoint2)
+  });
+}
+
+// pkg/dist-src/index.js
+var request = withDefaults(import_endpoint.endpoint, {
+  headers: {
+    "user-agent": `octokit-request.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
+  }
+});
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 2732:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var register = __nccwpck_require__(1063);
+var addHook = __nccwpck_require__(2027);
+var removeHook = __nccwpck_require__(9934);
+
+// bind with array of arguments: https://stackoverflow.com/a/21792913
+var bind = Function.bind;
+var bindable = bind.bind(bind);
+
+function bindApi(hook, state, name) {
+  var removeHookRef = bindable(removeHook, null).apply(
+    null,
+    name ? [state, name] : [state]
+  );
+  hook.api = { remove: removeHookRef };
+  hook.remove = removeHookRef;
+  ["before", "error", "after", "wrap"].forEach(function (kind) {
+    var args = name ? [state, kind, name] : [state, kind];
+    hook[kind] = hook.api[kind] = bindable(addHook, null).apply(null, args);
+  });
+}
+
+function HookSingular() {
+  var singularHookName = "h";
+  var singularHookState = {
+    registry: {},
+  };
+  var singularHook = register.bind(null, singularHookState, singularHookName);
+  bindApi(singularHook, singularHookState, singularHookName);
+  return singularHook;
+}
+
+function HookCollection() {
+  var state = {
+    registry: {},
+  };
+
+  var hook = register.bind(null, state);
+  bindApi(hook, state);
+
+  return hook;
+}
+
+var collectionHookDeprecationMessageDisplayed = false;
+function Hook() {
+  if (!collectionHookDeprecationMessageDisplayed) {
+    console.warn(
+      '[before-after-hook]: "Hook()" repurposing warning, use "Hook.Collection()". Read more: https://git.io/upgrade-before-after-hook-to-1.4'
+    );
+    collectionHookDeprecationMessageDisplayed = true;
+  }
+  return HookCollection();
+}
+
+Hook.Singular = HookSingular.bind();
+Hook.Collection = HookCollection.bind();
+
+module.exports = Hook;
+// expose constructors as a named property for TypeScript
+module.exports.Hook = Hook;
+module.exports.Singular = Hook.Singular;
+module.exports.Collection = Hook.Collection;
+
+
+/***/ }),
+
+/***/ 2027:
+/***/ ((module) => {
+
+module.exports = addHook;
+
+function addHook(state, kind, name, hook) {
+  var orig = hook;
+  if (!state.registry[name]) {
+    state.registry[name] = [];
+  }
+
+  if (kind === "before") {
+    hook = function (method, options) {
+      return Promise.resolve()
+        .then(orig.bind(null, options))
+        .then(method.bind(null, options));
+    };
+  }
+
+  if (kind === "after") {
+    hook = function (method, options) {
+      var result;
+      return Promise.resolve()
+        .then(method.bind(null, options))
+        .then(function (result_) {
+          result = result_;
+          return orig(result, options);
+        })
+        .then(function () {
+          return result;
+        });
+    };
+  }
+
+  if (kind === "error") {
+    hook = function (method, options) {
+      return Promise.resolve()
+        .then(method.bind(null, options))
+        .catch(function (error) {
+          return orig(error, options);
+        });
+    };
+  }
+
+  state.registry[name].push({
+    hook: hook,
+    orig: orig,
+  });
+}
+
+
+/***/ }),
+
+/***/ 1063:
+/***/ ((module) => {
+
+module.exports = register;
+
+function register(state, name, method, options) {
+  if (typeof method !== "function") {
+    throw new Error("method for before hook must be a function");
+  }
+
+  if (!options) {
+    options = {};
+  }
+
+  if (Array.isArray(name)) {
+    return name.reverse().reduce(function (callback, name) {
+      return register.bind(null, state, name, callback, options);
+    }, method)();
+  }
+
+  return Promise.resolve().then(function () {
+    if (!state.registry[name]) {
+      return method(options);
+    }
+
+    return state.registry[name].reduce(function (method, registered) {
+      return registered.hook.bind(null, method, options);
+    }, method)();
+  });
+}
+
+
+/***/ }),
+
+/***/ 9934:
+/***/ ((module) => {
+
+module.exports = removeHook;
+
+function removeHook(state, name, method) {
+  if (!state.registry[name]) {
+    return;
+  }
+
+  var index = state.registry[name]
+    .map(function (registered) {
+      return registered.orig;
+    })
+    .indexOf(method);
+
+  if (index === -1) {
+    return;
+  }
+
+  state.registry[name].splice(index, 1);
+}
+
+
+/***/ }),
+
+/***/ 3251:
+/***/ (function(module) {
+
+/**
+  * This file contains the Bottleneck library (MIT), compiled to ES2017, and without Clustering support.
+  * https://github.com/SGrondin/bottleneck
+  */
+(function (global, factory) {
+	 true ? module.exports = factory() :
+	0;
+}(this, (function () { 'use strict';
+
+	var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
+	function getCjsExportFromNamespace (n) {
+		return n && n['default'] || n;
+	}
+
+	var load = function(received, defaults, onto = {}) {
+	  var k, ref, v;
+	  for (k in defaults) {
+	    v = defaults[k];
+	    onto[k] = (ref = received[k]) != null ? ref : v;
+	  }
+	  return onto;
+	};
+
+	var overwrite = function(received, defaults, onto = {}) {
+	  var k, v;
+	  for (k in received) {
+	    v = received[k];
+	    if (defaults[k] !== void 0) {
+	      onto[k] = v;
+	    }
+	  }
+	  return onto;
+	};
+
+	var parser = {
+		load: load,
+		overwrite: overwrite
+	};
+
+	var DLList;
+
+	DLList = class DLList {
+	  constructor(incr, decr) {
+	    this.incr = incr;
+	    this.decr = decr;
+	    this._first = null;
+	    this._last = null;
+	    this.length = 0;
+	  }
+
+	  push(value) {
+	    var node;
+	    this.length++;
+	    if (typeof this.incr === "function") {
+	      this.incr();
+	    }
+	    node = {
+	      value,
+	      prev: this._last,
+	      next: null
+	    };
+	    if (this._last != null) {
+	      this._last.next = node;
+	      this._last = node;
+	    } else {
+	      this._first = this._last = node;
+	    }
+	    return void 0;
+	  }
+
+	  shift() {
+	    var value;
+	    if (this._first == null) {
+	      return;
+	    } else {
+	      this.length--;
+	      if (typeof this.decr === "function") {
+	        this.decr();
+	      }
+	    }
+	    value = this._first.value;
+	    if ((this._first = this._first.next) != null) {
+	      this._first.prev = null;
+	    } else {
+	      this._last = null;
+	    }
+	    return value;
+	  }
+
+	  first() {
+	    if (this._first != null) {
+	      return this._first.value;
+	    }
+	  }
+
+	  getArray() {
+	    var node, ref, results;
+	    node = this._first;
+	    results = [];
+	    while (node != null) {
+	      results.push((ref = node, node = node.next, ref.value));
+	    }
+	    return results;
+	  }
+
+	  forEachShift(cb) {
+	    var node;
+	    node = this.shift();
+	    while (node != null) {
+	      (cb(node), node = this.shift());
+	    }
+	    return void 0;
+	  }
+
+	  debug() {
+	    var node, ref, ref1, ref2, results;
+	    node = this._first;
+	    results = [];
+	    while (node != null) {
+	      results.push((ref = node, node = node.next, {
+	        value: ref.value,
+	        prev: (ref1 = ref.prev) != null ? ref1.value : void 0,
+	        next: (ref2 = ref.next) != null ? ref2.value : void 0
+	      }));
+	    }
+	    return results;
+	  }
+
+	};
+
+	var DLList_1 = DLList;
+
+	var Events;
+
+	Events = class Events {
+	  constructor(instance) {
+	    this.instance = instance;
+	    this._events = {};
+	    if ((this.instance.on != null) || (this.instance.once != null) || (this.instance.removeAllListeners != null)) {
+	      throw new Error("An Emitter already exists for this object");
+	    }
+	    this.instance.on = (name, cb) => {
+	      return this._addListener(name, "many", cb);
+	    };
+	    this.instance.once = (name, cb) => {
+	      return this._addListener(name, "once", cb);
+	    };
+	    this.instance.removeAllListeners = (name = null) => {
+	      if (name != null) {
+	        return delete this._events[name];
+	      } else {
+	        return this._events = {};
+	      }
+	    };
+	  }
+
+	  _addListener(name, status, cb) {
+	    var base;
+	    if ((base = this._events)[name] == null) {
+	      base[name] = [];
+	    }
+	    this._events[name].push({cb, status});
+	    return this.instance;
+	  }
+
+	  listenerCount(name) {
+	    if (this._events[name] != null) {
+	      return this._events[name].length;
+	    } else {
+	      return 0;
+	    }
+	  }
+
+	  async trigger(name, ...args) {
+	    var e, promises;
+	    try {
+	      if (name !== "debug") {
+	        this.trigger("debug", `Event triggered: ${name}`, args);
+	      }
+	      if (this._events[name] == null) {
+	        return;
+	      }
+	      this._events[name] = this._events[name].filter(function(listener) {
+	        return listener.status !== "none";
+	      });
+	      promises = this._events[name].map(async(listener) => {
+	        var e, returned;
+	        if (listener.status === "none") {
+	          return;
+	        }
+	        if (listener.status === "once") {
+	          listener.status = "none";
+	        }
+	        try {
+	          returned = typeof listener.cb === "function" ? listener.cb(...args) : void 0;
+	          if (typeof (returned != null ? returned.then : void 0) === "function") {
+	            return (await returned);
+	          } else {
+	            return returned;
+	          }
+	        } catch (error) {
+	          e = error;
+	          {
+	            this.trigger("error", e);
+	          }
+	          return null;
+	        }
+	      });
+	      return ((await Promise.all(promises))).find(function(x) {
+	        return x != null;
+	      });
+	    } catch (error) {
+	      e = error;
+	      {
+	        this.trigger("error", e);
+	      }
+	      return null;
+	    }
+	  }
+
+	};
+
+	var Events_1 = Events;
+
+	var DLList$1, Events$1, Queues;
+
+	DLList$1 = DLList_1;
+
+	Events$1 = Events_1;
+
+	Queues = class Queues {
+	  constructor(num_priorities) {
+	    var i;
+	    this.Events = new Events$1(this);
+	    this._length = 0;
+	    this._lists = (function() {
+	      var j, ref, results;
+	      results = [];
+	      for (i = j = 1, ref = num_priorities; (1 <= ref ? j <= ref : j >= ref); i = 1 <= ref ? ++j : --j) {
+	        results.push(new DLList$1((() => {
+	          return this.incr();
+	        }), (() => {
+	          return this.decr();
+	        })));
+	      }
+	      return results;
+	    }).call(this);
+	  }
+
+	  incr() {
+	    if (this._length++ === 0) {
+	      return this.Events.trigger("leftzero");
+	    }
+	  }
+
+	  decr() {
+	    if (--this._length === 0) {
+	      return this.Events.trigger("zero");
+	    }
+	  }
+
+	  push(job) {
+	    return this._lists[job.options.priority].push(job);
+	  }
+
+	  queued(priority) {
+	    if (priority != null) {
+	      return this._lists[priority].length;
+	    } else {
+	      return this._length;
+	    }
+	  }
+
+	  shiftAll(fn) {
+	    return this._lists.forEach(function(list) {
+	      return list.forEachShift(fn);
+	    });
+	  }
+
+	  getFirst(arr = this._lists) {
+	    var j, len, list;
+	    for (j = 0, len = arr.length; j < len; j++) {
+	      list = arr[j];
+	      if (list.length > 0) {
+	        return list;
+	      }
+	    }
+	    return [];
+	  }
+
+	  shiftLastFrom(priority) {
+	    return this.getFirst(this._lists.slice(priority).reverse()).shift();
+	  }
+
+	};
+
+	var Queues_1 = Queues;
+
+	var BottleneckError;
+
+	BottleneckError = class BottleneckError extends Error {};
+
+	var BottleneckError_1 = BottleneckError;
+
+	var BottleneckError$1, DEFAULT_PRIORITY, Job, NUM_PRIORITIES, parser$1;
+
+	NUM_PRIORITIES = 10;
+
+	DEFAULT_PRIORITY = 5;
+
+	parser$1 = parser;
+
+	BottleneckError$1 = BottleneckError_1;
+
+	Job = class Job {
+	  constructor(task, args, options, jobDefaults, rejectOnDrop, Events, _states, Promise) {
+	    this.task = task;
+	    this.args = args;
+	    this.rejectOnDrop = rejectOnDrop;
+	    this.Events = Events;
+	    this._states = _states;
+	    this.Promise = Promise;
+	    this.options = parser$1.load(options, jobDefaults);
+	    this.options.priority = this._sanitizePriority(this.options.priority);
+	    if (this.options.id === jobDefaults.id) {
+	      this.options.id = `${this.options.id}-${this._randomIndex()}`;
+	    }
+	    this.promise = new this.Promise((_resolve, _reject) => {
+	      this._resolve = _resolve;
+	      this._reject = _reject;
+	    });
+	    this.retryCount = 0;
+	  }
+
+	  _sanitizePriority(priority) {
+	    var sProperty;
+	    sProperty = ~~priority !== priority ? DEFAULT_PRIORITY : priority;
+	    if (sProperty < 0) {
+	      return 0;
+	    } else if (sProperty > NUM_PRIORITIES - 1) {
+	      return NUM_PRIORITIES - 1;
+	    } else {
+	      return sProperty;
+	    }
+	  }
+
+	  _randomIndex() {
+	    return Math.random().toString(36).slice(2);
+	  }
+
+	  doDrop({error, message = "This job has been dropped by Bottleneck"} = {}) {
+	    if (this._states.remove(this.options.id)) {
+	      if (this.rejectOnDrop) {
+	        this._reject(error != null ? error : new BottleneckError$1(message));
+	      }
+	      this.Events.trigger("dropped", {args: this.args, options: this.options, task: this.task, promise: this.promise});
+	      return true;
+	    } else {
+	      return false;
+	    }
+	  }
+
+	  _assertStatus(expected) {
+	    var status;
+	    status = this._states.jobStatus(this.options.id);
+	    if (!(status === expected || (expected === "DONE" && status === null))) {
+	      throw new BottleneckError$1(`Invalid job status ${status}, expected ${expected}. Please open an issue at https://github.com/SGrondin/bottleneck/issues`);
+	    }
+	  }
+
+	  doReceive() {
+	    this._states.start(this.options.id);
+	    return this.Events.trigger("received", {args: this.args, options: this.options});
+	  }
+
+	  doQueue(reachedHWM, blocked) {
+	    this._assertStatus("RECEIVED");
+	    this._states.next(this.options.id);
+	    return this.Events.trigger("queued", {args: this.args, options: this.options, reachedHWM, blocked});
+	  }
+
+	  doRun() {
+	    if (this.retryCount === 0) {
+	      this._assertStatus("QUEUED");
+	      this._states.next(this.options.id);
+	    } else {
+	      this._assertStatus("EXECUTING");
+	    }
+	    return this.Events.trigger("scheduled", {args: this.args, options: this.options});
+	  }
+
+	  async doExecute(chained, clearGlobalState, run, free) {
+	    var error, eventInfo, passed;
+	    if (this.retryCount === 0) {
+	      this._assertStatus("RUNNING");
+	      this._states.next(this.options.id);
+	    } else {
+	      this._assertStatus("EXECUTING");
+	    }
+	    eventInfo = {args: this.args, options: this.options, retryCount: this.retryCount};
+	    this.Events.trigger("executing", eventInfo);
+	    try {
+	      passed = (await (chained != null ? chained.schedule(this.options, this.task, ...this.args) : this.task(...this.args)));
+	      if (clearGlobalState()) {
+	        this.doDone(eventInfo);
+	        await free(this.options, eventInfo);
+	        this._assertStatus("DONE");
+	        return this._resolve(passed);
+	      }
+	    } catch (error1) {
+	      error = error1;
+	      return this._onFailure(error, eventInfo, clearGlobalState, run, free);
+	    }
+	  }
+
+	  doExpire(clearGlobalState, run, free) {
+	    var error, eventInfo;
+	    if (this._states.jobStatus(this.options.id === "RUNNING")) {
+	      this._states.next(this.options.id);
+	    }
+	    this._assertStatus("EXECUTING");
+	    eventInfo = {args: this.args, options: this.options, retryCount: this.retryCount};
+	    error = new BottleneckError$1(`This job timed out after ${this.options.expiration} ms.`);
+	    return this._onFailure(error, eventInfo, clearGlobalState, run, free);
+	  }
+
+	  async _onFailure(error, eventInfo, clearGlobalState, run, free) {
+	    var retry, retryAfter;
+	    if (clearGlobalState()) {
+	      retry = (await this.Events.trigger("failed", error, eventInfo));
+	      if (retry != null) {
+	        retryAfter = ~~retry;
+	        this.Events.trigger("retry", `Retrying ${this.options.id} after ${retryAfter} ms`, eventInfo);
+	        this.retryCount++;
+	        return run(retryAfter);
+	      } else {
+	        this.doDone(eventInfo);
+	        await free(this.options, eventInfo);
+	        this._assertStatus("DONE");
+	        return this._reject(error);
+	      }
+	    }
+	  }
+
+	  doDone(eventInfo) {
+	    this._assertStatus("EXECUTING");
+	    this._states.next(this.options.id);
+	    return this.Events.trigger("done", eventInfo);
+	  }
+
+	};
+
+	var Job_1 = Job;
+
+	var BottleneckError$2, LocalDatastore, parser$2;
+
+	parser$2 = parser;
+
+	BottleneckError$2 = BottleneckError_1;
+
+	LocalDatastore = class LocalDatastore {
+	  constructor(instance, storeOptions, storeInstanceOptions) {
+	    this.instance = instance;
+	    this.storeOptions = storeOptions;
+	    this.clientId = this.instance._randomIndex();
+	    parser$2.load(storeInstanceOptions, storeInstanceOptions, this);
+	    this._nextRequest = this._lastReservoirRefresh = this._lastReservoirIncrease = Date.now();
+	    this._running = 0;
+	    this._done = 0;
+	    this._unblockTime = 0;
+	    this.ready = this.Promise.resolve();
+	    this.clients = {};
+	    this._startHeartbeat();
+	  }
+
+	  _startHeartbeat() {
+	    var base;
+	    if ((this.heartbeat == null) && (((this.storeOptions.reservoirRefreshInterval != null) && (this.storeOptions.reservoirRefreshAmount != null)) || ((this.storeOptions.reservoirIncreaseInterval != null) && (this.storeOptions.reservoirIncreaseAmount != null)))) {
+	      return typeof (base = (this.heartbeat = setInterval(() => {
+	        var amount, incr, maximum, now, reservoir;
+	        now = Date.now();
+	        if ((this.storeOptions.reservoirRefreshInterval != null) && now >= this._lastReservoirRefresh + this.storeOptions.reservoirRefreshInterval) {
+	          this._lastReservoirRefresh = now;
+	          this.storeOptions.reservoir = this.storeOptions.reservoirRefreshAmount;
+	          this.instance._drainAll(this.computeCapacity());
+	        }
+	        if ((this.storeOptions.reservoirIncreaseInterval != null) && now >= this._lastReservoirIncrease + this.storeOptions.reservoirIncreaseInterval) {
+	          ({
+	            reservoirIncreaseAmount: amount,
+	            reservoirIncreaseMaximum: maximum,
+	            reservoir
+	          } = this.storeOptions);
+	          this._lastReservoirIncrease = now;
+	          incr = maximum != null ? Math.min(amount, maximum - reservoir) : amount;
+	          if (incr > 0) {
+	            this.storeOptions.reservoir += incr;
+	            return this.instance._drainAll(this.computeCapacity());
+	          }
+	        }
+	      }, this.heartbeatInterval))).unref === "function" ? base.unref() : void 0;
+	    } else {
+	      return clearInterval(this.heartbeat);
+	    }
+	  }
+
+	  async __publish__(message) {
+	    await this.yieldLoop();
+	    return this.instance.Events.trigger("message", message.toString());
+	  }
+
+	  async __disconnect__(flush) {
+	    await this.yieldLoop();
+	    clearInterval(this.heartbeat);
+	    return this.Promise.resolve();
+	  }
+
+	  yieldLoop(t = 0) {
+	    return new this.Promise(function(resolve, reject) {
+	      return setTimeout(resolve, t);
+	    });
+	  }
+
+	  computePenalty() {
+	    var ref;
+	    return (ref = this.storeOptions.penalty) != null ? ref : (15 * this.storeOptions.minTime) || 5000;
+	  }
+
+	  async __updateSettings__(options) {
+	    await this.yieldLoop();
+	    parser$2.overwrite(options, options, this.storeOptions);
+	    this._startHeartbeat();
+	    this.instance._drainAll(this.computeCapacity());
+	    return true;
+	  }
+
+	  async __running__() {
+	    await this.yieldLoop();
+	    return this._running;
+	  }
+
+	  async __queued__() {
+	    await this.yieldLoop();
+	    return this.instance.queued();
+	  }
+
+	  async __done__() {
+	    await this.yieldLoop();
+	    return this._done;
+	  }
+
+	  async __groupCheck__(time) {
+	    await this.yieldLoop();
+	    return (this._nextRequest + this.timeout) < time;
+	  }
+
+	  computeCapacity() {
+	    var maxConcurrent, reservoir;
+	    ({maxConcurrent, reservoir} = this.storeOptions);
+	    if ((maxConcurrent != null) && (reservoir != null)) {
+	      return Math.min(maxConcurrent - this._running, reservoir);
+	    } else if (maxConcurrent != null) {
+	      return maxConcurrent - this._running;
+	    } else if (reservoir != null) {
+	      return reservoir;
+	    } else {
+	      return null;
+	    }
+	  }
+
+	  conditionsCheck(weight) {
+	    var capacity;
+	    capacity = this.computeCapacity();
+	    return (capacity == null) || weight <= capacity;
+	  }
+
+	  async __incrementReservoir__(incr) {
+	    var reservoir;
+	    await this.yieldLoop();
+	    reservoir = this.storeOptions.reservoir += incr;
+	    this.instance._drainAll(this.computeCapacity());
+	    return reservoir;
+	  }
+
+	  async __currentReservoir__() {
+	    await this.yieldLoop();
+	    return this.storeOptions.reservoir;
+	  }
+
+	  isBlocked(now) {
+	    return this._unblockTime >= now;
+	  }
+
+	  check(weight, now) {
+	    return this.conditionsCheck(weight) && (this._nextRequest - now) <= 0;
+	  }
+
+	  async __check__(weight) {
+	    var now;
+	    await this.yieldLoop();
+	    now = Date.now();
+	    return this.check(weight, now);
+	  }
+
+	  async __register__(index, weight, expiration) {
+	    var now, wait;
+	    await this.yieldLoop();
+	    now = Date.now();
+	    if (this.conditionsCheck(weight)) {
+	      this._running += weight;
+	      if (this.storeOptions.reservoir != null) {
+	        this.storeOptions.reservoir -= weight;
+	      }
+	      wait = Math.max(this._nextRequest - now, 0);
+	      this._nextRequest = now + wait + this.storeOptions.minTime;
+	      return {
+	        success: true,
+	        wait,
+	        reservoir: this.storeOptions.reservoir
+	      };
+	    } else {
+	      return {
+	        success: false
+	      };
+	    }
+	  }
+
+	  strategyIsBlock() {
+	    return this.storeOptions.strategy === 3;
+	  }
+
+	  async __submit__(queueLength, weight) {
+	    var blocked, now, reachedHWM;
+	    await this.yieldLoop();
+	    if ((this.storeOptions.maxConcurrent != null) && weight > this.storeOptions.maxConcurrent) {
+	      throw new BottleneckError$2(`Impossible to add a job having a weight of ${weight} to a limiter having a maxConcurrent setting of ${this.storeOptions.maxConcurrent}`);
+	    }
+	    now = Date.now();
+	    reachedHWM = (this.storeOptions.highWater != null) && queueLength === this.storeOptions.highWater && !this.check(weight, now);
+	    blocked = this.strategyIsBlock() && (reachedHWM || this.isBlocked(now));
+	    if (blocked) {
+	      this._unblockTime = now + this.computePenalty();
+	      this._nextRequest = this._unblockTime + this.storeOptions.minTime;
+	      this.instance._dropAllQueued();
+	    }
+	    return {
+	      reachedHWM,
+	      blocked,
+	      strategy: this.storeOptions.strategy
+	    };
+	  }
+
+	  async __free__(index, weight) {
+	    await this.yieldLoop();
+	    this._running -= weight;
+	    this._done += weight;
+	    this.instance._drainAll(this.computeCapacity());
+	    return {
+	      running: this._running
+	    };
+	  }
+
+	};
+
+	var LocalDatastore_1 = LocalDatastore;
+
+	var BottleneckError$3, States;
+
+	BottleneckError$3 = BottleneckError_1;
+
+	States = class States {
+	  constructor(status1) {
+	    this.status = status1;
+	    this._jobs = {};
+	    this.counts = this.status.map(function() {
+	      return 0;
+	    });
+	  }
+
+	  next(id) {
+	    var current, next;
+	    current = this._jobs[id];
+	    next = current + 1;
+	    if ((current != null) && next < this.status.length) {
+	      this.counts[current]--;
+	      this.counts[next]++;
+	      return this._jobs[id]++;
+	    } else if (current != null) {
+	      this.counts[current]--;
+	      return delete this._jobs[id];
+	    }
+	  }
+
+	  start(id) {
+	    var initial;
+	    initial = 0;
+	    this._jobs[id] = initial;
+	    return this.counts[initial]++;
+	  }
+
+	  remove(id) {
+	    var current;
+	    current = this._jobs[id];
+	    if (current != null) {
+	      this.counts[current]--;
+	      delete this._jobs[id];
+	    }
+	    return current != null;
+	  }
+
+	  jobStatus(id) {
+	    var ref;
+	    return (ref = this.status[this._jobs[id]]) != null ? ref : null;
+	  }
+
+	  statusJobs(status) {
+	    var k, pos, ref, results, v;
+	    if (status != null) {
+	      pos = this.status.indexOf(status);
+	      if (pos < 0) {
+	        throw new BottleneckError$3(`status must be one of ${this.status.join(', ')}`);
+	      }
+	      ref = this._jobs;
+	      results = [];
+	      for (k in ref) {
+	        v = ref[k];
+	        if (v === pos) {
+	          results.push(k);
+	        }
+	      }
+	      return results;
+	    } else {
+	      return Object.keys(this._jobs);
+	    }
+	  }
+
+	  statusCounts() {
+	    return this.counts.reduce(((acc, v, i) => {
+	      acc[this.status[i]] = v;
+	      return acc;
+	    }), {});
+	  }
+
+	};
+
+	var States_1 = States;
+
+	var DLList$2, Sync;
+
+	DLList$2 = DLList_1;
+
+	Sync = class Sync {
+	  constructor(name, Promise) {
+	    this.schedule = this.schedule.bind(this);
+	    this.name = name;
+	    this.Promise = Promise;
+	    this._running = 0;
+	    this._queue = new DLList$2();
+	  }
+
+	  isEmpty() {
+	    return this._queue.length === 0;
+	  }
+
+	  async _tryToRun() {
+	    var args, cb, error, reject, resolve, returned, task;
+	    if ((this._running < 1) && this._queue.length > 0) {
+	      this._running++;
+	      ({task, args, resolve, reject} = this._queue.shift());
+	      cb = (await (async function() {
+	        try {
+	          returned = (await task(...args));
+	          return function() {
+	            return resolve(returned);
+	          };
+	        } catch (error1) {
+	          error = error1;
+	          return function() {
+	            return reject(error);
+	          };
+	        }
+	      })());
+	      this._running--;
+	      this._tryToRun();
+	      return cb();
+	    }
+	  }
+
+	  schedule(task, ...args) {
+	    var promise, reject, resolve;
+	    resolve = reject = null;
+	    promise = new this.Promise(function(_resolve, _reject) {
+	      resolve = _resolve;
+	      return reject = _reject;
+	    });
+	    this._queue.push({task, args, resolve, reject});
+	    this._tryToRun();
+	    return promise;
+	  }
+
+	};
+
+	var Sync_1 = Sync;
+
+	var version = "2.19.5";
+	var version$1 = {
+		version: version
+	};
+
+	var version$2 = /*#__PURE__*/Object.freeze({
+		version: version,
+		default: version$1
+	});
+
+	var require$$2 = () => console.log('You must import the full version of Bottleneck in order to use this feature.');
+
+	var require$$3 = () => console.log('You must import the full version of Bottleneck in order to use this feature.');
+
+	var require$$4 = () => console.log('You must import the full version of Bottleneck in order to use this feature.');
+
+	var Events$2, Group, IORedisConnection$1, RedisConnection$1, Scripts$1, parser$3;
+
+	parser$3 = parser;
+
+	Events$2 = Events_1;
+
+	RedisConnection$1 = require$$2;
+
+	IORedisConnection$1 = require$$3;
+
+	Scripts$1 = require$$4;
+
+	Group = (function() {
+	  class Group {
+	    constructor(limiterOptions = {}) {
+	      this.deleteKey = this.deleteKey.bind(this);
+	      this.limiterOptions = limiterOptions;
+	      parser$3.load(this.limiterOptions, this.defaults, this);
+	      this.Events = new Events$2(this);
+	      this.instances = {};
+	      this.Bottleneck = Bottleneck_1;
+	      this._startAutoCleanup();
+	      this.sharedConnection = this.connection != null;
+	      if (this.connection == null) {
+	        if (this.limiterOptions.datastore === "redis") {
+	          this.connection = new RedisConnection$1(Object.assign({}, this.limiterOptions, {Events: this.Events}));
+	        } else if (this.limiterOptions.datastore === "ioredis") {
+	          this.connection = new IORedisConnection$1(Object.assign({}, this.limiterOptions, {Events: this.Events}));
+	        }
+	      }
+	    }
+
+	    key(key = "") {
+	      var ref;
+	      return (ref = this.instances[key]) != null ? ref : (() => {
+	        var limiter;
+	        limiter = this.instances[key] = new this.Bottleneck(Object.assign(this.limiterOptions, {
+	          id: `${this.id}-${key}`,
+	          timeout: this.timeout,
+	          connection: this.connection
+	        }));
+	        this.Events.trigger("created", limiter, key);
+	        return limiter;
+	      })();
+	    }
+
+	    async deleteKey(key = "") {
+	      var deleted, instance;
+	      instance = this.instances[key];
+	      if (this.connection) {
+	        deleted = (await this.connection.__runCommand__(['del', ...Scripts$1.allKeys(`${this.id}-${key}`)]));
+	      }
+	      if (instance != null) {
+	        delete this.instances[key];
+	        await instance.disconnect();
+	      }
+	      return (instance != null) || deleted > 0;
+	    }
+
+	    limiters() {
+	      var k, ref, results, v;
+	      ref = this.instances;
+	      results = [];
+	      for (k in ref) {
+	        v = ref[k];
+	        results.push({
+	          key: k,
+	          limiter: v
+	        });
+	      }
+	      return results;
+	    }
+
+	    keys() {
+	      return Object.keys(this.instances);
+	    }
+
+	    async clusterKeys() {
+	      var cursor, end, found, i, k, keys, len, next, start;
+	      if (this.connection == null) {
+	        return this.Promise.resolve(this.keys());
+	      }
+	      keys = [];
+	      cursor = null;
+	      start = `b_${this.id}-`.length;
+	      end = "_settings".length;
+	      while (cursor !== 0) {
+	        [next, found] = (await this.connection.__runCommand__(["scan", cursor != null ? cursor : 0, "match", `b_${this.id}-*_settings`, "count", 10000]));
+	        cursor = ~~next;
+	        for (i = 0, len = found.length; i < len; i++) {
+	          k = found[i];
+	          keys.push(k.slice(start, -end));
+	        }
+	      }
+	      return keys;
+	    }
+
+	    _startAutoCleanup() {
+	      var base;
+	      clearInterval(this.interval);
+	      return typeof (base = (this.interval = setInterval(async() => {
+	        var e, k, ref, results, time, v;
+	        time = Date.now();
+	        ref = this.instances;
+	        results = [];
+	        for (k in ref) {
+	          v = ref[k];
+	          try {
+	            if ((await v._store.__groupCheck__(time))) {
+	              results.push(this.deleteKey(k));
+	            } else {
+	              results.push(void 0);
+	            }
+	          } catch (error) {
+	            e = error;
+	            results.push(v.Events.trigger("error", e));
+	          }
+	        }
+	        return results;
+	      }, this.timeout / 2))).unref === "function" ? base.unref() : void 0;
+	    }
+
+	    updateSettings(options = {}) {
+	      parser$3.overwrite(options, this.defaults, this);
+	      parser$3.overwrite(options, options, this.limiterOptions);
+	      if (options.timeout != null) {
+	        return this._startAutoCleanup();
+	      }
+	    }
+
+	    disconnect(flush = true) {
+	      var ref;
+	      if (!this.sharedConnection) {
+	        return (ref = this.connection) != null ? ref.disconnect(flush) : void 0;
+	      }
+	    }
+
+	  }
+	  Group.prototype.defaults = {
+	    timeout: 1000 * 60 * 5,
+	    connection: null,
+	    Promise: Promise,
+	    id: "group-key"
+	  };
+
+	  return Group;
+
+	}).call(commonjsGlobal);
+
+	var Group_1 = Group;
+
+	var Batcher, Events$3, parser$4;
+
+	parser$4 = parser;
+
+	Events$3 = Events_1;
+
+	Batcher = (function() {
+	  class Batcher {
+	    constructor(options = {}) {
+	      this.options = options;
+	      parser$4.load(this.options, this.defaults, this);
+	      this.Events = new Events$3(this);
+	      this._arr = [];
+	      this._resetPromise();
+	      this._lastFlush = Date.now();
+	    }
+
+	    _resetPromise() {
+	      return this._promise = new this.Promise((res, rej) => {
+	        return this._resolve = res;
+	      });
+	    }
+
+	    _flush() {
+	      clearTimeout(this._timeout);
+	      this._lastFlush = Date.now();
+	      this._resolve();
+	      this.Events.trigger("batch", this._arr);
+	      this._arr = [];
+	      return this._resetPromise();
+	    }
+
+	    add(data) {
+	      var ret;
+	      this._arr.push(data);
+	      ret = this._promise;
+	      if (this._arr.length === this.maxSize) {
+	        this._flush();
+	      } else if ((this.maxTime != null) && this._arr.length === 1) {
+	        this._timeout = setTimeout(() => {
+	          return this._flush();
+	        }, this.maxTime);
+	      }
+	      return ret;
+	    }
+
+	  }
+	  Batcher.prototype.defaults = {
+	    maxTime: null,
+	    maxSize: null,
+	    Promise: Promise
+	  };
+
+	  return Batcher;
+
+	}).call(commonjsGlobal);
+
+	var Batcher_1 = Batcher;
+
+	var require$$4$1 = () => console.log('You must import the full version of Bottleneck in order to use this feature.');
+
+	var require$$8 = getCjsExportFromNamespace(version$2);
+
+	var Bottleneck, DEFAULT_PRIORITY$1, Events$4, Job$1, LocalDatastore$1, NUM_PRIORITIES$1, Queues$1, RedisDatastore$1, States$1, Sync$1, parser$5,
+	  splice = [].splice;
+
+	NUM_PRIORITIES$1 = 10;
+
+	DEFAULT_PRIORITY$1 = 5;
+
+	parser$5 = parser;
+
+	Queues$1 = Queues_1;
+
+	Job$1 = Job_1;
+
+	LocalDatastore$1 = LocalDatastore_1;
+
+	RedisDatastore$1 = require$$4$1;
+
+	Events$4 = Events_1;
+
+	States$1 = States_1;
+
+	Sync$1 = Sync_1;
+
+	Bottleneck = (function() {
+	  class Bottleneck {
+	    constructor(options = {}, ...invalid) {
+	      var storeInstanceOptions, storeOptions;
+	      this._addToQueue = this._addToQueue.bind(this);
+	      this._validateOptions(options, invalid);
+	      parser$5.load(options, this.instanceDefaults, this);
+	      this._queues = new Queues$1(NUM_PRIORITIES$1);
+	      this._scheduled = {};
+	      this._states = new States$1(["RECEIVED", "QUEUED", "RUNNING", "EXECUTING"].concat(this.trackDoneStatus ? ["DONE"] : []));
+	      this._limiter = null;
+	      this.Events = new Events$4(this);
+	      this._submitLock = new Sync$1("submit", this.Promise);
+	      this._registerLock = new Sync$1("register", this.Promise);
+	      storeOptions = parser$5.load(options, this.storeDefaults, {});
+	      this._store = (function() {
+	        if (this.datastore === "redis" || this.datastore === "ioredis" || (this.connection != null)) {
+	          storeInstanceOptions = parser$5.load(options, this.redisStoreDefaults, {});
+	          return new RedisDatastore$1(this, storeOptions, storeInstanceOptions);
+	        } else if (this.datastore === "local") {
+	          storeInstanceOptions = parser$5.load(options, this.localStoreDefaults, {});
+	          return new LocalDatastore$1(this, storeOptions, storeInstanceOptions);
+	        } else {
+	          throw new Bottleneck.prototype.BottleneckError(`Invalid datastore type: ${this.datastore}`);
+	        }
+	      }).call(this);
+	      this._queues.on("leftzero", () => {
+	        var ref;
+	        return (ref = this._store.heartbeat) != null ? typeof ref.ref === "function" ? ref.ref() : void 0 : void 0;
+	      });
+	      this._queues.on("zero", () => {
+	        var ref;
+	        return (ref = this._store.heartbeat) != null ? typeof ref.unref === "function" ? ref.unref() : void 0 : void 0;
+	      });
+	    }
+
+	    _validateOptions(options, invalid) {
+	      if (!((options != null) && typeof options === "object" && invalid.length === 0)) {
+	        throw new Bottleneck.prototype.BottleneckError("Bottleneck v2 takes a single object argument. Refer to https://github.com/SGrondin/bottleneck#upgrading-to-v2 if you're upgrading from Bottleneck v1.");
+	      }
+	    }
+
+	    ready() {
+	      return this._store.ready;
+	    }
+
+	    clients() {
+	      return this._store.clients;
+	    }
+
+	    channel() {
+	      return `b_${this.id}`;
+	    }
+
+	    channel_client() {
+	      return `b_${this.id}_${this._store.clientId}`;
+	    }
+
+	    publish(message) {
+	      return this._store.__publish__(message);
+	    }
+
+	    disconnect(flush = true) {
+	      return this._store.__disconnect__(flush);
+	    }
+
+	    chain(_limiter) {
+	      this._limiter = _limiter;
+	      return this;
+	    }
+
+	    queued(priority) {
+	      return this._queues.queued(priority);
+	    }
+
+	    clusterQueued() {
+	      return this._store.__queued__();
+	    }
+
+	    empty() {
+	      return this.queued() === 0 && this._submitLock.isEmpty();
+	    }
+
+	    running() {
+	      return this._store.__running__();
+	    }
+
+	    done() {
+	      return this._store.__done__();
+	    }
+
+	    jobStatus(id) {
+	      return this._states.jobStatus(id);
+	    }
+
+	    jobs(status) {
+	      return this._states.statusJobs(status);
+	    }
+
+	    counts() {
+	      return this._states.statusCounts();
+	    }
+
+	    _randomIndex() {
+	      return Math.random().toString(36).slice(2);
+	    }
+
+	    check(weight = 1) {
+	      return this._store.__check__(weight);
+	    }
+
+	    _clearGlobalState(index) {
+	      if (this._scheduled[index] != null) {
+	        clearTimeout(this._scheduled[index].expiration);
+	        delete this._scheduled[index];
+	        return true;
+	      } else {
+	        return false;
+	      }
+	    }
+
+	    async _free(index, job, options, eventInfo) {
+	      var e, running;
+	      try {
+	        ({running} = (await this._store.__free__(index, options.weight)));
+	        this.Events.trigger("debug", `Freed ${options.id}`, eventInfo);
+	        if (running === 0 && this.empty()) {
+	          return this.Events.trigger("idle");
+	        }
+	      } catch (error1) {
+	        e = error1;
+	        return this.Events.trigger("error", e);
+	      }
+	    }
+
+	    _run(index, job, wait) {
+	      var clearGlobalState, free, run;
+	      job.doRun();
+	      clearGlobalState = this._clearGlobalState.bind(this, index);
+	      run = this._run.bind(this, index, job);
+	      free = this._free.bind(this, index, job);
+	      return this._scheduled[index] = {
+	        timeout: setTimeout(() => {
+	          return job.doExecute(this._limiter, clearGlobalState, run, free);
+	        }, wait),
+	        expiration: job.options.expiration != null ? setTimeout(function() {
+	          return job.doExpire(clearGlobalState, run, free);
+	        }, wait + job.options.expiration) : void 0,
+	        job: job
+	      };
+	    }
+
+	    _drainOne(capacity) {
+	      return this._registerLock.schedule(() => {
+	        var args, index, next, options, queue;
+	        if (this.queued() === 0) {
+	          return this.Promise.resolve(null);
+	        }
+	        queue = this._queues.getFirst();
+	        ({options, args} = next = queue.first());
+	        if ((capacity != null) && options.weight > capacity) {
+	          return this.Promise.resolve(null);
+	        }
+	        this.Events.trigger("debug", `Draining ${options.id}`, {args, options});
+	        index = this._randomIndex();
+	        return this._store.__register__(index, options.weight, options.expiration).then(({success, wait, reservoir}) => {
+	          var empty;
+	          this.Events.trigger("debug", `Drained ${options.id}`, {success, args, options});
+	          if (success) {
+	            queue.shift();
+	            empty = this.empty();
+	            if (empty) {
+	              this.Events.trigger("empty");
+	            }
+	            if (reservoir === 0) {
+	              this.Events.trigger("depleted", empty);
+	            }
+	            this._run(index, next, wait);
+	            return this.Promise.resolve(options.weight);
+	          } else {
+	            return this.Promise.resolve(null);
+	          }
+	        });
+	      });
+	    }
+
+	    _drainAll(capacity, total = 0) {
+	      return this._drainOne(capacity).then((drained) => {
+	        var newCapacity;
+	        if (drained != null) {
+	          newCapacity = capacity != null ? capacity - drained : capacity;
+	          return this._drainAll(newCapacity, total + drained);
+	        } else {
+	          return this.Promise.resolve(total);
+	        }
+	      }).catch((e) => {
+	        return this.Events.trigger("error", e);
+	      });
+	    }
+
+	    _dropAllQueued(message) {
+	      return this._queues.shiftAll(function(job) {
+	        return job.doDrop({message});
+	      });
+	    }
+
+	    stop(options = {}) {
+	      var done, waitForExecuting;
+	      options = parser$5.load(options, this.stopDefaults);
+	      waitForExecuting = (at) => {
+	        var finished;
+	        finished = () => {
+	          var counts;
+	          counts = this._states.counts;
+	          return (counts[0] + counts[1] + counts[2] + counts[3]) === at;
+	        };
+	        return new this.Promise((resolve, reject) => {
+	          if (finished()) {
+	            return resolve();
+	          } else {
+	            return this.on("done", () => {
+	              if (finished()) {
+	                this.removeAllListeners("done");
+	                return resolve();
+	              }
+	            });
+	          }
+	        });
+	      };
+	      done = options.dropWaitingJobs ? (this._run = function(index, next) {
+	        return next.doDrop({
+	          message: options.dropErrorMessage
+	        });
+	      }, this._drainOne = () => {
+	        return this.Promise.resolve(null);
+	      }, this._registerLock.schedule(() => {
+	        return this._submitLock.schedule(() => {
+	          var k, ref, v;
+	          ref = this._scheduled;
+	          for (k in ref) {
+	            v = ref[k];
+	            if (this.jobStatus(v.job.options.id) === "RUNNING") {
+	              clearTimeout(v.timeout);
+	              clearTimeout(v.expiration);
+	              v.job.doDrop({
+	                message: options.dropErrorMessage
+	              });
+	            }
+	          }
+	          this._dropAllQueued(options.dropErrorMessage);
+	          return waitForExecuting(0);
+	        });
+	      })) : this.schedule({
+	        priority: NUM_PRIORITIES$1 - 1,
+	        weight: 0
+	      }, () => {
+	        return waitForExecuting(1);
+	      });
+	      this._receive = function(job) {
+	        return job._reject(new Bottleneck.prototype.BottleneckError(options.enqueueErrorMessage));
+	      };
+	      this.stop = () => {
+	        return this.Promise.reject(new Bottleneck.prototype.BottleneckError("stop() has already been called"));
+	      };
+	      return done;
+	    }
+
+	    async _addToQueue(job) {
+	      var args, blocked, error, options, reachedHWM, shifted, strategy;
+	      ({args, options} = job);
+	      try {
+	        ({reachedHWM, blocked, strategy} = (await this._store.__submit__(this.queued(), options.weight)));
+	      } catch (error1) {
+	        error = error1;
+	        this.Events.trigger("debug", `Could not queue ${options.id}`, {args, options, error});
+	        job.doDrop({error});
+	        return false;
+	      }
+	      if (blocked) {
+	        job.doDrop();
+	        return true;
+	      } else if (reachedHWM) {
+	        shifted = strategy === Bottleneck.prototype.strategy.LEAK ? this._queues.shiftLastFrom(options.priority) : strategy === Bottleneck.prototype.strategy.OVERFLOW_PRIORITY ? this._queues.shiftLastFrom(options.priority + 1) : strategy === Bottleneck.prototype.strategy.OVERFLOW ? job : void 0;
+	        if (shifted != null) {
+	          shifted.doDrop();
+	        }
+	        if ((shifted == null) || strategy === Bottleneck.prototype.strategy.OVERFLOW) {
+	          if (shifted == null) {
+	            job.doDrop();
+	          }
+	          return reachedHWM;
+	        }
+	      }
+	      job.doQueue(reachedHWM, blocked);
+	      this._queues.push(job);
+	      await this._drainAll();
+	      return reachedHWM;
+	    }
+
+	    _receive(job) {
+	      if (this._states.jobStatus(job.options.id) != null) {
+	        job._reject(new Bottleneck.prototype.BottleneckError(`A job with the same id already exists (id=${job.options.id})`));
+	        return false;
+	      } else {
+	        job.doReceive();
+	        return this._submitLock.schedule(this._addToQueue, job);
+	      }
+	    }
+
+	    submit(...args) {
+	      var cb, fn, job, options, ref, ref1, task;
+	      if (typeof args[0] === "function") {
+	        ref = args, [fn, ...args] = ref, [cb] = splice.call(args, -1);
+	        options = parser$5.load({}, this.jobDefaults);
+	      } else {
+	        ref1 = args, [options, fn, ...args] = ref1, [cb] = splice.call(args, -1);
+	        options = parser$5.load(options, this.jobDefaults);
+	      }
+	      task = (...args) => {
+	        return new this.Promise(function(resolve, reject) {
+	          return fn(...args, function(...args) {
+	            return (args[0] != null ? reject : resolve)(args);
+	          });
+	        });
+	      };
+	      job = new Job$1(task, args, options, this.jobDefaults, this.rejectOnDrop, this.Events, this._states, this.Promise);
+	      job.promise.then(function(args) {
+	        return typeof cb === "function" ? cb(...args) : void 0;
+	      }).catch(function(args) {
+	        if (Array.isArray(args)) {
+	          return typeof cb === "function" ? cb(...args) : void 0;
+	        } else {
+	          return typeof cb === "function" ? cb(args) : void 0;
+	        }
+	      });
+	      return this._receive(job);
+	    }
+
+	    schedule(...args) {
+	      var job, options, task;
+	      if (typeof args[0] === "function") {
+	        [task, ...args] = args;
+	        options = {};
+	      } else {
+	        [options, task, ...args] = args;
+	      }
+	      job = new Job$1(task, args, options, this.jobDefaults, this.rejectOnDrop, this.Events, this._states, this.Promise);
+	      this._receive(job);
+	      return job.promise;
+	    }
+
+	    wrap(fn) {
+	      var schedule, wrapped;
+	      schedule = this.schedule.bind(this);
+	      wrapped = function(...args) {
+	        return schedule(fn.bind(this), ...args);
+	      };
+	      wrapped.withOptions = function(options, ...args) {
+	        return schedule(options, fn, ...args);
+	      };
+	      return wrapped;
+	    }
+
+	    async updateSettings(options = {}) {
+	      await this._store.__updateSettings__(parser$5.overwrite(options, this.storeDefaults));
+	      parser$5.overwrite(options, this.instanceDefaults, this);
+	      return this;
+	    }
+
+	    currentReservoir() {
+	      return this._store.__currentReservoir__();
+	    }
+
+	    incrementReservoir(incr = 0) {
+	      return this._store.__incrementReservoir__(incr);
+	    }
+
+	  }
+	  Bottleneck.default = Bottleneck;
+
+	  Bottleneck.Events = Events$4;
+
+	  Bottleneck.version = Bottleneck.prototype.version = require$$8.version;
+
+	  Bottleneck.strategy = Bottleneck.prototype.strategy = {
+	    LEAK: 1,
+	    OVERFLOW: 2,
+	    OVERFLOW_PRIORITY: 4,
+	    BLOCK: 3
+	  };
+
+	  Bottleneck.BottleneckError = Bottleneck.prototype.BottleneckError = BottleneckError_1;
+
+	  Bottleneck.Group = Bottleneck.prototype.Group = Group_1;
+
+	  Bottleneck.RedisConnection = Bottleneck.prototype.RedisConnection = require$$2;
+
+	  Bottleneck.IORedisConnection = Bottleneck.prototype.IORedisConnection = require$$3;
+
+	  Bottleneck.Batcher = Bottleneck.prototype.Batcher = Batcher_1;
+
+	  Bottleneck.prototype.jobDefaults = {
+	    priority: DEFAULT_PRIORITY$1,
+	    weight: 1,
+	    expiration: null,
+	    id: "<no-id>"
+	  };
+
+	  Bottleneck.prototype.storeDefaults = {
+	    maxConcurrent: null,
+	    minTime: 0,
+	    highWater: null,
+	    strategy: Bottleneck.prototype.strategy.LEAK,
+	    penalty: null,
+	    reservoir: null,
+	    reservoirRefreshInterval: null,
+	    reservoirRefreshAmount: null,
+	    reservoirIncreaseInterval: null,
+	    reservoirIncreaseAmount: null,
+	    reservoirIncreaseMaximum: null
+	  };
+
+	  Bottleneck.prototype.localStoreDefaults = {
+	    Promise: Promise,
+	    timeout: null,
+	    heartbeatInterval: 250
+	  };
+
+	  Bottleneck.prototype.redisStoreDefaults = {
+	    Promise: Promise,
+	    timeout: null,
+	    heartbeatInterval: 5000,
+	    clientTimeout: 10000,
+	    Redis: null,
+	    clientOptions: {},
+	    clusterNodes: null,
+	    clearDatastore: false,
+	    connection: null
+	  };
+
+	  Bottleneck.prototype.instanceDefaults = {
+	    datastore: "local",
+	    connection: null,
+	    id: "<no-id>",
+	    rejectOnDrop: true,
+	    trackDoneStatus: false,
+	    Promise: Promise
+	  };
+
+	  Bottleneck.prototype.stopDefaults = {
+	    enqueueErrorMessage: "This limiter has been stopped and cannot accept new jobs.",
+	    dropWaitingJobs: true,
+	    dropErrorMessage: "This limiter has been stopped."
+	  };
+
+	  return Bottleneck;
+
+	}).call(commonjsGlobal);
+
+	var Bottleneck_1 = Bottleneck;
+
+	var lib = Bottleneck_1;
+
+	return lib;
+
+})));
+
+
+/***/ }),
+
+/***/ 4150:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+class Deprecation extends Error {
+  constructor(message) {
+    super(message); // Maintains proper stack trace (only available on V8)
+
+    /* istanbul ignore next */
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+
+    this.name = 'Deprecation';
+  }
+
+}
+
+exports.Deprecation = Deprecation;
+
+
+/***/ }),
+
+/***/ 4742:
+/***/ ((module) => {
+
+"use strict";
+class JSBI extends Array{constructor(i,_){if(super(i),this.sign=_,Object.setPrototypeOf(this,JSBI.prototype),i>JSBI.__kMaxLength)throw new RangeError("Maximum BigInt size exceeded")}static BigInt(i){var _=Math.floor,t=Number.isFinite;if("number"==typeof i){if(0===i)return JSBI.__zero();if(JSBI.__isOneDigitInt(i))return 0>i?JSBI.__oneDigit(-i,!0):JSBI.__oneDigit(i,!1);if(!t(i)||_(i)!==i)throw new RangeError("The number "+i+" cannot be converted to BigInt because it is not an integer");return JSBI.__fromDouble(i)}if("string"==typeof i){const _=JSBI.__fromString(i);if(null===_)throw new SyntaxError("Cannot convert "+i+" to a BigInt");return _}if("boolean"==typeof i)return!0===i?JSBI.__oneDigit(1,!1):JSBI.__zero();if("object"==typeof i){if(i.constructor===JSBI)return i;const _=JSBI.__toPrimitive(i);return JSBI.BigInt(_)}throw new TypeError("Cannot convert "+i+" to a BigInt")}toDebugString(){const i=["BigInt["];for(const _ of this)i.push((_?(_>>>0).toString(16):_)+", ");return i.push("]"),i.join("")}toString(i=10){if(2>i||36<i)throw new RangeError("toString() radix argument must be between 2 and 36");return 0===this.length?"0":0==(i&i-1)?JSBI.__toStringBasePowerOfTwo(this,i):JSBI.__toStringGeneric(this,i,!1)}valueOf(){throw new Error("Convert JSBI instances to native numbers using `toNumber`.")}static toNumber(i){const _=i.length;if(0===_)return 0;if(1===_){const _=i.__unsignedDigit(0);return i.sign?-_:_}const t=i.__digit(_-1),e=JSBI.__clz30(t),n=30*_-e;if(1024<n)return i.sign?-Infinity:1/0;let g=n-1,o=t,s=_-1;const l=e+3;let r=32===l?0:o<<l;r>>>=12;const a=l-12;let u=12<=l?0:o<<20+l,d=20+l;for(0<a&&0<s&&(s--,o=i.__digit(s),r|=o>>>30-a,u=o<<a+2,d=a+2);0<d&&0<s;)s--,o=i.__digit(s),u|=30<=d?o<<d-30:o>>>30-d,d-=30;const h=JSBI.__decideRounding(i,d,s,o);if((1===h||0===h&&1==(1&u))&&(u=u+1>>>0,0===u&&(r++,0!=r>>>20&&(r=0,g++,1023<g))))return i.sign?-Infinity:1/0;const m=i.sign?-2147483648:0;return g=g+1023<<20,JSBI.__kBitConversionInts[JSBI.__kBitConversionIntHigh]=m|g|r,JSBI.__kBitConversionInts[JSBI.__kBitConversionIntLow]=u,JSBI.__kBitConversionDouble[0]}static unaryMinus(i){if(0===i.length)return i;const _=i.__copy();return _.sign=!i.sign,_}static bitwiseNot(i){return i.sign?JSBI.__absoluteSubOne(i).__trim():JSBI.__absoluteAddOne(i,!0)}static exponentiate(i,_){if(_.sign)throw new RangeError("Exponent must be positive");if(0===_.length)return JSBI.__oneDigit(1,!1);if(0===i.length)return i;if(1===i.length&&1===i.__digit(0))return i.sign&&0==(1&_.__digit(0))?JSBI.unaryMinus(i):i;if(1<_.length)throw new RangeError("BigInt too big");let t=_.__unsignedDigit(0);if(1===t)return i;if(t>=JSBI.__kMaxLengthBits)throw new RangeError("BigInt too big");if(1===i.length&&2===i.__digit(0)){const _=1+(0|t/30),e=i.sign&&0!=(1&t),n=new JSBI(_,e);n.__initializeDigits();const g=1<<t%30;return n.__setDigit(_-1,g),n}let e=null,n=i;for(0!=(1&t)&&(e=i),t>>=1;0!==t;t>>=1)n=JSBI.multiply(n,n),0!=(1&t)&&(null===e?e=n:e=JSBI.multiply(e,n));return e}static multiply(_,t){if(0===_.length)return _;if(0===t.length)return t;let i=_.length+t.length;30<=_.__clzmsd()+t.__clzmsd()&&i--;const e=new JSBI(i,_.sign!==t.sign);e.__initializeDigits();for(let n=0;n<_.length;n++)JSBI.__multiplyAccumulate(t,_.__digit(n),e,n);return e.__trim()}static divide(i,_){if(0===_.length)throw new RangeError("Division by zero");if(0>JSBI.__absoluteCompare(i,_))return JSBI.__zero();const t=i.sign!==_.sign,e=_.__unsignedDigit(0);let n;if(1===_.length&&32767>=e){if(1===e)return t===i.sign?i:JSBI.unaryMinus(i);n=JSBI.__absoluteDivSmall(i,e,null)}else n=JSBI.__absoluteDivLarge(i,_,!0,!1);return n.sign=t,n.__trim()}static remainder(i,_){if(0===_.length)throw new RangeError("Division by zero");if(0>JSBI.__absoluteCompare(i,_))return i;const t=_.__unsignedDigit(0);if(1===_.length&&32767>=t){if(1===t)return JSBI.__zero();const _=JSBI.__absoluteModSmall(i,t);return 0===_?JSBI.__zero():JSBI.__oneDigit(_,i.sign)}const e=JSBI.__absoluteDivLarge(i,_,!1,!0);return e.sign=i.sign,e.__trim()}static add(i,_){const t=i.sign;return t===_.sign?JSBI.__absoluteAdd(i,_,t):0<=JSBI.__absoluteCompare(i,_)?JSBI.__absoluteSub(i,_,t):JSBI.__absoluteSub(_,i,!t)}static subtract(i,_){const t=i.sign;return t===_.sign?0<=JSBI.__absoluteCompare(i,_)?JSBI.__absoluteSub(i,_,t):JSBI.__absoluteSub(_,i,!t):JSBI.__absoluteAdd(i,_,t)}static leftShift(i,_){return 0===_.length||0===i.length?i:_.sign?JSBI.__rightShiftByAbsolute(i,_):JSBI.__leftShiftByAbsolute(i,_)}static signedRightShift(i,_){return 0===_.length||0===i.length?i:_.sign?JSBI.__leftShiftByAbsolute(i,_):JSBI.__rightShiftByAbsolute(i,_)}static unsignedRightShift(){throw new TypeError("BigInts have no unsigned right shift; use >> instead")}static lessThan(i,_){return 0>JSBI.__compareToBigInt(i,_)}static lessThanOrEqual(i,_){return 0>=JSBI.__compareToBigInt(i,_)}static greaterThan(i,_){return 0<JSBI.__compareToBigInt(i,_)}static greaterThanOrEqual(i,_){return 0<=JSBI.__compareToBigInt(i,_)}static equal(_,t){if(_.sign!==t.sign)return!1;if(_.length!==t.length)return!1;for(let e=0;e<_.length;e++)if(_.__digit(e)!==t.__digit(e))return!1;return!0}static notEqual(i,_){return!JSBI.equal(i,_)}static bitwiseAnd(i,_){var t=Math.max;if(!i.sign&&!_.sign)return JSBI.__absoluteAnd(i,_).__trim();if(i.sign&&_.sign){const e=t(i.length,_.length)+1;let n=JSBI.__absoluteSubOne(i,e);const g=JSBI.__absoluteSubOne(_);return n=JSBI.__absoluteOr(n,g,n),JSBI.__absoluteAddOne(n,!0,n).__trim()}return i.sign&&([i,_]=[_,i]),JSBI.__absoluteAndNot(i,JSBI.__absoluteSubOne(_)).__trim()}static bitwiseXor(i,_){var t=Math.max;if(!i.sign&&!_.sign)return JSBI.__absoluteXor(i,_).__trim();if(i.sign&&_.sign){const e=t(i.length,_.length),n=JSBI.__absoluteSubOne(i,e),g=JSBI.__absoluteSubOne(_);return JSBI.__absoluteXor(n,g,n).__trim()}const e=t(i.length,_.length)+1;i.sign&&([i,_]=[_,i]);let n=JSBI.__absoluteSubOne(_,e);return n=JSBI.__absoluteXor(n,i,n),JSBI.__absoluteAddOne(n,!0,n).__trim()}static bitwiseOr(i,_){var t=Math.max;const e=t(i.length,_.length);if(!i.sign&&!_.sign)return JSBI.__absoluteOr(i,_).__trim();if(i.sign&&_.sign){let t=JSBI.__absoluteSubOne(i,e);const n=JSBI.__absoluteSubOne(_);return t=JSBI.__absoluteAnd(t,n,t),JSBI.__absoluteAddOne(t,!0,t).__trim()}i.sign&&([i,_]=[_,i]);let n=JSBI.__absoluteSubOne(_,e);return n=JSBI.__absoluteAndNot(n,i,n),JSBI.__absoluteAddOne(n,!0,n).__trim()}static asIntN(_,t){var i=Math.floor;if(0===t.length)return t;if(_=i(_),0>_)throw new RangeError("Invalid value: not (convertible to) a safe integer");if(0===_)return JSBI.__zero();if(_>=JSBI.__kMaxLengthBits)return t;const e=0|(_+29)/30;if(t.length<e)return t;const g=t.__unsignedDigit(e-1),o=1<<(_-1)%30;if(t.length===e&&g<o)return t;if(!((g&o)===o))return JSBI.__truncateToNBits(_,t);if(!t.sign)return JSBI.__truncateAndSubFromPowerOfTwo(_,t,!0);if(0==(g&o-1)){for(let n=e-2;0<=n;n--)if(0!==t.__digit(n))return JSBI.__truncateAndSubFromPowerOfTwo(_,t,!1);return t.length===e&&g===o?t:JSBI.__truncateToNBits(_,t)}return JSBI.__truncateAndSubFromPowerOfTwo(_,t,!1)}static asUintN(i,_){var t=Math.floor;if(0===_.length)return _;if(i=t(i),0>i)throw new RangeError("Invalid value: not (convertible to) a safe integer");if(0===i)return JSBI.__zero();if(_.sign){if(i>JSBI.__kMaxLengthBits)throw new RangeError("BigInt too big");return JSBI.__truncateAndSubFromPowerOfTwo(i,_,!1)}if(i>=JSBI.__kMaxLengthBits)return _;const e=0|(i+29)/30;if(_.length<e)return _;const g=i%30;if(_.length==e){if(0===g)return _;const i=_.__digit(e-1);if(0==i>>>g)return _}return JSBI.__truncateToNBits(i,_)}static ADD(i,_){if(i=JSBI.__toPrimitive(i),_=JSBI.__toPrimitive(_),"string"==typeof i)return"string"!=typeof _&&(_=_.toString()),i+_;if("string"==typeof _)return i.toString()+_;if(i=JSBI.__toNumeric(i),_=JSBI.__toNumeric(_),JSBI.__isBigInt(i)&&JSBI.__isBigInt(_))return JSBI.add(i,_);if("number"==typeof i&&"number"==typeof _)return i+_;throw new TypeError("Cannot mix BigInt and other types, use explicit conversions")}static LT(i,_){return JSBI.__compare(i,_,0)}static LE(i,_){return JSBI.__compare(i,_,1)}static GT(i,_){return JSBI.__compare(i,_,2)}static GE(i,_){return JSBI.__compare(i,_,3)}static EQ(i,_){for(;;){if(JSBI.__isBigInt(i))return JSBI.__isBigInt(_)?JSBI.equal(i,_):JSBI.EQ(_,i);if("number"==typeof i){if(JSBI.__isBigInt(_))return JSBI.__equalToNumber(_,i);if("object"!=typeof _)return i==_;_=JSBI.__toPrimitive(_)}else if("string"==typeof i){if(JSBI.__isBigInt(_))return i=JSBI.__fromString(i),null!==i&&JSBI.equal(i,_);if("object"!=typeof _)return i==_;_=JSBI.__toPrimitive(_)}else if("boolean"==typeof i){if(JSBI.__isBigInt(_))return JSBI.__equalToNumber(_,+i);if("object"!=typeof _)return i==_;_=JSBI.__toPrimitive(_)}else if("symbol"==typeof i){if(JSBI.__isBigInt(_))return!1;if("object"!=typeof _)return i==_;_=JSBI.__toPrimitive(_)}else if("object"==typeof i){if("object"==typeof _&&_.constructor!==JSBI)return i==_;i=JSBI.__toPrimitive(i)}else return i==_}}static NE(i,_){return!JSBI.EQ(i,_)}static DataViewGetBigInt64(i,_,t=!1){return JSBI.asIntN(64,JSBI.DataViewGetBigUint64(i,_,t))}static DataViewGetBigUint64(i,_,t=!1){const[e,n]=t?[4,0]:[0,4],g=i.getUint32(_+e,t),o=i.getUint32(_+n,t),s=new JSBI(3,!1);return s.__setDigit(0,1073741823&o),s.__setDigit(1,(268435455&g)<<2|o>>>30),s.__setDigit(2,g>>>28),s.__trim()}static DataViewSetBigInt64(i,_,t,e=!1){JSBI.DataViewSetBigUint64(i,_,t,e)}static DataViewSetBigUint64(i,_,t,e=!1){t=JSBI.asUintN(64,t);let n=0,g=0;if(0<t.length&&(g=t.__digit(0),1<t.length)){const i=t.__digit(1);g|=i<<30,n=i>>>2,2<t.length&&(n|=t.__digit(2)<<28)}const[o,s]=e?[4,0]:[0,4];i.setUint32(_+o,n,e),i.setUint32(_+s,g,e)}static __zero(){return new JSBI(0,!1)}static __oneDigit(i,_){const t=new JSBI(1,_);return t.__setDigit(0,i),t}__copy(){const _=new JSBI(this.length,this.sign);for(let t=0;t<this.length;t++)_[t]=this[t];return _}__trim(){let i=this.length,_=this[i-1];for(;0===_;)i--,_=this[i-1],this.pop();return 0===i&&(this.sign=!1),this}__initializeDigits(){for(let _=0;_<this.length;_++)this[_]=0}static __decideRounding(i,_,t,e){if(0<_)return-1;let n;if(0>_)n=-_-1;else{if(0===t)return-1;t--,e=i.__digit(t),n=29}let g=1<<n;if(0==(e&g))return-1;if(g-=1,0!=(e&g))return 1;for(;0<t;)if(t--,0!==i.__digit(t))return 1;return 0}static __fromDouble(i){JSBI.__kBitConversionDouble[0]=i;const _=2047&JSBI.__kBitConversionInts[JSBI.__kBitConversionIntHigh]>>>20,t=_-1023,e=(0|t/30)+1,n=new JSBI(e,0>i);let g=1048575&JSBI.__kBitConversionInts[JSBI.__kBitConversionIntHigh]|1048576,o=JSBI.__kBitConversionInts[JSBI.__kBitConversionIntLow];const s=20,l=t%30;let r,a=0;if(l<20){const i=s-l;a=i+32,r=g>>>i,g=g<<32-i|o>>>i,o<<=32-i}else if(l===20)a=32,r=g,g=o,o=0;else{const i=l-s;a=32-i,r=g<<i|o>>>32-i,g=o<<i,o=0}n.__setDigit(e-1,r);for(let _=e-2;0<=_;_--)0<a?(a-=30,r=g>>>2,g=g<<30|o>>>2,o<<=30):r=0,n.__setDigit(_,r);return n.__trim()}static __isWhitespace(i){return!!(13>=i&&9<=i)||(159>=i?32==i:131071>=i?160==i||5760==i:196607>=i?(i&=131071,10>=i||40==i||41==i||47==i||95==i||4096==i):65279==i)}static __fromString(i,_=0){let t=0;const e=i.length;let n=0;if(n===e)return JSBI.__zero();let g=i.charCodeAt(n);for(;JSBI.__isWhitespace(g);){if(++n===e)return JSBI.__zero();g=i.charCodeAt(n)}if(43===g){if(++n===e)return null;g=i.charCodeAt(n),t=1}else if(45===g){if(++n===e)return null;g=i.charCodeAt(n),t=-1}if(0===_){if(_=10,48===g){if(++n===e)return JSBI.__zero();if(g=i.charCodeAt(n),88===g||120===g){if(_=16,++n===e)return null;g=i.charCodeAt(n)}else if(79===g||111===g){if(_=8,++n===e)return null;g=i.charCodeAt(n)}else if(66===g||98===g){if(_=2,++n===e)return null;g=i.charCodeAt(n)}}}else if(16===_&&48===g){if(++n===e)return JSBI.__zero();if(g=i.charCodeAt(n),88===g||120===g){if(++n===e)return null;g=i.charCodeAt(n)}}if(0!=t&&10!==_)return null;for(;48===g;){if(++n===e)return JSBI.__zero();g=i.charCodeAt(n)}const o=e-n;let s=JSBI.__kMaxBitsPerChar[_],l=JSBI.__kBitsPerCharTableMultiplier-1;if(o>1073741824/s)return null;const r=s*o+l>>>JSBI.__kBitsPerCharTableShift,a=new JSBI(0|(r+29)/30,!1),u=10>_?_:10,h=10<_?_-10:0;if(0==(_&_-1)){s>>=JSBI.__kBitsPerCharTableShift;const _=[],t=[];let o=!1;do{let l=0,r=0;for(;;){let _;if(g-48>>>0<u)_=g-48;else if((32|g)-97>>>0<h)_=(32|g)-87;else{o=!0;break}if(r+=s,l=l<<s|_,++n===e){o=!0;break}if(g=i.charCodeAt(n),30<r+s)break}_.push(l),t.push(r)}while(!o);JSBI.__fillFromParts(a,_,t)}else{a.__initializeDigits();let t=!1,o=0;do{let r=0,b=1;for(;;){let s;if(g-48>>>0<u)s=g-48;else if((32|g)-97>>>0<h)s=(32|g)-87;else{t=!0;break}const l=b*_;if(1073741823<l)break;if(b=l,r=r*_+s,o++,++n===e){t=!0;break}g=i.charCodeAt(n)}l=30*JSBI.__kBitsPerCharTableMultiplier-1;const D=0|(s*o+l>>>JSBI.__kBitsPerCharTableShift)/30;a.__inplaceMultiplyAdd(b,r,D)}while(!t)}if(n!==e){if(!JSBI.__isWhitespace(g))return null;for(n++;n<e;n++)if(g=i.charCodeAt(n),!JSBI.__isWhitespace(g))return null}return a.sign=-1==t,a.__trim()}static __fillFromParts(_,t,e){let n=0,g=0,o=0;for(let s=t.length-1;0<=s;s--){const i=t[s],l=e[s];g|=i<<o,o+=l,30===o?(_.__setDigit(n++,g),o=0,g=0):30<o&&(_.__setDigit(n++,1073741823&g),o-=30,g=i>>>l-o)}if(0!==g){if(n>=_.length)throw new Error("implementation bug");_.__setDigit(n++,g)}for(;n<_.length;n++)_.__setDigit(n,0)}static __toStringBasePowerOfTwo(_,i){const t=_.length;let e=i-1;e=(85&e>>>1)+(85&e),e=(51&e>>>2)+(51&e),e=(15&e>>>4)+(15&e);const n=e,g=i-1,o=_.__digit(t-1),s=JSBI.__clz30(o);let l=0|(30*t-s+n-1)/n;if(_.sign&&l++,268435456<l)throw new Error("string too long");const r=Array(l);let a=l-1,u=0,d=0;for(let e=0;e<t-1;e++){const i=_.__digit(e),t=(u|i<<d)&g;r[a--]=JSBI.__kConversionChars[t];const o=n-d;for(u=i>>>o,d=30-o;d>=n;)r[a--]=JSBI.__kConversionChars[u&g],u>>>=n,d-=n}const h=(u|o<<d)&g;for(r[a--]=JSBI.__kConversionChars[h],u=o>>>n-d;0!==u;)r[a--]=JSBI.__kConversionChars[u&g],u>>>=n;if(_.sign&&(r[a--]="-"),-1!=a)throw new Error("implementation bug");return r.join("")}static __toStringGeneric(_,i,t){const e=_.length;if(0===e)return"";if(1===e){let e=_.__unsignedDigit(0).toString(i);return!1===t&&_.sign&&(e="-"+e),e}const n=30*e-JSBI.__clz30(_.__digit(e-1)),g=JSBI.__kMaxBitsPerChar[i],o=g-1;let s=n*JSBI.__kBitsPerCharTableMultiplier;s+=o-1,s=0|s/o;const l=s+1>>1,r=JSBI.exponentiate(JSBI.__oneDigit(i,!1),JSBI.__oneDigit(l,!1));let a,u;const d=r.__unsignedDigit(0);if(1===r.length&&32767>=d){a=new JSBI(_.length,!1),a.__initializeDigits();let t=0;for(let e=2*_.length-1;0<=e;e--){const i=t<<15|_.__halfDigit(e);a.__setHalfDigit(e,0|i/d),t=0|i%d}u=t.toString(i)}else{const t=JSBI.__absoluteDivLarge(_,r,!0,!0);a=t.quotient;const e=t.remainder.__trim();u=JSBI.__toStringGeneric(e,i,!0)}a.__trim();let h=JSBI.__toStringGeneric(a,i,!0);for(;u.length<l;)u="0"+u;return!1===t&&_.sign&&(h="-"+h),h+u}static __unequalSign(i){return i?-1:1}static __absoluteGreater(i){return i?-1:1}static __absoluteLess(i){return i?1:-1}static __compareToBigInt(i,_){const t=i.sign;if(t!==_.sign)return JSBI.__unequalSign(t);const e=JSBI.__absoluteCompare(i,_);return 0<e?JSBI.__absoluteGreater(t):0>e?JSBI.__absoluteLess(t):0}static __compareToNumber(i,_){if(JSBI.__isOneDigitInt(_)){const t=i.sign,e=0>_;if(t!==e)return JSBI.__unequalSign(t);if(0===i.length){if(e)throw new Error("implementation bug");return 0===_?0:-1}if(1<i.length)return JSBI.__absoluteGreater(t);const n=Math.abs(_),g=i.__unsignedDigit(0);return g>n?JSBI.__absoluteGreater(t):g<n?JSBI.__absoluteLess(t):0}return JSBI.__compareToDouble(i,_)}static __compareToDouble(i,_){if(_!==_)return _;if(_===1/0)return-1;if(_===-Infinity)return 1;const t=i.sign;if(t!==0>_)return JSBI.__unequalSign(t);if(0===_)throw new Error("implementation bug: should be handled elsewhere");if(0===i.length)return-1;JSBI.__kBitConversionDouble[0]=_;const e=2047&JSBI.__kBitConversionInts[JSBI.__kBitConversionIntHigh]>>>20;if(2047==e)throw new Error("implementation bug: handled elsewhere");const n=e-1023;if(0>n)return JSBI.__absoluteGreater(t);const g=i.length;let o=i.__digit(g-1);const s=JSBI.__clz30(o),l=30*g-s,r=n+1;if(l<r)return JSBI.__absoluteLess(t);if(l>r)return JSBI.__absoluteGreater(t);let a=1048576|1048575&JSBI.__kBitConversionInts[JSBI.__kBitConversionIntHigh],u=JSBI.__kBitConversionInts[JSBI.__kBitConversionIntLow];const d=20,h=29-s;if(h!==(0|(l-1)%30))throw new Error("implementation bug");let m,b=0;if(20>h){const i=d-h;b=i+32,m=a>>>i,a=a<<32-i|u>>>i,u<<=32-i}else if(20===h)b=32,m=a,a=u,u=0;else{const i=h-d;b=32-i,m=a<<i|u>>>32-i,a=u<<i,u=0}if(o>>>=0,m>>>=0,o>m)return JSBI.__absoluteGreater(t);if(o<m)return JSBI.__absoluteLess(t);for(let e=g-2;0<=e;e--){0<b?(b-=30,m=a>>>2,a=a<<30|u>>>2,u<<=30):m=0;const _=i.__unsignedDigit(e);if(_>m)return JSBI.__absoluteGreater(t);if(_<m)return JSBI.__absoluteLess(t)}if(0!==a||0!==u){if(0===b)throw new Error("implementation bug");return JSBI.__absoluteLess(t)}return 0}static __equalToNumber(i,_){var t=Math.abs;return JSBI.__isOneDigitInt(_)?0===_?0===i.length:1===i.length&&i.sign===0>_&&i.__unsignedDigit(0)===t(_):0===JSBI.__compareToDouble(i,_)}static __comparisonResultToBool(i,_){return 0===_?0>i:1===_?0>=i:2===_?0<i:3===_?0<=i:void 0}static __compare(i,_,t){if(i=JSBI.__toPrimitive(i),_=JSBI.__toPrimitive(_),"string"==typeof i&&"string"==typeof _)switch(t){case 0:return i<_;case 1:return i<=_;case 2:return i>_;case 3:return i>=_}if(JSBI.__isBigInt(i)&&"string"==typeof _)return _=JSBI.__fromString(_),null!==_&&JSBI.__comparisonResultToBool(JSBI.__compareToBigInt(i,_),t);if("string"==typeof i&&JSBI.__isBigInt(_))return i=JSBI.__fromString(i),null!==i&&JSBI.__comparisonResultToBool(JSBI.__compareToBigInt(i,_),t);if(i=JSBI.__toNumeric(i),_=JSBI.__toNumeric(_),JSBI.__isBigInt(i)){if(JSBI.__isBigInt(_))return JSBI.__comparisonResultToBool(JSBI.__compareToBigInt(i,_),t);if("number"!=typeof _)throw new Error("implementation bug");return JSBI.__comparisonResultToBool(JSBI.__compareToNumber(i,_),t)}if("number"!=typeof i)throw new Error("implementation bug");if(JSBI.__isBigInt(_))return JSBI.__comparisonResultToBool(JSBI.__compareToNumber(_,i),2^t);if("number"!=typeof _)throw new Error("implementation bug");return 0===t?i<_:1===t?i<=_:2===t?i>_:3===t?i>=_:void 0}__clzmsd(){return JSBI.__clz30(this.__digit(this.length-1))}static __absoluteAdd(_,t,e){if(_.length<t.length)return JSBI.__absoluteAdd(t,_,e);if(0===_.length)return _;if(0===t.length)return _.sign===e?_:JSBI.unaryMinus(_);let n=_.length;(0===_.__clzmsd()||t.length===_.length&&0===t.__clzmsd())&&n++;const g=new JSBI(n,e);let o=0,s=0;for(;s<t.length;s++){const i=_.__digit(s)+t.__digit(s)+o;o=i>>>30,g.__setDigit(s,1073741823&i)}for(;s<_.length;s++){const i=_.__digit(s)+o;o=i>>>30,g.__setDigit(s,1073741823&i)}return s<g.length&&g.__setDigit(s,o),g.__trim()}static __absoluteSub(_,t,e){if(0===_.length)return _;if(0===t.length)return _.sign===e?_:JSBI.unaryMinus(_);const n=new JSBI(_.length,e);let g=0,o=0;for(;o<t.length;o++){const i=_.__digit(o)-t.__digit(o)-g;g=1&i>>>30,n.__setDigit(o,1073741823&i)}for(;o<_.length;o++){const i=_.__digit(o)-g;g=1&i>>>30,n.__setDigit(o,1073741823&i)}return n.__trim()}static __absoluteAddOne(_,i,t=null){const e=_.length;null===t?t=new JSBI(e,i):t.sign=i;let n=1;for(let g=0;g<e;g++){const i=_.__digit(g)+n;n=i>>>30,t.__setDigit(g,1073741823&i)}return 0!=n&&t.__setDigitGrow(e,1),t}static __absoluteSubOne(_,t){const e=_.length;t=t||e;const n=new JSBI(t,!1);let g=1;for(let o=0;o<e;o++){const i=_.__digit(o)-g;g=1&i>>>30,n.__setDigit(o,1073741823&i)}if(0!=g)throw new Error("implementation bug");for(let g=e;g<t;g++)n.__setDigit(g,0);return n}static __absoluteAnd(_,t,e=null){let n=_.length,g=t.length,o=g;if(n<g){o=n;const i=_,e=n;_=t,n=g,t=i,g=e}let s=o;null===e?e=new JSBI(s,!1):s=e.length;let l=0;for(;l<o;l++)e.__setDigit(l,_.__digit(l)&t.__digit(l));for(;l<s;l++)e.__setDigit(l,0);return e}static __absoluteAndNot(_,t,e=null){const n=_.length,g=t.length;let o=g;n<g&&(o=n);let s=n;null===e?e=new JSBI(s,!1):s=e.length;let l=0;for(;l<o;l++)e.__setDigit(l,_.__digit(l)&~t.__digit(l));for(;l<n;l++)e.__setDigit(l,_.__digit(l));for(;l<s;l++)e.__setDigit(l,0);return e}static __absoluteOr(_,t,e=null){let n=_.length,g=t.length,o=g;if(n<g){o=n;const i=_,e=n;_=t,n=g,t=i,g=e}let s=n;null===e?e=new JSBI(s,!1):s=e.length;let l=0;for(;l<o;l++)e.__setDigit(l,_.__digit(l)|t.__digit(l));for(;l<n;l++)e.__setDigit(l,_.__digit(l));for(;l<s;l++)e.__setDigit(l,0);return e}static __absoluteXor(_,t,e=null){let n=_.length,g=t.length,o=g;if(n<g){o=n;const i=_,e=n;_=t,n=g,t=i,g=e}let s=n;null===e?e=new JSBI(s,!1):s=e.length;let l=0;for(;l<o;l++)e.__setDigit(l,_.__digit(l)^t.__digit(l));for(;l<n;l++)e.__setDigit(l,_.__digit(l));for(;l<s;l++)e.__setDigit(l,0);return e}static __absoluteCompare(_,t){const e=_.length-t.length;if(0!=e)return e;let n=_.length-1;for(;0<=n&&_.__digit(n)===t.__digit(n);)n--;return 0>n?0:_.__unsignedDigit(n)>t.__unsignedDigit(n)?1:-1}static __multiplyAccumulate(_,t,e,n){if(0===t)return;const g=32767&t,o=t>>>15;let s=0,l=0;for(let r,a=0;a<_.length;a++,n++){r=e.__digit(n);const i=_.__digit(a),t=32767&i,u=i>>>15,d=JSBI.__imul(t,g),h=JSBI.__imul(t,o),m=JSBI.__imul(u,g),b=JSBI.__imul(u,o);r+=l+d+s,s=r>>>30,r&=1073741823,r+=((32767&h)<<15)+((32767&m)<<15),s+=r>>>30,l=b+(h>>>15)+(m>>>15),e.__setDigit(n,1073741823&r)}for(;0!=s||0!==l;n++){let i=e.__digit(n);i+=s+l,l=0,s=i>>>30,e.__setDigit(n,1073741823&i)}}static __internalMultiplyAdd(_,t,e,g,o){let s=e,l=0;for(let n=0;n<g;n++){const i=_.__digit(n),e=JSBI.__imul(32767&i,t),g=JSBI.__imul(i>>>15,t),a=e+((32767&g)<<15)+l+s;s=a>>>30,l=g>>>15,o.__setDigit(n,1073741823&a)}if(o.length>g)for(o.__setDigit(g++,s+l);g<o.length;)o.__setDigit(g++,0);else if(0!==s+l)throw new Error("implementation bug")}__inplaceMultiplyAdd(i,_,t){t>this.length&&(t=this.length);const e=32767&i,n=i>>>15;let g=0,o=_;for(let s=0;s<t;s++){const i=this.__digit(s),_=32767&i,t=i>>>15,l=JSBI.__imul(_,e),r=JSBI.__imul(_,n),a=JSBI.__imul(t,e),u=JSBI.__imul(t,n);let d=o+l+g;g=d>>>30,d&=1073741823,d+=((32767&r)<<15)+((32767&a)<<15),g+=d>>>30,o=u+(r>>>15)+(a>>>15),this.__setDigit(s,1073741823&d)}if(0!=g||0!==o)throw new Error("implementation bug")}static __absoluteDivSmall(_,t,e=null){null===e&&(e=new JSBI(_.length,!1));let n=0;for(let g,o=2*_.length-1;0<=o;o-=2){g=(n<<15|_.__halfDigit(o))>>>0;const i=0|g/t;n=0|g%t,g=(n<<15|_.__halfDigit(o-1))>>>0;const s=0|g/t;n=0|g%t,e.__setDigit(o>>>1,i<<15|s)}return e}static __absoluteModSmall(_,t){let e=0;for(let n=2*_.length-1;0<=n;n--){const i=(e<<15|_.__halfDigit(n))>>>0;e=0|i%t}return e}static __absoluteDivLarge(i,_,t,e){const g=_.__halfDigitLength(),n=_.length,o=i.__halfDigitLength()-g;let s=null;t&&(s=new JSBI(o+2>>>1,!1),s.__initializeDigits());const l=new JSBI(g+2>>>1,!1);l.__initializeDigits();const r=JSBI.__clz15(_.__halfDigit(g-1));0<r&&(_=JSBI.__specialLeftShift(_,r,0));const a=JSBI.__specialLeftShift(i,r,1),u=_.__halfDigit(g-1);let d=0;for(let r,h=o;0<=h;h--){r=32767;const i=a.__halfDigit(h+g);if(i!==u){const t=(i<<15|a.__halfDigit(h+g-1))>>>0;r=0|t/u;let e=0|t%u;const n=_.__halfDigit(g-2),o=a.__halfDigit(h+g-2);for(;JSBI.__imul(r,n)>>>0>(e<<16|o)>>>0&&(r--,e+=u,!(32767<e)););}JSBI.__internalMultiplyAdd(_,r,0,n,l);let e=a.__inplaceSub(l,h,g+1);0!==e&&(e=a.__inplaceAdd(_,h,g),a.__setHalfDigit(h+g,32767&a.__halfDigit(h+g)+e),r--),t&&(1&h?d=r<<15:s.__setDigit(h>>>1,d|r))}if(e)return a.__inplaceRightShift(r),t?{quotient:s,remainder:a}:a;if(t)return s;throw new Error("unreachable")}static __clz15(i){return JSBI.__clz30(i)-15}__inplaceAdd(_,t,e){let n=0;for(let g=0;g<e;g++){const i=this.__halfDigit(t+g)+_.__halfDigit(g)+n;n=i>>>15,this.__setHalfDigit(t+g,32767&i)}return n}__inplaceSub(_,t,e){let n=0;if(1&t){t>>=1;let g=this.__digit(t),o=32767&g,s=0;for(;s<e-1>>>1;s++){const i=_.__digit(s),e=(g>>>15)-(32767&i)-n;n=1&e>>>15,this.__setDigit(t+s,(32767&e)<<15|32767&o),g=this.__digit(t+s+1),o=(32767&g)-(i>>>15)-n,n=1&o>>>15}const i=_.__digit(s),l=(g>>>15)-(32767&i)-n;n=1&l>>>15,this.__setDigit(t+s,(32767&l)<<15|32767&o);if(t+s+1>=this.length)throw new RangeError("out of bounds");0==(1&e)&&(g=this.__digit(t+s+1),o=(32767&g)-(i>>>15)-n,n=1&o>>>15,this.__setDigit(t+_.length,1073709056&g|32767&o))}else{t>>=1;let g=0;for(;g<_.length-1;g++){const i=this.__digit(t+g),e=_.__digit(g),o=(32767&i)-(32767&e)-n;n=1&o>>>15;const s=(i>>>15)-(e>>>15)-n;n=1&s>>>15,this.__setDigit(t+g,(32767&s)<<15|32767&o)}const i=this.__digit(t+g),o=_.__digit(g),s=(32767&i)-(32767&o)-n;n=1&s>>>15;let l=0;0==(1&e)&&(l=(i>>>15)-(o>>>15)-n,n=1&l>>>15),this.__setDigit(t+g,(32767&l)<<15|32767&s)}return n}__inplaceRightShift(_){if(0===_)return;let t=this.__digit(0)>>>_;const e=this.length-1;for(let n=0;n<e;n++){const i=this.__digit(n+1);this.__setDigit(n,1073741823&i<<30-_|t),t=i>>>_}this.__setDigit(e,t)}static __specialLeftShift(_,t,e){const g=_.length,n=new JSBI(g+e,!1);if(0===t){for(let t=0;t<g;t++)n.__setDigit(t,_.__digit(t));return 0<e&&n.__setDigit(g,0),n}let o=0;for(let s=0;s<g;s++){const i=_.__digit(s);n.__setDigit(s,1073741823&i<<t|o),o=i>>>30-t}return 0<e&&n.__setDigit(g,o),n}static __leftShiftByAbsolute(_,i){const t=JSBI.__toShiftAmount(i);if(0>t)throw new RangeError("BigInt too big");const e=0|t/30,n=t%30,g=_.length,o=0!==n&&0!=_.__digit(g-1)>>>30-n,s=g+e+(o?1:0),l=new JSBI(s,_.sign);if(0===n){let t=0;for(;t<e;t++)l.__setDigit(t,0);for(;t<s;t++)l.__setDigit(t,_.__digit(t-e))}else{let t=0;for(let _=0;_<e;_++)l.__setDigit(_,0);for(let o=0;o<g;o++){const i=_.__digit(o);l.__setDigit(o+e,1073741823&i<<n|t),t=i>>>30-n}if(o)l.__setDigit(g+e,t);else if(0!==t)throw new Error("implementation bug")}return l.__trim()}static __rightShiftByAbsolute(_,i){const t=_.length,e=_.sign,n=JSBI.__toShiftAmount(i);if(0>n)return JSBI.__rightShiftByMaximum(e);const g=0|n/30,o=n%30;let s=t-g;if(0>=s)return JSBI.__rightShiftByMaximum(e);let l=!1;if(e){if(0!=(_.__digit(g)&(1<<o)-1))l=!0;else for(let t=0;t<g;t++)if(0!==_.__digit(t)){l=!0;break}}if(l&&0===o){const i=_.__digit(t-1);0==~i&&s++}let r=new JSBI(s,e);if(0===o){r.__setDigit(s-1,0);for(let e=g;e<t;e++)r.__setDigit(e-g,_.__digit(e))}else{let e=_.__digit(g)>>>o;const n=t-g-1;for(let t=0;t<n;t++){const i=_.__digit(t+g+1);r.__setDigit(t,1073741823&i<<30-o|e),e=i>>>o}r.__setDigit(n,e)}return l&&(r=JSBI.__absoluteAddOne(r,!0,r)),r.__trim()}static __rightShiftByMaximum(i){return i?JSBI.__oneDigit(1,!0):JSBI.__zero()}static __toShiftAmount(i){if(1<i.length)return-1;const _=i.__unsignedDigit(0);return _>JSBI.__kMaxLengthBits?-1:_}static __toPrimitive(i,_="default"){if("object"!=typeof i)return i;if(i.constructor===JSBI)return i;if("undefined"!=typeof Symbol&&"symbol"==typeof Symbol.toPrimitive&&i[Symbol.toPrimitive]){const t=i[Symbol.toPrimitive](_);if("object"!=typeof t)return t;throw new TypeError("Cannot convert object to primitive value")}const t=i.valueOf;if(t){const _=t.call(i);if("object"!=typeof _)return _}const e=i.toString;if(e){const _=e.call(i);if("object"!=typeof _)return _}throw new TypeError("Cannot convert object to primitive value")}static __toNumeric(i){return JSBI.__isBigInt(i)?i:+i}static __isBigInt(i){return"object"==typeof i&&null!==i&&i.constructor===JSBI}static __truncateToNBits(i,_){const t=0|(i+29)/30,e=new JSBI(t,_.sign),n=t-1;for(let t=0;t<n;t++)e.__setDigit(t,_.__digit(t));let g=_.__digit(n);if(0!=i%30){const _=32-i%30;g=g<<_>>>_}return e.__setDigit(n,g),e.__trim()}static __truncateAndSubFromPowerOfTwo(_,t,e){var n=Math.min;const g=0|(_+29)/30,o=new JSBI(g,e);let s=0;const l=g-1;let a=0;for(const i=n(l,t.length);s<i;s++){const i=0-t.__digit(s)-a;a=1&i>>>30,o.__setDigit(s,1073741823&i)}for(;s<l;s++)o.__setDigit(s,0|1073741823&-a);let u=l<t.length?t.__digit(l):0;const d=_%30;let h;if(0==d)h=0-u-a,h&=1073741823;else{const i=32-d;u=u<<i>>>i;const _=1<<32-i;h=_-u-a,h&=_-1}return o.__setDigit(l,h),o.__trim()}__digit(_){return this[_]}__unsignedDigit(_){return this[_]>>>0}__setDigit(_,i){this[_]=0|i}__setDigitGrow(_,i){this[_]=0|i}__halfDigitLength(){const i=this.length;return 32767>=this.__unsignedDigit(i-1)?2*i-1:2*i}__halfDigit(_){return 32767&this[_>>>1]>>>15*(1&_)}__setHalfDigit(_,i){const t=_>>>1,e=this.__digit(t),n=1&_?32767&e|i<<15:1073709056&e|32767&i;this.__setDigit(t,n)}static __digitPow(i,_){let t=1;for(;0<_;)1&_&&(t*=i),_>>>=1,i*=i;return t}static __detectBigEndian(){return JSBI.__kBitConversionDouble[0]=-0,0!==JSBI.__kBitConversionInts[0]}static __isOneDigitInt(i){return(1073741823&i)===i}}JSBI.__kMaxLength=33554432,JSBI.__kMaxLengthBits=JSBI.__kMaxLength<<5,JSBI.__kMaxBitsPerChar=[0,0,32,51,64,75,83,90,96,102,107,111,115,119,122,126,128,131,134,136,139,141,143,145,147,149,151,153,154,156,158,159,160,162,163,165,166],JSBI.__kBitsPerCharTableShift=5,JSBI.__kBitsPerCharTableMultiplier=1<<JSBI.__kBitsPerCharTableShift,JSBI.__kConversionChars=["0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"],JSBI.__kBitConversionBuffer=new ArrayBuffer(8),JSBI.__kBitConversionDouble=new Float64Array(JSBI.__kBitConversionBuffer),JSBI.__kBitConversionInts=new Int32Array(JSBI.__kBitConversionBuffer),JSBI.__kBitConversionIntHigh=JSBI.__detectBigEndian()?0:1,JSBI.__kBitConversionIntLow=JSBI.__detectBigEndian()?1:0,JSBI.__clz30=Math.clz32?function(i){return Math.clz32(i)-2}:function(i){return 0===i?30:0|29-(0|Math.log(i>>>0)/Math.LN2)},JSBI.__imul=Math.imul||function(i,_){return 0|i*_},module.exports=JSBI;
+//# sourceMappingURL=jsbi-cjs.js.map
+
+
+/***/ }),
+
+/***/ 5560:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var wrappy = __nccwpck_require__(8264)
+module.exports = wrappy(once)
+module.exports.strict = wrappy(onceStrict)
+
+once.proto = once(function () {
+  Object.defineProperty(Function.prototype, 'once', {
+    value: function () {
+      return once(this)
+    },
+    configurable: true
+  })
+
+  Object.defineProperty(Function.prototype, 'onceStrict', {
+    value: function () {
+      return onceStrict(this)
+    },
+    configurable: true
+  })
+})
+
+function once (fn) {
+  var f = function () {
+    if (f.called) return f.value
+    f.called = true
+    return f.value = fn.apply(this, arguments)
+  }
+  f.called = false
+  return f
+}
+
+function onceStrict (fn) {
+  var f = function () {
+    if (f.called)
+      throw new Error(f.onceError)
+    f.called = true
+    return f.value = fn.apply(this, arguments)
+  }
+  var name = fn.name || 'Function wrapped with `once`'
+  f.onceError = name + " shouldn't be called more than once"
+  f.called = false
+  return f
+}
+
 
 /***/ }),
 
@@ -25643,6 +31708,72 @@ module.exports = {
 
 /***/ }),
 
+/***/ 3843:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+function getUserAgent() {
+  if (typeof navigator === "object" && "userAgent" in navigator) {
+    return navigator.userAgent;
+  }
+
+  if (typeof process === "object" && process.version !== undefined) {
+    return `Node.js/${process.version.substr(1)} (${process.platform}; ${process.arch})`;
+  }
+
+  return "<environment undetectable>";
+}
+
+exports.getUserAgent = getUserAgent;
+//# sourceMappingURL=index.js.map
+
+
+/***/ }),
+
+/***/ 8264:
+/***/ ((module) => {
+
+// Returns a wrapper function that returns a wrapped callback
+// The wrapper function should do some stuff, and return a
+// presumably different callback function.
+// This makes sure that own properties are retained, so that
+// decorations and such are not lost along the way.
+module.exports = wrappy
+function wrappy (fn, cb) {
+  if (fn && cb) return wrappy(fn)(cb)
+
+  if (typeof fn !== 'function')
+    throw new TypeError('need wrapper function')
+
+  Object.keys(fn).forEach(function (k) {
+    wrapper[k] = fn[k]
+  })
+
+  return wrapper
+
+  function wrapper() {
+    var args = new Array(arguments.length)
+    for (var i = 0; i < args.length; i++) {
+      args[i] = arguments[i]
+    }
+    var ret = fn.apply(this, args)
+    var cb = args[args.length-1]
+    if (typeof ret === 'function' && ret !== cb) {
+      Object.keys(cb).forEach(function (k) {
+        ret[k] = cb[k]
+      })
+    }
+    return ret
+  }
+}
+
+
+/***/ }),
+
 /***/ 1730:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -25684,7 +31815,173 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const node_util_1 = __nccwpck_require__(7975);
 const core = __importStar(__nccwpck_require__(7484));
-async function main() { }
+const github_1 = __nccwpck_require__(3228);
+const plugin_request_log_1 = __nccwpck_require__(6966);
+const plugin_throttling_1 = __nccwpck_require__(4759);
+const polyfill_1 = __nccwpck_require__(7946);
+class Owner {
+    constructor(github, name) {
+        this.github = github;
+        this.name = name;
+    }
+}
+class Package {
+    constructor(owner, name) {
+        this.owner = owner;
+        this.name = name;
+    }
+    get github() {
+        return this.owner.github;
+    }
+}
+class UserPackage extends Package {
+    listVersions() {
+        const { github } = this;
+        return github.paginate.iterator(github.rest.packages.getAllPackageVersionsForPackageOwnedByUser, {
+            username: this.owner.name,
+            package_name: this.name,
+            package_type: 'container',
+            per_page: 100,
+        });
+    }
+    deleteVersion(id) {
+        return this.github.rest.packages.deletePackageVersionForUser({
+            username: this.owner.name,
+            package_name: this.name,
+            package_type: 'container',
+            package_version_id: id,
+        });
+    }
+}
+class User extends Owner {
+    getPackage(packageName) {
+        return new UserPackage(this, packageName);
+    }
+}
+class OrgPackage extends Package {
+    listVersions() {
+        return this.github.paginate.iterator(this.github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg, {
+            org: this.owner.name,
+            package_name: this.name,
+            package_type: 'container',
+            per_page: 100,
+        });
+    }
+    deleteVersion(id) {
+        return this.github.rest.packages.deletePackageVersionForOrg({
+            org: this.owner.name,
+            package_name: this.name,
+            package_type: 'container',
+            package_version_id: id,
+        });
+    }
+}
+class Organization extends Owner {
+    getPackage(packageName) {
+        return new OrgPackage(this, packageName);
+    }
+}
+async function getOwner(github, name) {
+    const ownerTypes = {
+        User,
+        Organization,
+    };
+    const user = await github.rest.users.getByUsername({ username: name });
+    const ownerType = ownerTypes[user.data.type];
+    if (!ownerType) {
+        throw new Error(`Owner type should be ${Object.keys(ownerTypes).join(' or ')}. Got ${JSON.stringify(name)} instead`);
+    }
+    return new ownerType(github, name);
+}
+function parseDuration(value) {
+    try {
+        return polyfill_1.Temporal.Duration.from(/^[Pp+-]/.test(value) ? value : `P${value}`);
+    }
+    catch (ex) {
+        throw new Error(`Can't parse ${JSON.stringify(value)} as duration: ${String(ex)}`);
+    }
+}
+function isVersionOutdated(version, untaggedRetentionDuration) {
+    const metadata = version.metadata?.container;
+    if (!metadata) {
+        throw new Error('Missing container metadata');
+    }
+    const now = polyfill_1.Temporal.Now.instant();
+    const age = polyfill_1.Temporal.Instant.from(version.updated_at).until(now);
+    return (metadata.tags.length === 0 &&
+        polyfill_1.Temporal.Duration.compare(age, untaggedRetentionDuration) === 1);
+}
+async function processVersion(pkg, version, untaggedRetentionDuration, dryRun) {
+    try {
+        if (isVersionOutdated(version, untaggedRetentionDuration)) {
+            if (dryRun) {
+                core.notice(`Would delete ${pkg.name} ${version.name}`);
+            }
+            else {
+                await pkg.deleteVersion(version.id);
+                core.notice(`Deleted ${pkg.name} ${version.name}`);
+            }
+            return true;
+        }
+        core.info(`Keeping ${pkg.name} ${version.name}`);
+    }
+    catch (ex) {
+        core.error(`Processing ${pkg.name} ${version.name} failed: ${String(ex)}`);
+    }
+    finally {
+        core.debug(JSON.stringify(version, null, ' '));
+    }
+    return false;
+}
+async function main() {
+    const token = core.getInput('github-token', { required: true });
+    const dryRun = core.getBooleanInput('dry-run', { required: true });
+    const ownerName = core.getInput('owner', { required: true });
+    const packageName = core.getInput('name', { required: true });
+    const untaggedRetentionDuration = parseDuration(core.getInput('untagged-retention-duration', {
+        required: true,
+    }));
+    const log = {
+        debug: core.isDebug()
+            ? console.debug.bind(console)
+            : (..._args) => { },
+        info: console.info.bind(console),
+        warn: console.warn.bind(console),
+        error: console.error.bind(console),
+    };
+    const throttle = {
+        onRateLimit: (retryAfter, options, octokit, retryCount) => {
+            const baseWarn = `Request quota exhausted for request ${options.method} ${options.url}`;
+            if (retryCount < 1) {
+                octokit.log.warn(`${baseWarn}. Will retry after ${retryAfter} seconds!`);
+                return true;
+            }
+            else {
+                octokit.log.warn(`${baseWarn}. Retry limit exceeded!`);
+            }
+        },
+        onSecondaryRateLimit: (retryAfter, options, octokit) => {
+            octokit.log.warn(`Secondary rate limit detected for request ${options.method} ${options.url}`);
+        },
+    };
+    const github = (0, github_1.getOctokit)(token, { log, throttle }, plugin_request_log_1.requestLog, plugin_throttling_1.throttling);
+    const owner = await getOwner(github, ownerName);
+    const pkg = owner.getPackage(packageName);
+    const deleted = [];
+    try {
+        for await (const response of pkg.listVersions()) {
+            await Promise.allSettled(response.data.map(version => processVersion(pkg, version, untaggedRetentionDuration, dryRun).then(value => {
+                if (value) {
+                    deleted.push(version);
+                }
+            })));
+        }
+    }
+    finally {
+        core.setOutput('deleted-count', deleted.length);
+        core.setOutput('deleted-json', JSON.stringify(deleted, null, ' '));
+    }
+}
 main().catch((error) => {
     core.setFailed(String(error));
     core.debug((0, node_util_1.inspect)(error));
@@ -27562,6 +33859,16 @@ function parseParams (str) {
 }
 
 module.exports = parseParams
+
+
+/***/ }),
+
+/***/ 7946:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+var e=__nccwpck_require__(4742);const t=e.BigInt(0),n=e.BigInt(1),r=e.BigInt(2),o=e.BigInt(10),i=e.BigInt(24),a=e.BigInt(60),s=e.BigInt(1e3),c=e.BigInt(1e6),d=e.BigInt(1e9),h=e.multiply(e.BigInt(3600),d),u=e.multiply(a,d),l=e.multiply(h,i);function m(t){return"bigint"==typeof t?e.BigInt(t.toString(10)):t}function f(n){return e.equal(e.remainder(n,r),t)}function y(n){return e.lessThan(n,t)?e.unaryMinus(n):n}function p(t,n){return e.lessThan(t,n)?-1:e.greaterThan(t,n)?1:0}function g(t,n){return{quotient:e.divide(t,n),remainder:e.remainder(t,n)}}var w,v;const b="slot-epochNanoSeconds",D="slot-iso-date",T="slot-iso-date-time",M="slot-time",E="slot-calendar",I="slot-date-brand",C="slot-year-month-brand",O="slot-month-day-brand",$="slot-time-zone",Y="slot-years",R="slot-months",S="slot-weeks",j="slot-days",k="slot-hours",N="slot-minutes",x="slot-seconds",L="slot-milliseconds",P="slot-microseconds",U="slot-nanoseconds",B="date",Z="ym",F="md",H="time",z="datetime",A="instant",q="original",W="timezone-canonical",_="timezone-original",J="calendar-id",G="locale",K="options",V=new WeakMap,X=Symbol.for("@@Temporal__GetSlots");(w=globalThis)[X]||(w[X]=function(e){return V.get(e)});const Q=globalThis[X],ee=Symbol.for("@@Temporal__CreateSlots");(v=globalThis)[ee]||(v[ee]=function(e){V.set(e,Object.create(null))});const te=globalThis[ee];function ne(e,...t){if(!e||"object"!=typeof e)return!1;const n=Q(e);return!!n&&t.every((e=>e in n))}function re(e,t){const n=Q(e)?.[t];if(void 0===n)throw new TypeError(`Missing internal slot ${t}`);return n}function oe(e,t,n){const r=Q(e);if(void 0===r)throw new TypeError("Missing slots for the given container");if(r[t])throw new TypeError(`${t} already has set`);r[t]=n}const ie={};function ae(e,t){Object.defineProperty(e.prototype,Symbol.toStringTag,{value:t,writable:!1,enumerable:!1,configurable:!0});const n=Object.getOwnPropertyNames(e);for(let t=0;t<n.length;t++){const r=n[t],o=Object.getOwnPropertyDescriptor(e,r);o.configurable&&o.enumerable&&(o.enumerable=!1,Object.defineProperty(e,r,o))}const r=Object.getOwnPropertyNames(e.prototype);for(let t=0;t<r.length;t++){const n=r[t],o=Object.getOwnPropertyDescriptor(e.prototype,n);o.configurable&&o.enumerable&&(o.enumerable=!1,Object.defineProperty(e.prototype,n,o))}se(t,e),se(`${t}.prototype`,e.prototype)}function se(e,t){const n=`%${e}%`;if(void 0!==ie[n])throw new Error(`intrinsic ${e} already exists`);ie[n]=t}function ce(e){return ie[e]}function de(e,t){let n=e;if(0===n)return{div:n,mod:n};const r=Math.sign(n);n=Math.abs(n);const o=Math.trunc(1+Math.log10(n));if(t>=o)return{div:0*r,mod:r*n};if(0===t)return{div:r*n,mod:0*r};const i=n.toPrecision(o);return{div:r*Number.parseInt(i.slice(0,o-t),10),mod:r*Number.parseInt(i.slice(o-t),10)}}function he(e,t,n){let r=e,o=n;if(0===r)return o;const i=Math.sign(r)||Math.sign(o);r=Math.abs(r),o=Math.abs(o);const a=r.toPrecision(Math.trunc(1+Math.log10(r)));if(0===o)return i*Number.parseInt(a+"0".repeat(t),10);const s=a+o.toPrecision(Math.trunc(1+Math.log10(o))).padStart(t,"0");return i*Number.parseInt(s,10)}function ue(e,t){const n="negative"===t;switch(e){case"ceil":return n?"zero":"infinity";case"floor":return n?"infinity":"zero";case"expand":return"infinity";case"trunc":return"zero";case"halfCeil":return n?"half-zero":"half-infinity";case"halfFloor":return n?"half-infinity":"half-zero";case"halfExpand":return"half-infinity";case"halfTrunc":return"half-zero";case"halfEven":return"half-even"}}function le(e,t,n,r,o){return"zero"===o?e:"infinity"===o?t:n<0?e:n>0?t:"half-zero"===o?e:"half-infinity"===o?t:r?e:t}class TimeDuration{constructor(t){this.totalNs=m(t),this.sec=e.toNumber(e.divide(this.totalNs,d)),this.subsec=e.toNumber(e.remainder(this.totalNs,d))}static validateNew(t,n){if(e.greaterThan(y(t),TimeDuration.MAX))throw new RangeError(`${n} of duration time units cannot exceed ${TimeDuration.MAX} s`);return new TimeDuration(t)}static fromEpochNsDiff(t,n){const r=e.subtract(m(t),m(n));return new TimeDuration(r)}static fromComponents(t,n,r,o,i,a){const l=e.add(e.add(e.add(e.add(e.add(e.BigInt(a),e.multiply(e.BigInt(i),s)),e.multiply(e.BigInt(o),c)),e.multiply(e.BigInt(r),d)),e.multiply(e.BigInt(n),u)),e.multiply(e.BigInt(t),h));return TimeDuration.validateNew(l,"total")}abs(){return new TimeDuration(y(this.totalNs))}add(t){return TimeDuration.validateNew(e.add(this.totalNs,t.totalNs),"sum")}add24HourDays(t){return TimeDuration.validateNew(e.add(this.totalNs,e.multiply(e.BigInt(t),l)),"sum")}addToEpochNs(t){return e.add(m(t),this.totalNs)}cmp(e){return p(this.totalNs,e.totalNs)}divmod(t){const{quotient:n,remainder:r}=g(this.totalNs,e.BigInt(t));return{quotient:e.toNumber(n),remainder:new TimeDuration(r)}}fdiv(n){const r=m(n),i=e.BigInt(r);let{quotient:a,remainder:s}=g(this.totalNs,i);const c=[];let d;const h=(e.lessThan(this.totalNs,t)?-1:1)*Math.sign(e.toNumber(r));for(;!e.equal(s,t)&&c.length<50;)s=e.multiply(s,o),({quotient:d,remainder:s}=g(s,i)),c.push(Math.abs(e.toNumber(d)));return h*Number(y(a).toString()+"."+c.join(""))}isZero(){return e.equal(this.totalNs,t)}round(o,i){const a=m(o);if(e.equal(a,n))return this;const{quotient:s,remainder:c}=g(this.totalNs,a),d=e.lessThan(this.totalNs,t)?"negative":"positive",h=e.multiply(y(s),a),u=e.add(h,a),l=p(y(e.multiply(c,r)),a),w=ue(i,d),v=e.equal(y(this.totalNs),h)?h:le(h,u,l,f(s),w),b="positive"===d?v:e.unaryMinus(v);return TimeDuration.validateNew(b,"rounding")}sign(){return this.cmp(new TimeDuration(t))}subtract(t){return TimeDuration.validateNew(e.subtract(this.totalNs,t.totalNs),"difference")}}TimeDuration.MAX=e.BigInt("9007199254740991999999999"),TimeDuration.ZERO=new TimeDuration(t);const me=/[A-Za-z._][A-Za-z._0-9+-]*/,fe=new RegExp(`(?:${/(?:[+-](?:[01][0-9]|2[0-3])(?::?[0-5][0-9])?)/.source}|(?:${me.source})(?:\\/(?:${me.source}))*)`),ye=/(?:[+-]\d{6}|\d{4})/,pe=/(?:0[1-9]|1[0-2])/,ge=/(?:0[1-9]|[12]\d|3[01])/,we=new RegExp(`(${ye.source})(?:-(${pe.source})-(${ge.source})|(${pe.source})(${ge.source}))`),ve=/(\d{2})(?::(\d{2})(?::(\d{2})(?:[.,](\d{1,9}))?)?|(\d{2})(?:(\d{2})(?:[.,](\d{1,9}))?)?)?/,be=/((?:[+-])(?:[01][0-9]|2[0-3])(?::?(?:[0-5][0-9])(?::?(?:[0-5][0-9])(?:[.,](?:\d{1,9}))?)?)?)/,De=new RegExp(`([zZ])|${be.source}?`),Te=/\[(!)?([a-z_][a-z0-9_-]*)=([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\]/g,Me=new RegExp([`^${we.source}`,`(?:(?:[tT]|\\s+)${ve.source}(?:${De.source})?)?`,`(?:\\[!?(${fe.source})\\])?`,`((?:${Te.source})*)$`].join("")),Ee=new RegExp([`^[tT]?${ve.source}`,`(?:${De.source})?`,`(?:\\[!?${fe.source}\\])?`,`((?:${Te.source})*)$`].join("")),Ie=new RegExp(`^(${ye.source})-?(${pe.source})(?:\\[!?${fe.source}\\])?((?:${Te.source})*)$`),Ce=new RegExp(`^(?:--)?(${pe.source})-?(${ge.source})(?:\\[!?${fe.source}\\])?((?:${Te.source})*)$`),Oe=/(\d+)(?:[.,](\d{1,9}))?/,$e=new RegExp(`(?:${Oe.source}H)?(?:${Oe.source}M)?(?:${Oe.source}S)?`),Ye=new RegExp(`^([+-])?P${/(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?/.source}(?:T(?!$)${$e.source})?$`,"i"),Re=864e5,Se=1e6*Re,je=6e10,ke=1e8*Re,Ne=xo(ke),xe=e.unaryMinus(Ne),Le=e.add(e.subtract(xe,l),n),Pe=e.subtract(e.add(Ne,l),n),Ue=146097*Re,Be=-271821,Ze=275760,Fe=Date.UTC(1847,0,1),He=["iso8601","hebrew","islamic","islamic-umalqura","islamic-tbla","islamic-civil","islamic-rgsa","islamicc","persian","ethiopic","ethioaa","ethiopic-amete-alem","coptic","chinese","dangi","roc","indian","buddhist","japanese","gregory"],ze=new Set(["ACT","AET","AGT","ART","AST","BET","BST","CAT","CNT","CST","CTT","EAT","ECT","IET","IST","JST","MIT","NET","NST","PLT","PNT","PRT","PST","SST","VST"]);function Ae(e){return"object"==typeof e&&null!==e||"function"==typeof e}function qe(e){if("bigint"==typeof e)throw new TypeError("Cannot convert BigInt to number");return Number(e)}function We(e){if("symbol"==typeof e)throw new TypeError("Cannot convert a Symbol value to a String");return String(e)}function _e(e){const t=qe(e);if(0===t)return 0;if(Number.isNaN(t)||t===1/0||t===-1/0)throw new RangeError("invalid number value");const n=Math.trunc(t);return 0===n?0:n}function Je(e,t){const n=_e(e);if(n<=0){if(void 0!==t)throw new RangeError(`property '${t}' cannot be a a number less than one`);throw new RangeError("Cannot convert a number less than one to a positive integer")}return n}function Ge(e){const t=qe(e);if(Number.isNaN(t))throw new RangeError("not a number");if(t===1/0||t===-1/0)throw new RangeError("infinity is out of range");if(!function(e){if("number"!=typeof e||Number.isNaN(e)||e===1/0||e===-1/0)return!1;const t=Math.abs(e);return Math.floor(t)===t}(t))throw new RangeError(`unsupported fractional value ${e}`);return 0===t?0:t}function Ke(e,t){return String(e).padStart(t,"0")}function Ve(e){if("string"!=typeof e)throw new TypeError(`expected a string, not ${String(e)}`);return e}function Xe(e,t){if(Ae(e)){const t=e?.toString();if("string"==typeof t||"number"==typeof t)return t;throw new TypeError("Cannot convert object to primitive value")}return e}const Qe=["era","eraYear","year","month","monthCode","day","hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],et={era:We,eraYear:_e,year:_e,month:Je,monthCode:function(e){const t=Ve(Xe(e));if(t.length<3||t.length>4||"M"!==t[0]||-1==="0123456789".indexOf(t[1])||-1==="0123456789".indexOf(t[2])||t[1]+t[2]==="00"&&"L"!==t[3]||"L"!==t[3]&&void 0!==t[3])throw new RangeError(`bad month code ${t}; must match M01-M99 or M00L-M99L`);return t},day:Je,hour:_e,minute:_e,second:_e,millisecond:_e,microsecond:_e,nanosecond:_e,offset:function(e){const t=Ve(Xe(e));return sr(t),t},timeZone:Bn},tt={hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},nt=[["years","year","date"],["months","month","date"],["weeks","week","date"],["days","day","date"],["hours","hour","time"],["minutes","minute","time"],["seconds","second","time"],["milliseconds","millisecond","time"],["microseconds","microsecond","time"],["nanoseconds","nanosecond","time"]],rt=Object.fromEntries(nt.map((e=>[e[0],e[1]]))),ot=Object.fromEntries(nt.map((([e,t])=>[t,e]))),it=nt.map((([,e])=>e)),at={day:Se,hour:36e11,minute:6e10,second:1e9,millisecond:1e6,microsecond:1e3,nanosecond:1},st=["days","hours","microseconds","milliseconds","minutes","months","nanoseconds","seconds","weeks","years"],ct=Intl.DateTimeFormat,dt=new Map;function ht(e){const t=Ao(e);let n=dt.get(t);return void 0===n&&(n=new ct("en-us",{timeZone:t,hour12:!1,era:"short",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"}),dt.set(t,n)),n}function ut(e){return ne(e,b)&&!ne(e,$,E)}function lt(e){return ne(e,Y,R,j,k,N,x,L,P,U)}function mt(e){return ne(e,I)}function ft(e){return ne(e,M)}function yt(e){return ne(e,T)}function pt(e){return ne(e,C)}function gt(e){return ne(e,O)}function wt(e){return ne(e,b,$,E)}function vt(e,t){if(!t(e))throw new TypeError("invalid receiver: method called with the wrong type of this-object")}function bt(e){if(ne(e,E)||ne(e,$))throw new TypeError("with() does not support a calendar or timeZone property");if(ft(e))throw new TypeError("with() does not accept Temporal.PlainTime, use withPlainTime() instead");if(void 0!==e.calendar)throw new TypeError("with() does not support a calendar property");if(void 0!==e.timeZone)throw new TypeError("with() does not support a timeZone property")}function Dt(e,t){return"never"===t||"auto"===t&&"iso8601"===e?"":`[${"critical"===t?"!":""}u-ca=${e}]`}function Tt(e){let t,n,r=!1;for(Te.lastIndex=0;n=Te.exec(e);){const{1:o,2:i,3:a}=n;if("u-ca"===i){if(void 0===t)t=a,r="!"===o;else if("!"===o||r)throw new RangeError(`Invalid annotations in ${e}: more than one u-ca present with critical flag`)}else if("!"===o)throw new RangeError(`Unrecognized annotation: !${i}=${a}`)}return t}function Mt(e){const t=Me.exec(e);if(!t)throw new RangeError(`invalid RFC 9557 string: ${e}`);const n=Tt(t[16]);let r=t[1];if("-000000"===r)throw new RangeError(`invalid RFC 9557 string: ${e}`);const o=+r,i=+(t[2]??t[4]??1),a=+(t[3]??t[5]??1),s=void 0!==t[6],c=+(t[6]??0),d=+(t[7]??t[10]??0);let h=+(t[8]??t[11]??0);60===h&&(h=59);const u=(t[9]??t[12]??"")+"000000000",l=+u.slice(0,3),m=+u.slice(3,6),f=+u.slice(6,9);let y,p=!1;t[13]?(y=void 0,p=!0):t[14]&&(y=t[14]);const g=t[15];return Ur(o,i,a,c,d,h,l,m,f),{year:o,month:i,day:a,time:s?{hour:c,minute:d,second:h,millisecond:l,microsecond:m,nanosecond:f}:"start-of-day",tzAnnotation:g,offset:y,z:p,calendar:n}}function Et(e){const t=Ee.exec(e);let n,r,o,i,a,s,c;if(t){c=Tt(t[10]),n=+(t[1]??0),r=+(t[2]??t[5]??0),o=+(t[3]??t[6]??0),60===o&&(o=59);const e=(t[4]??t[7]??"")+"000000000";if(i=+e.slice(0,3),a=+e.slice(3,6),s=+e.slice(6,9),t[8])throw new RangeError("Z designator not supported for PlainTime")}else{let t,d;if(({time:t,z:d,calendar:c}=Mt(e)),"start-of-day"===t)throw new RangeError(`time is missing in string: ${e}`);if(d)throw new RangeError("Z designator not supported for PlainTime");({hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s}=t)}if(Pr(n,r,o,i,a,s),/[tT ][0-9][0-9]/.test(e))return{hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s,calendar:c};try{const{month:t,day:n}=Ct(e);xr(1972,t,n)}catch{try{const{year:t,month:n}=It(e);xr(t,n,1)}catch{return{hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s,calendar:c}}}throw new RangeError(`invalid RFC 9557 time-only string ${e}; may need a T prefix`)}function It(e){const t=Ie.exec(e);let n,r,o,i;if(t){o=Tt(t[3]);let a=t[1];if("-000000"===a)throw new RangeError(`invalid RFC 9557 string: ${e}`);if(n=+a,r=+t[2],i=1,void 0!==o&&"iso8601"!==o)throw new RangeError("YYYY-MM format is only valid with iso8601 calendar")}else{let t;if(({year:n,month:r,calendar:o,day:i,z:t}=Mt(e)),t)throw new RangeError("Z designator not supported for PlainYearMonth")}return{year:n,month:r,calendar:o,referenceISODay:i}}function Ct(e){const t=Ce.exec(e);let n,r,o,i;if(t){if(o=Tt(t[3]),n=+t[1],r=+t[2],void 0!==o&&"iso8601"!==o)throw new RangeError("MM-DD format is only valid with iso8601 calendar")}else{let t;if(({month:n,day:r,calendar:o,year:i,z:t}=Mt(e)),t)throw new RangeError("Z designator not supported for PlainMonthDay")}return{month:n,day:r,calendar:o,referenceISOYear:i}}const Ot=new RegExp(`^${fe.source}$`,"i"),$t=new RegExp(`^${/([+-])([01][0-9]|2[0-3])(?::?([0-5][0-9])?)?/.source}$`);function Yt(e){const t=Wo.test(e)?"Seconds not allowed in offset time zone":"Invalid time zone";throw new RangeError(`${t}: ${e}`)}function Rt(e){return Ot.test(e)||Yt(e),$t.test(e)?{offsetMinutes:sr(e)/6e10}:{tzName:e}}function St(e,t,n,r){let o=e,i=t,a=n;switch(r){case"reject":xr(o,i,a);break;case"constrain":({year:o,month:i,day:a}=kr(o,i,a))}return{year:o,month:i,day:a}}function jt(e,t,n,r,o,i,a){let s=e,c=t,d=n,h=r,u=o,l=i;switch(a){case"reject":Pr(s,c,d,h,u,l);break;case"constrain":s=jr(s,0,23),c=jr(c,0,59),d=jr(d,0,59),h=jr(h,0,999),u=jr(u,0,999),l=jr(l,0,999)}return{hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}function kt(e){if(!Ae(e))throw new TypeError("invalid duration-like");const t={years:void 0,months:void 0,weeks:void 0,days:void 0,hours:void 0,minutes:void 0,seconds:void 0,milliseconds:void 0,microseconds:void 0,nanoseconds:void 0};let n=!1;for(let r=0;r<st.length;r++){const o=st[r],i=e[o];void 0!==i&&(n=!0,t[o]=Ge(i))}if(!n)throw new TypeError("invalid duration-like");return t}function Nt({years:e,months:t,weeks:n,days:r},o,i,a){return{years:e,months:a??t,weeks:i??n,days:o??r}}function xt(e,t){return{isoDate:e,time:t}}function Lt(e){return Ho(e,"overflow",["constrain","reject"],"constrain")}function Pt(e){return Ho(e,"disambiguation",["compatible","earlier","later","reject"],"compatible")}function Ut(e,t){return Ho(e,"roundingMode",["ceil","floor","expand","trunc","halfCeil","halfFloor","halfExpand","halfTrunc","halfEven"],t)}function Bt(e,t){return Ho(e,"offset",["prefer","use","ignore","reject"],t)}function Zt(e){return Ho(e,"calendarName",["auto","always","never","critical"],"auto")}function Ft(e){let t=e.roundingIncrement;if(void 0===t)return 1;const n=_e(t);if(n<1||n>1e9)throw new RangeError(`roundingIncrement must be at least 1 and at most 1e9, not ${t}`);return n}function Ht(e,t,n){const r=n?t:t-1;if(e>r)throw new RangeError(`roundingIncrement must be at least 1 and less than ${r}, not ${e}`);if(t%e!=0)throw new RangeError(`Rounding increment must divide evenly into ${t}`)}function zt(e){const t=e.fractionalSecondDigits;if(void 0===t)return"auto";if("number"!=typeof t){if("auto"!==We(t))throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`);return"auto"}const n=Math.floor(t);if(!Number.isFinite(n)||n<0||n>9)throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`);return n}function At(e,t){switch(e){case"minute":return{precision:"minute",unit:"minute",increment:1};case"second":return{precision:0,unit:"second",increment:1};case"millisecond":return{precision:3,unit:"millisecond",increment:1};case"microsecond":return{precision:6,unit:"microsecond",increment:1};case"nanosecond":return{precision:9,unit:"nanosecond",increment:1}}switch(t){case"auto":return{precision:t,unit:"nanosecond",increment:1};case 0:return{precision:t,unit:"second",increment:1};case 1:case 2:case 3:return{precision:t,unit:"millisecond",increment:10**(3-t)};case 4:case 5:case 6:return{precision:t,unit:"microsecond",increment:10**(6-t)};case 7:case 8:case 9:return{precision:t,unit:"nanosecond",increment:10**(9-t)};default:throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`)}}const qt=Symbol("~required~");function Wt(e,t,n,r,o=[]){let i=[];for(let e=0;e<nt.length;e++){const t=nt[e],r=t[1],o=t[2];"datetime"!==n&&n!==o||i.push(r)}i=i.concat(o);let a=r;a===qt?a=void 0:void 0!==a&&i.push(a);let s=[];s=s.concat(i);for(let e=0;e<i.length;e++){const t=i[e],n=ot[t];void 0!==n&&s.push(n)}let c=Ho(e,t,s,a);if(void 0===c&&r===qt)throw new RangeError(`${t} is required`);return c&&c in rt?rt[c]:c}function _t(e){const t=e.relativeTo;if(void 0===t)return{};let n,r,o,i,a,s="option",c=!1;if(Ae(t)){if(wt(t))return{zonedRelativeTo:t};if(mt(t))return{plainRelativeTo:t};if(yt(t))return{plainRelativeTo:pn(re(t,T).isoDate,re(t,E))};o=Nn(t);const e=tn(o,t,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],[]);({isoDate:n,time:r}=on(o,e,"constrain")),({offset:a,timeZone:i}=e),void 0===a&&(s="wall")}else{let e,d,h,u,l;if(({year:h,month:u,day:l,time:r,calendar:o,tzAnnotation:e,offset:a,z:d}=Mt(Ve(t))),e)i=Bn(e),d?s="exact":a||(s="wall"),c=!0;else if(d)throw new RangeError("Z designator not supported for PlainDate relativeTo; either remove the Z or add a bracketed time zone");o||(o="iso8601"),o=zo(o),n={year:h,month:u,day:l}}return void 0===i?{plainRelativeTo:pn(n,o)}:{zonedRelativeTo:$n(mn(n,r,s,"option"===s?sr(a):0,i,"compatible","reject",c),i,o)}}function Jt(e){return 0!==re(e,Y)?"year":0!==re(e,R)?"month":0!==re(e,S)?"week":0!==re(e,j)?"day":0!==re(e,k)?"hour":0!==re(e,N)?"minute":0!==re(e,x)?"second":0!==re(e,L)?"millisecond":0!==re(e,P)?"microsecond":"nanosecond"}function Gt(e,t){return it.indexOf(e)>it.indexOf(t)?t:e}function Kt(e){return"year"===e||"month"===e||"week"===e}function Vt(e){return Kt(e)||"day"===e?"date":"time"}function Xt(e){return ce("%calendarImpl%")(e)}function Qt(e){return ce("%calendarImpl%")(re(e,E))}function en(e,t,n="date"){const r=Object.create(null),o=Xt(e).isoToDate(t,{year:!0,monthCode:!0,day:!0});return r.monthCode=o.monthCode,"month-day"!==n&&"date"!==n||(r.day=o.day),"year-month"!==n&&"date"!==n||(r.year=o.year),r}function tn(e,t,n,r,o){const i=Xt(e).extraFields(n),a=n.concat(r,i),s=Object.create(null);let c=!1;a.sort();for(let e=0;e<a.length;e++){const n=a[e],r=t[n];if(void 0!==r)c=!0,s[n]=(0,et[n])(r);else if("partial"!==o){if(o.includes(n))throw new TypeError(`required property '${n}' missing or undefined`);s[n]=tt[n]}}if("partial"===o&&!c)throw new TypeError("no supported properties found");return s}function nn(e,t="complete"){const n=["hour","microsecond","millisecond","minute","nanosecond","second"];let r=!1;const o=Object.create(null);for(let i=0;i<n.length;i++){const a=n[i],s=e[a];void 0!==s?(o[a]=_e(s),r=!0):"complete"===t&&(o[a]=0)}if(!r)throw new TypeError("invalid time-like");return o}function rn(e,t){if(Ae(e)){if(mt(e))return Lt(Zo(t)),pn(re(e,D),re(e,E));if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),pn(n.isoDate,re(e,E))}if(yt(e))return Lt(Zo(t)),pn(re(e,T).isoDate,re(e,E));const n=Nn(e);return pn(Ln(n,tn(n,e,["year","month","monthCode","day"],[],[]),Lt(Zo(t))),n)}let{year:n,month:r,day:o,calendar:i,z:a}=Mt(Ve(e));if(a)throw new RangeError("Z designator not supported for PlainDate");return i||(i="iso8601"),i=zo(i),Lt(Zo(t)),pn({year:n,month:r,day:o},i)}function on(e,t,n){return xt(Ln(e,t,n),jt(t.hour,t.minute,t.second,t.millisecond,t.microsecond,t.nanosecond,n))}function an(e,t){let n,r,o;if(Ae(e)){if(yt(e))return Lt(Zo(t)),wn(re(e,T),re(e,E));if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),wn(n,re(e,E))}if(mt(e))return Lt(Zo(t)),wn(xt(re(e,D),{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),re(e,E));o=Nn(e);const i=tn(o,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond"],[]),a=Lt(Zo(t));({isoDate:n,time:r}=on(o,i,a))}else{let i,a,s,c;if(({year:a,month:s,day:c,time:r,calendar:o,z:i}=Mt(Ve(e))),i)throw new RangeError("Z designator not supported for PlainDateTime");"start-of-day"===r&&(r={deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),Ur(a,s,c,r.hour,r.minute,r.second,r.millisecond,r.microsecond,r.nanosecond),o||(o="iso8601"),o=zo(o),Lt(Zo(t)),n={year:a,month:s,day:c}}return wn(xt(n,r),o)}function sn(e){const t=ce("%Temporal.Duration%");if(lt(e))return new t(re(e,Y),re(e,R),re(e,S),re(e,j),re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U));if(!Ae(e))return function(e){const{years:t,months:n,weeks:r,days:o,hours:i,minutes:a,seconds:s,milliseconds:c,microseconds:d,nanoseconds:h}=function(e){const t=Ye.exec(e);if(!t)throw new RangeError(`invalid duration: ${e}`);if(t.every(((e,t)=>t<2||void 0===e)))throw new RangeError(`invalid duration: ${e}`);const n="-"===t[1]?-1:1,r=void 0===t[2]?0:_e(t[2])*n,o=void 0===t[3]?0:_e(t[3])*n,i=void 0===t[4]?0:_e(t[4])*n,a=void 0===t[5]?0:_e(t[5])*n,s=void 0===t[6]?0:_e(t[6])*n,c=t[7],d=t[8],h=t[9],u=t[10],l=t[11];let m=0,f=0,y=0;if(void 0!==c){if(d??h??u??l)throw new RangeError("only the smallest unit can be fractional");y=3600*_e((c+"000000000").slice(0,9))*n}else if(m=void 0===d?0:_e(d)*n,void 0!==h){if(u??l)throw new RangeError("only the smallest unit can be fractional");y=60*_e((h+"000000000").slice(0,9))*n}else f=void 0===u?0:_e(u)*n,void 0!==l&&(y=_e((l+"000000000").slice(0,9))*n);const p=y%1e3,g=Math.trunc(y/1e3)%1e3,w=Math.trunc(y/1e6)%1e3;return f+=Math.trunc(y/1e9)%60,m+=Math.trunc(y/6e10),zr(r,o,i,a,s,m,f,w,g,p),{years:r,months:o,weeks:i,days:a,hours:s,minutes:m,seconds:f,milliseconds:w,microseconds:g,nanoseconds:p}}(e);return new(ce("%Temporal.Duration%"))(t,n,r,o,i,a,s,c,d,h)}(Ve(e));const n={years:0,months:0,weeks:0,days:0,hours:0,minutes:0,seconds:0,milliseconds:0,microseconds:0,nanoseconds:0};let r=kt(e);for(let e=0;e<st.length;e++){const t=st[e],o=r[t];void 0!==o&&(n[t]=o)}return new t(n.years,n.months,n.weeks,n.days,n.hours,n.minutes,n.seconds,n.milliseconds,n.microseconds,n.nanoseconds)}function cn(e){let t;if(Ae(e)){if(ut(e)||wt(e))return Cn(re(e,b));t=Xe(e)}else t=e;const{year:n,month:r,day:o,time:i,offset:a,z:s}=function(e){const t=Mt(e);if(!t.z&&!t.offset)throw new RangeError("Temporal.Instant requires a time zone offset");return t}(Ve(t)),{hour:c=0,minute:d=0,second:h=0,millisecond:u=0,microsecond:l=0,nanosecond:m=0}="start-of-day"===i?{}:i,f=$r(n,r,o,c,d,h,u,l,m-(s?0:sr(a)));return Kr(f.isoDate),Cn(pr(f))}function dn(e,t){if(Ae(e)){if(gt(e))return Lt(Zo(t)),bn(re(e,D),re(e,E));let n;return ne(e,E)?n=re(e,E):(n=e.calendar,void 0===n&&(n="iso8601"),n=kn(n)),bn(Un(n,tn(n,e,["year","month","monthCode","day"],[],[]),Lt(Zo(t))),n)}let{month:n,day:r,referenceISOYear:o,calendar:i}=Ct(Ve(e));if(void 0===i&&(i="iso8601"),i=zo(i),Lt(Zo(t)),"iso8601"===i)return bn({year:1972,month:n,day:r},i);let a={year:o,month:n,day:r};return Lr(a),a=Un(i,en(i,a,"month-day"),"constrain"),bn(a,i)}function hn(e,t){let n;if(Ae(e)){if(ft(e))return Lt(Zo(t)),Tn(re(e,M));if(yt(e))return Lt(Zo(t)),Tn(re(e,T).time);if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),Tn(n.time)}const{hour:r,minute:o,second:i,millisecond:a,microsecond:s,nanosecond:c}=nn(e);n=jt(r,o,i,a,s,c,Lt(Zo(t)))}else n=Et(Ve(e)),Lt(Zo(t));return Tn(n)}function un(e){return void 0===e?{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}:re(hn(e),M)}function ln(e,t){if(Ae(e)){if(pt(e))return Lt(Zo(t)),En(re(e,D),re(e,E));const n=Nn(e);return En(Pn(n,tn(n,e,["year","month","monthCode"],[],[]),Lt(Zo(t))),n)}let{year:n,month:r,referenceISODay:o,calendar:i}=It(Ve(e));void 0===i&&(i="iso8601"),i=zo(i),Lt(Zo(t));let a={year:n,month:r,day:o};return Hr(a),a=Pn(i,en(i,a,"year-month"),"constrain"),En(a,i)}function mn(t,n,r,o,i,a,s,c){if("start-of-day"===n)return _n(i,t);const d=xt(t,n);if("wall"===r||"ignore"===s)return An(i,d,a);if("exact"===r||"use"===s){const e=$r(t.year,t.month,t.day,n.hour,n.minute,n.second,n.millisecond,n.microsecond,n.nanosecond-o);Kr(e.isoDate);const r=pr(e);return Fr(r),r}Kr(t);const h=pr(d),u=Wn(i,d);for(let t=0;t<u.length;t++){const n=u[t],r=e.toNumber(e.subtract(h,n)),i=Eo(r,6e10,"halfExpand");if(r===o||c&&i===o)return n}if("reject"===s){const e=Hn(o),t=nr(d,"iso8601","auto");throw new RangeError(`Offset ${e} is invalid for ${t} in ${i}`)}return qn(u,i,d,a)}function fn(e,t){let n,r,o,i,a,s,c,d=!1,h="option";if(Ae(e)){if(wt(e)){const n=Zo(t);return Pt(n),Bt(n,"reject"),Lt(n),$n(re(e,b),re(e,$),re(e,E))}a=Nn(e);const d=tn(a,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],["timeZone"]);({offset:i,timeZone:o}=d),void 0===i&&(h="wall");const u=Zo(t);s=Pt(u),c=Bt(u,"reject");const l=Lt(u);({isoDate:n,time:r}=on(a,d,l))}else{let u,l,m,f,y;({year:m,month:f,day:y,time:r,tzAnnotation:u,offset:i,z:l,calendar:a}=function(e){const t=Mt(e);if(!t.tzAnnotation)throw new RangeError("Temporal.ZonedDateTime requires a time zone ID in brackets");return t}(Ve(e))),o=Bn(u),l?h="exact":i||(h="wall"),a||(a="iso8601"),a=zo(a),d=!0;const p=Zo(t);s=Pt(p),c=Bt(p,"reject"),Lt(p),n={year:m,month:f,day:y}}let u=0;return"option"===h&&(u=sr(i)),$n(mn(n,r,h,u,o,s,c,d),o,a)}function yn(e,t,n){Lr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,I,!0)}function pn(e,t){const n=ce("%Temporal.PlainDate%"),r=Object.create(n.prototype);return yn(r,e,t),r}function gn(e,t,n){Br(t),te(e),oe(e,T,t),oe(e,E,n)}function wn(e,t){const n=ce("%Temporal.PlainDateTime%"),r=Object.create(n.prototype);return gn(r,e,t),r}function vn(e,t,n){Lr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,O,!0)}function bn(e,t){const n=ce("%Temporal.PlainMonthDay%"),r=Object.create(n.prototype);return vn(r,e,t),r}function Dn(e,t){te(e),oe(e,M,t)}function Tn(e){const t=ce("%Temporal.PlainTime%"),n=Object.create(t.prototype);return Dn(n,e),n}function Mn(e,t,n){Hr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,C,!0)}function En(e,t){const n=ce("%Temporal.PlainYearMonth%"),r=Object.create(n.prototype);return Mn(r,e,t),r}function In(e,t){Fr(t),te(e),oe(e,b,t)}function Cn(e){const t=ce("%Temporal.Instant%"),n=Object.create(t.prototype);return In(n,e),n}function On(e,t,n,r){Fr(t),te(e),oe(e,b,t),oe(e,$,n),oe(e,E,r)}function $n(e,t,n="iso8601"){const r=ce("%Temporal.ZonedDateTime%"),o=Object.create(r.prototype);return On(o,e,t,n),o}function Yn(e){return Qe.filter((t=>void 0!==e[t]))}function Rn(e,t,n){const r=Yn(n),o=Xt(e).fieldKeysToIgnore(r),i=Object.create(null),a=Yn(t);for(let e=0;e<Qe.length;e++){let s;const c=Qe[e];a.includes(c)&&!o.includes(c)&&(s=t[c]),r.includes(c)&&(s=n[c]),void 0!==s&&(i[c]=s)}return i}function Sn(e,t,n,r){const o=Xt(e).dateAdd(t,n,r);return Lr(o),o}function jn(e,t,n,r){return Xt(e).dateUntil(t,n,r)}function kn(e){if(Ae(e)&&ne(e,E))return re(e,E);const t=Ve(e);try{return zo(t)}catch{}let n;try{({calendar:n}=Mt(t))}catch{try{({calendar:n}=Et(t))}catch{try{({calendar:n}=It(t))}catch{({calendar:n}=Ct(t))}}}return n||(n="iso8601"),zo(n)}function Nn(e){if(ne(e,E))return re(e,E);const{calendar:t}=e;return void 0===t?"iso8601":kn(t)}function xn(e,t){return zo(e)===zo(t)}function Ln(e,t,n){const r=Xt(e);r.resolveFields(t,"date");const o=r.dateToISO(t,n);return Lr(o),o}function Pn(e,t,n){const r=Xt(e);r.resolveFields(t,"year-month"),t.day=1;const o=r.dateToISO(t,n);return Hr(o),o}function Un(e,t,n){const r=Xt(e);r.resolveFields(t,"month-day");const o=r.monthDayToISOReferenceDate(t,n);return Lr(o),o}function Bn(e){if(Ae(e)&&wt(e))return re(e,$);const t=Ve(e);if("UTC"===t)return"UTC";const{tzName:n,offsetMinutes:r}=function(e){const{tzAnnotation:t,offset:n,z:r}=function(e){if(Ot.test(e))return{tzAnnotation:e,offset:void 0,z:!1};try{const{tzAnnotation:t,offset:n,z:r}=Mt(e);if(r||t||n)return{tzAnnotation:t,offset:n,z:r}}catch{}Yt(e)}(e);return t?Rt(t):r?Rt("UTC"):n?Rt(n):void 0}(t);if(void 0!==r)return mr(r);const o=hr(n);if(!o)throw new RangeError(`Unrecognized time zone ${n}`);return o.identifier}function Zn(e,t){if(e===t)return!0;const n=Rt(e).offsetMinutes,r=Rt(t).offsetMinutes;if(void 0===n&&void 0===r){const n=hr(t);if(!n)return!1;const r=hr(e);return!!r&&r.primaryIdentifier===n.primaryIdentifier}return n===r}function Fn(e,t){const n=Rt(e).offsetMinutes;return void 0!==n?6e10*n:lr(e,t)}function Hn(e){const t=e<0?"-":"+",n=Math.abs(e),r=Math.floor(n/36e11),o=Math.floor(n/6e10)%60,i=Math.floor(n/1e9)%60,a=n%1e9;return`${t}${Vn(r,o,i,a,0===i&&0===a?"minute":"auto")}`}function zn(e,t){const n=Fn(e,t);let{isoDate:{year:r,month:o,day:i},time:{hour:a,minute:s,second:c,millisecond:d,microsecond:h,nanosecond:u}}=gr(t);return $r(r,o,i,a,s,c,d,h,u+n)}function An(e,t,n){return qn(Wn(e,t),e,t,n)}function qn(t,n,r,o){const i=t.length;if(1===i)return t[0];if(i)switch(o){case"compatible":case"earlier":return t[0];case"later":return t[i-1];case"reject":throw new RangeError("multiple instants found")}if("reject"===o)throw new RangeError("multiple instants found");const a=pr(r),s=e.subtract(a,l);Fr(s);const c=Fn(n,s),d=e.add(a,l);Fr(d);const h=Fn(n,d)-c;switch(o){case"earlier":{const e=TimeDuration.fromComponents(0,0,0,0,0,-h),t=fo(r.time,e);return Wn(n,xt(Or(r.isoDate.year,r.isoDate.month,r.isoDate.day+t.deltaDays),t))[0]}case"compatible":case"later":{const e=TimeDuration.fromComponents(0,0,0,0,0,h),t=fo(r.time,e),o=Wn(n,xt(Or(r.isoDate.year,r.isoDate.month,r.isoDate.day+t.deltaDays),t));return o[o.length-1]}}}function Wn(t,n){if("UTC"===t)return Kr(n.isoDate),[pr(n)];const r=Rt(t).offsetMinutes;if(void 0!==r){const e=$r(n.isoDate.year,n.isoDate.month,n.isoDate.day,n.time.hour,n.time.minute-r,n.time.second,n.time.millisecond,n.time.microsecond,n.time.nanosecond);Kr(e.isoDate);const t=pr(e);return Fr(t),[t]}return Kr(n.isoDate),function(t,n){let r=pr(n),o=e.subtract(r,l);e.lessThan(o,xe)&&(o=r);let i=e.add(r,l);e.greaterThan(i,Ne)&&(i=r);const a=lr(t,o),s=lr(t,i),c=(a===s?[a]:[a,s]).map((o=>{const i=e.subtract(r,e.BigInt(o)),a=function(e,t){const{epochMilliseconds:n,time:{millisecond:r,microsecond:o,nanosecond:i}}=gr(t),{year:a,month:s,day:c,hour:d,minute:h,second:u}=br(e,n);return $r(a,s,c,d,h,u,r,o,i)}(t,i);if(0===jo(n,a))return Fr(i),i}));return c.filter((e=>void 0!==e))}(t,n)}function _n(t,n){const r=xt(n,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),o=Wn(t,r);if(o.length)return o[0];const i=pr(r),a=e.subtract(i,l);return Fr(a),wr(t,a)}function Jn(e){let t;return t=e<0||e>9999?(e<0?"-":"+")+Ke(Math.abs(e),6):Ke(e,4),t}function Gn(e){return Ke(e,2)}function Kn(e,t){let n;if("auto"===t){if(0===e)return"";n=Ke(e,9).replace(/0+$/,"")}else{if(0===t)return"";n=Ke(e,9).slice(0,t)}return`.${n}`}function Vn(e,t,n,r,o){let i=`${Gn(e)}:${Gn(t)}`;return"minute"===o||(i+=`:${Gn(n)}`,i+=Kn(r,o)),i}function Xn(e,t,n){let r=t;void 0===r&&(r="UTC");const o=re(e,b),i=nr(zn(r,o),"iso8601",n,"never");let a="Z";return void 0!==t&&(a=fr(Fn(r,o))),`${i}${a}`}function Qn(e,t){const n=re(e,Y),r=re(e,R),o=re(e,S),i=re(e,j),a=re(e,k),s=re(e,N),c=Mr(e);let d="";0!==n&&(d+=`${Math.abs(n)}Y`),0!==r&&(d+=`${Math.abs(r)}M`),0!==o&&(d+=`${Math.abs(o)}W`),0!==i&&(d+=`${Math.abs(i)}D`);let h="";0!==a&&(h+=`${Math.abs(a)}H`),0!==s&&(h+=`${Math.abs(s)}M`);const u=TimeDuration.fromComponents(0,0,re(e,x),re(e,L),re(e,P),re(e,U));u.isZero()&&!["second","millisecond","microsecond","nanosecond"].includes(Jt(e))&&"auto"===t||(h+=`${Math.abs(u.sec)}${Kn(Math.abs(u.subsec),t)}S`);let l=`${c<0?"-":""}P${d}`;return h&&(l=`${l}T${h}`),l}function er(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);return`${Jn(n)}-${Gn(r)}-${Gn(o)}${Dt(re(e,E),t)}`}function tr({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a){return Vn(e,t,n,1e6*r+1e3*o+i,a)}function nr(e,t,n,r="auto"){const{isoDate:{year:o,month:i,day:a},time:{hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}=e;return`${Jn(o)}-${Gn(i)}-${Gn(a)}T${Vn(s,c,d,1e6*h+1e3*u+l,n)}${Dt(t,r)}`}function rr(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);let i=`${Gn(r)}-${Gn(o)}`;const a=re(e,E);"always"!==t&&"critical"!==t&&"iso8601"===a||(i=`${Jn(n)}-${i}`);const s=Dt(a,t);return s&&(i+=s),i}function or(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);let i=`${Jn(n)}-${Gn(r)}`;const a=re(e,E);"always"!==t&&"critical"!==t&&"iso8601"===a||(i+=`-${Gn(o)}`);const s=Dt(a,t);return s&&(i+=s),i}function ir(e,t,n="auto",r="auto",o="auto",i=void 0){let a=re(e,b);if(i){const{unit:e,increment:t,roundingMode:n}=i;a=Io(a,t,e,n)}const s=re(e,$),c=Fn(s,a);let d=nr(zn(s,a),"iso8601",t,"never");return"never"!==o&&(d+=fr(c)),"never"!==r&&(d+=`[${"critical"===r?"!":""}${s}]`),d+=Dt(re(e,E),n),d}function ar(e){return $t.test(e)}function sr(e){const t=_o.exec(e);if(!t)throw new RangeError(`invalid time zone offset: ${e}; must match ±HH:MM[:SS.SSSSSSSSS]`);return("-"===t[1]?-1:1)*(1e9*(60*(60*+t[2]+ +(t[3]||0))+ +(t[4]||0))+ +((t[5]||0)+"000000000").slice(0,9))}let cr;const dr=Object.assign(Object.create(null),{"/":!0,"-":!0,_:!0});function hr(e){if(void 0===cr){const e=Intl.supportedValuesOf?.("timeZone");if(e){cr=new Map;for(let t=0;t<e.length;t++){const n=e[t];cr.set(Ao(n),n)}}else cr=null}const t=Ao(e);let n=cr?.get(t);if(n)return{identifier:n,primaryIdentifier:n};try{n=ht(e).resolvedOptions().timeZone}catch{return}if("antarctica/south_pole"===t&&(n="Antarctica/McMurdo"),ze.has(e))throw new RangeError(`${e} is a legacy time zone identifier from ICU. Use ${n} instead`);const r=[...t].map(((e,n)=>0===n||dr[t[n-1]]?e.toUpperCase():e)).join("").split("/");if(1===r.length)return"gb-eire"===t?{identifier:"GB-Eire",primaryIdentifier:n}:{identifier:t.length<=3||/[-0-9]/.test(t)?t.toUpperCase():r[0],primaryIdentifier:n};if("Etc"===r[0])return{identifier:`Etc/${["Zulu","Greenwich","Universal"].includes(r[1])?r[1]:r[1].toUpperCase()}`,primaryIdentifier:n};if("Us"===r[0])return{identifier:`US/${r[1]}`,primaryIdentifier:n};const o=new Map([["Act","ACT"],["Lhi","LHI"],["Nsw","NSW"],["Dar_Es_Salaam","Dar_es_Salaam"],["Port_Of_Spain","Port_of_Spain"],["Port-Au-Prince","Port-au-Prince"],["Isle_Of_Man","Isle_of_Man"],["Comodrivadavia","ComodRivadavia"],["Knox_In","Knox_IN"],["Dumontdurville","DumontDUrville"],["Mcmurdo","McMurdo"],["Denoronha","DeNoronha"],["Easterisland","EasterIsland"],["Bajanorte","BajaNorte"],["Bajasur","BajaSur"]]);return r[1]=o.get(r[1])??r[1],r.length>2&&(r[2]=o.get(r[2])??r[2]),{identifier:r.join("/"),primaryIdentifier:n}}function ur(e,t){const{year:n,month:r,day:o,hour:i,minute:a,second:s}=br(e,t);let c=t%1e3;return c<0&&(c+=1e3),1e6*(yr({isoDate:{year:n,month:r,day:o},time:{hour:i,minute:a,second:s,millisecond:c}})-t)}function lr(e,t){return ur(e,No(t,"floor"))}function mr(e){const t=e<0?"-":"+",n=Math.abs(e);return`${t}${Vn(Math.floor(n/60),n%60,0,0,"minute")}`}function fr(e){return mr(Eo(e,je,"halfExpand")/6e10)}function yr({isoDate:{year:e,month:t,day:n},time:{hour:r,minute:o,second:i,millisecond:a}}){const s=e%400,c=(e-s)/400,d=new Date;return d.setUTCHours(r,o,i,a),d.setUTCFullYear(s,t-1,n),d.getTime()+Ue*c}function pr(t){const n=yr(t),r=1e3*t.time.microsecond+t.time.nanosecond;return e.add(xo(n),e.BigInt(r))}function gr(t){let n=No(t,"trunc"),r=e.toNumber(e.remainder(t,c));r<0&&(r+=1e6,n-=1);const o=Math.floor(r/1e3)%1e3,i=r%1e3,a=new Date(n);return{epochMilliseconds:n,isoDate:{year:a.getUTCFullYear(),month:a.getUTCMonth()+1,day:a.getUTCDate()},time:{hour:a.getUTCHours(),minute:a.getUTCMinutes(),second:a.getUTCSeconds(),millisecond:a.getUTCMilliseconds(),microsecond:o,nanosecond:i}}}function wr(e,t){if("UTC"===e)return null;const n=No(t,"floor");if(n<Fe)return wr(e,xo(Fe));const r=Date.now(),o=Math.max(n,r)+366*Re*3;let i=n,a=ur(e,i),s=i,c=a;for(;a===c&&i<o;){if(s=i+2*Re*7,s>ke)return null;c=ur(e,s),a===c&&(i=s)}return a===c?null:xo(Jo((t=>ur(e,t)),i,s,a,c))}function vr(t,n){if("UTC"===t)return null;const r=No(n,"ceil"),o=Date.now(),i=o+366*Re*3;if(r>i){const n=vr(t,xo(i));if(null===n||e.lessThan(n,xo(o)))return n}if("Africa/Casablanca"===t||"Africa/El_Aaiun"===t){const e=Date.UTC(2088,0,1);if(e<r)return vr(t,xo(e))}let a=r-1;if(a<Fe)return null;let s=ur(t,a),c=a,d=s;for(;s===d&&a>Fe;){if(c=a-2*Re*7,c<Fe)return null;d=ur(t,c),s===d&&(a=c)}return s===d?null:xo(Jo((e=>ur(t,e)),c,a,d,s))}function br(e,t){return function(e){const t=e.split(/[^\w]+/);if(7!==t.length)throw new RangeError(`expected 7 parts in "${e}`);const n=+t[0],r=+t[1];let o=+t[2];const i=t[3];if("b"===i[0]||"B"===i[0])o=1-o;else if("a"!==i[0]&&"A"!==i[0])throw new RangeError(`Unknown era ${i} in "${e}`);const a="24"===t[4]?0:+t[4],s=+t[5],c=+t[6];if(!(Number.isFinite(o)&&Number.isFinite(n)&&Number.isFinite(r)&&Number.isFinite(a)&&Number.isFinite(s)&&Number.isFinite(c)))throw new RangeError(`Invalid number in "${e}`);return{year:o,month:n,day:r,hour:a,minute:s,second:c}}(ht(e).format(t))}function Dr(e){return void 0!==e&&!(e%4!=0||e%100==0&&e%400!=0)}function Tr(e,t){return{standard:[31,28,31,30,31,30,31,31,30,31,30,31],leapyear:[31,29,31,30,31,30,31,31,30,31,30,31]}[Dr(e)?"leapyear":"standard"][t-1]}function Mr(e){const t=[re(e,Y),re(e,R),re(e,S),re(e,j),re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U)];for(let e=0;e<t.length;e++){const n=t[e];if(0!==n)return n<0?-1:1}return 0}function Er(e){const t=["years","months","weeks","days"];for(let n=0;n<t.length;n++){const r=e[t[n]];if(0!==r)return r<0?-1:1}return 0}function Ir(e){const t=Er(e.date);return 0!==t?t:e.time.sign()}function Cr(e,t){let n=e,r=t;if(!Number.isFinite(n)||!Number.isFinite(r))throw new RangeError("infinity is out of range");return r-=1,n+=Math.floor(r/12),r%=12,r<0&&(r+=12),r+=1,{year:n,month:r}}function Or(e,t,n){let r=e,o=t,i=n;if(!Number.isFinite(i))throw new RangeError("infinity is out of range");({year:r,month:o}=Cr(r,o));const a=146097;if(Math.abs(i)>a){const e=Math.trunc(i/a);r+=400*e,i-=e*a}let s=0,c=o>2?r:r-1;for(;s=Dr(c)?366:365,i<-s;)r-=1,c-=1,i+=s;for(c+=1;s=Dr(c)?366:365,i>s;)r+=1,c+=1,i-=s;for(;i<1;)({year:r,month:o}=Cr(r,o-1)),i+=Tr(r,o);for(;i>Tr(r,o);)i-=Tr(r,o),({year:r,month:o}=Cr(r,o+1));return{year:r,month:o,day:i}}function $r(e,t,n,r,o,i,a,s,c){const d=Yr(r,o,i,a,s,c);return xt(Or(e,t,n+d.deltaDays),d)}function Yr(e,t,n,r,o,i){let a,s=e,c=t,d=n,h=r,u=o,l=i;({div:a,mod:l}=de(l,3)),u+=a,l<0&&(u-=1,l+=1e3),({div:a,mod:u}=de(u,3)),h+=a,u<0&&(h-=1,u+=1e3),d+=Math.trunc(h/1e3),h%=1e3,h<0&&(d-=1,h+=1e3),c+=Math.trunc(d/60),d%=60,d<0&&(c-=1,d+=60),s+=Math.trunc(c/60),c%=60,c<0&&(s-=1,c+=60);let m=Math.trunc(s/24);return s%=24,s<0&&(m-=1,s+=24),m+=0,s+=0,c+=0,d+=0,h+=0,u+=0,l+=0,{deltaDays:m,hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}function Rr(e,t){const n=Nt(e,0);if(0===Er(n))return e.days;const r=re(t,D),o=Sn(re(t,E),r,n,"constrain"),i=Gr(r.year,r.month-1,r.day),a=Gr(o.year,o.month-1,o.day)-i;return e.days+a}function Sr(e){return new(ce("%Temporal.Duration%"))(-re(e,Y),-re(e,R),-re(e,S),-re(e,j),-re(e,k),-re(e,N),-re(e,x),-re(e,L),-re(e,P),-re(e,U))}function jr(e,t,n){return Math.min(n,Math.max(t,e))}function kr(e,t,n){const r=jr(t,1,12);return{year:e,month:r,day:jr(n,1,Tr(e,r))}}function Nr(e,t,n){if(e<t||e>n)throw new RangeError(`value out of range: ${t} <= ${e} <= ${n}`)}function xr(e,t,n){Nr(t,1,12),Nr(n,1,Tr(e,t))}function Lr(e){Br(xt(e,{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}))}function Pr(e,t,n,r,o,i){Nr(e,0,23),Nr(t,0,59),Nr(n,0,59),Nr(r,0,999),Nr(o,0,999),Nr(i,0,999)}function Ur(e,t,n,r,o,i,a,s,c){xr(e,t,n),Pr(r,o,i,a,s,c)}function Br(t){const n=pr(t);(e.lessThan(n,Le)||e.greaterThan(n,Pe))&&Fr(n)}function Zr(e){pr(e)}function Fr(t){if(e.lessThan(t,xe)||e.greaterThan(t,Ne))throw new RangeError("date/time value is outside of supported range")}function Hr({year:e,month:t}){Nr(e,Be,Ze),e===Be?Nr(t,4,12):e===Ze&&Nr(t,1,9)}function zr(e,t,n,r,o,i,a,s,c,d){let h=0;const u=[e,t,n,r,o,i,a,s,c,d];for(let e=0;e<u.length;e++){const t=u[e];if(t===1/0||t===-1/0)throw new RangeError("infinite values not allowed as duration fields");if(0!==t){const e=t<0?-1:1;if(0!==h&&e!==h)throw new RangeError("mixed-sign values not allowed as duration fields");h=e}}if(Math.abs(e)>=2**32||Math.abs(t)>=2**32||Math.abs(n)>=2**32)throw new RangeError("years, months, and weeks must be < 2³²");const l=de(s,3),m=de(c,6),f=de(d,9),y=de(1e6*l.mod+1e3*m.mod+f.mod,9).div,p=86400*r+3600*o+60*i+a+l.div+m.div+f.div+y;if(!Number.isSafeInteger(p))throw new RangeError("total of duration time units cannot exceed 9007199254740991.999999999 s")}function Ar(e){return{date:{years:re(e,Y),months:re(e,R),weeks:re(e,S),days:re(e,j)},time:TimeDuration.fromComponents(re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U))}}function qr(e){const t=TimeDuration.fromComponents(re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U)).add24HourDays(re(e,j));return{date:{years:re(e,Y),months:re(e,R),weeks:re(e,S),days:0},time:t}}function Wr(e){const t=qr(e),n=Math.trunc(t.time.sec/86400);return zr(t.date.years,t.date.months,t.date.weeks,n,0,0,0,0,0,0),{...t.date,days:n}}function _r(e,t){const n=e.time.sign();let r=e.time.abs().subsec,o=0,i=0,a=e.time.abs().sec,s=0,c=0,d=0;switch(t){case"year":case"month":case"week":case"day":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60,c=Math.trunc(s/60),s%=60,d=Math.trunc(c/24),c%=24;break;case"hour":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60,c=Math.trunc(s/60),s%=60;break;case"minute":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60;break;case"second":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3;break;case"millisecond":o=Math.trunc(r/1e3),r%=1e3,i=he(a,3,Math.trunc(o/1e3)),o%=1e3,a=0;break;case"microsecond":o=he(a,6,Math.trunc(r/1e3)),r%=1e3,a=0;break;case"nanosecond":r=he(a,9,r),a=0}return new(ce("%Temporal.Duration%"))(e.date.years,e.date.months,e.date.weeks,e.date.days+n*d,n*c,n*s,n*a,n*i,n*o,n*r)}function Jr(e,t){return Er(e),t.sign(),{date:e,time:t}}function Gr(e,t,n){return yr({isoDate:{year:e,month:t+1,day:n},time:{hour:0,minute:0,second:0,millisecond:0}})/Re}function Kr({year:e,month:t,day:n}){if(Math.abs(Gr(e,t-1,n))>1e8)throw new RangeError("date/time value is outside the supported range")}function Vr(e,t){const n=t.hour-e.hour,r=t.minute-e.minute,o=t.second-e.second,i=t.millisecond-e.millisecond,a=t.microsecond-e.microsecond,s=t.nanosecond-e.nanosecond;return TimeDuration.fromComponents(n,r,o,i,a,s)}function Xr(e,t,n,r,o){let i=TimeDuration.fromEpochNsDiff(t,e);return i=$o(i,n,r,o),Jr({years:0,months:0,weeks:0,days:0},i)}function Qr(e,t,n,r){Zr(e),Zr(t);let o=Vr(e.time,t.time);const i=o.sign(),a=Ro(e.isoDate,t.isoDate);let s=t.isoDate;a===i&&(s=Or(s.year,s.month,s.day+i),o=o.add24HourDays(-i));const c=Gt("day",r),d=jn(n,e.isoDate,s,c);return r!==c&&(o=o.add24HourDays(d.days),d.days=0),Jr(d,o)}function eo(n,r,o,i,a){const s=e.subtract(r,n);if(e.equal(s,t))return{date:{years:0,months:0,weeks:0,days:0},time:TimeDuration.ZERO};const c=e.lessThan(s,t)?-1:1,d=zn(o,n),h=zn(o,r);let u,l=0,m=1===c?2:1,f=Vr(d.time,h.time);for(f.sign()===-c&&l++;l<=m;l++){u=xt(Or(h.isoDate.year,h.isoDate.month,h.isoDate.day-l*c),d.time);const e=An(o,u,"compatible");if(f=TimeDuration.fromEpochNsDiff(r,e),f.sign()!==-c)break}const y=Gt("day",a);return Jr(jn(i,d.isoDate,u.isoDate,y),f)}function to(t,n,r,o,i,a,s,c,d){let h,u,l,m,f=n;switch(c){case"year":{const e=Eo(f.date.years,s,"trunc");h=e,u=e+s*t,l={years:h,months:0,weeks:0,days:0},m={...l,years:u};break}case"month":{const e=Eo(f.date.months,s,"trunc");h=e,u=e+s*t,l=Nt(f.date,0,0,h),m=Nt(f.date,0,0,u);break}case"week":{const e=Nt(f.date,0,0),n=Sn(a,o.isoDate,e,"constrain"),r=jn(a,n,Or(n.year,n.month,n.day+f.date.days),"week"),i=Eo(f.date.weeks+r.weeks,s,"trunc");h=i,u=i+s*t,l=Nt(f.date,0,h),m=Nt(f.date,0,u);break}case"day":{const e=Eo(f.date.days,s,"trunc");h=e,u=e+s*t,l=Nt(f.date,h),m=Nt(f.date,u);break}}const y=Sn(a,o.isoDate,l,"constrain"),p=Sn(a,o.isoDate,m,"constrain");let g,w;const v=xt(y,o.time),b=xt(p,o.time);i?(g=An(i,v,"compatible"),w=An(i,b,"compatible")):(g=pr(v),w=pr(b));const D=TimeDuration.fromEpochNsDiff(r,g),T=TimeDuration.fromEpochNsDiff(w,g),M=ue(d,t<0?"negative":"positive"),E=D.add(D).abs().subtract(T.abs()).sign(),I=Math.abs(h)/s%2==0,C=D.isZero()?Math.abs(h):D.cmp(T)?le(Math.abs(h),Math.abs(u),E,I,M):Math.abs(u),O=new TimeDuration(e.add(e.multiply(T.totalNs,e.BigInt(h)),e.multiply(D.totalNs,e.BigInt(s*t)))).fdiv(T.totalNs),$=C===Math.abs(u);return f={date:$?m:l,time:TimeDuration.ZERO},{nudgeResult:{duration:f,nudgedEpochNs:$?w:g,didExpandCalendarUnit:$},total:O}}function no(t,n,r,o,i,a,s,c,d){let h=t;const u=Kt(c)||o&&"day"===c,l=Ir(h)<0?-1:1;let m;return u?({nudgeResult:m}=to(l,h,n,r,o,i,s,c,d)):m=o?function(t,n,r,o,i,a,s,c){let d=n;const h=Sn(i,r.isoDate,d.date,"constrain"),u=xt(h,r.time),l=xt(Or(h.year,h.month,h.day+t),r.time),m=An(o,u,"compatible"),f=An(o,l,"compatible"),y=TimeDuration.fromEpochNsDiff(f,m);if(y.sign()!==t)throw new RangeError("time zone returned inconsistent Instants");const p=e.BigInt(at[s]*a);let g=d.time.round(p,c);const w=g.subtract(y),v=w.sign()!==-t;let b,D;return v?(b=t,g=w.round(p,c),D=g.addToEpochNs(f)):(b=0,D=g.addToEpochNs(m)),{duration:Jr(Nt(d.date,d.date.days+b),g),nudgedEpochNs:D,didExpandCalendarUnit:v}}(l,h,r,o,i,s,c,d):function(t,n,r,o,i,a){let s=t;const c=s.time.add24HourDays(s.date.days),d=c.round(e.BigInt(o*at[i]),a),h=d.subtract(c),{quotient:u}=c.divmod(Se),{quotient:l}=d.divmod(Se),m=Math.sign(l-u)===c.sign(),f=h.addToEpochNs(n);let y=0,p=d;return"date"===Vt(r)&&(y=l,p=d.add(TimeDuration.fromComponents(24*-l,0,0,0,0,0))),{duration:{date:Nt(s.date,y),time:p},nudgedEpochNs:f,didExpandCalendarUnit:m}}(h,n,a,s,c,d),h=m.duration,m.didExpandCalendarUnit&&"week"!==c&&(h=function(e,t,n,r,o,i,a,s){let c=t;if(s===a)return c;const d=it.indexOf(a);for(let t=it.indexOf(s)-1;t>=d;t--){const s=it[t];if("week"===s&&"week"!==a)continue;let d;switch(s){case"year":d={years:c.date.years+e,months:0,weeks:0,days:0};break;case"month":{const t=c.date.months+e;d=Nt(c.date,0,0,t);break}case"week":{const t=c.date.weeks+e;d=Nt(c.date,0,t);break}}const h=xt(Sn(i,r.isoDate,d,"constrain"),r.time);let u;if(u=o?An(o,h,"compatible"):pr(h),p(n,u)===-e)break;c={date:d,time:TimeDuration.ZERO}}return c}(l,h,m.nudgedEpochNs,r,o,i,a,Gt(c,"day"))),h}function ro(e,t,n,r,o,i){return Kt(i)||r&&"day"===i?to(Ir(e)<0?-1:1,e,t,n,r,o,1,i,"trunc").total:Yo(e.time.add24HourDays(e.date.days),i)}function oo(e,t,n,r,o,i,a){if(0==jo(e,t))return{date:{years:0,months:0,weeks:0,days:0},time:TimeDuration.ZERO};Br(e),Br(t);const s=Qr(e,t,n,r);return"nanosecond"===i&&1===o?s:no(s,pr(t),e,null,n,r,o,i,a)}function io(e,t,n,r,o,i,a,s){if("time"===Vt(o))return Xr(e,t,i,a,s);const c=eo(e,t,n,r,o);return"nanosecond"===a&&1===i?c:no(c,t,zn(n,e),n,r,o,i,a,s)}function ao(e,t,n,r,o,i){const a=nt.reduce(((e,t)=>{const o=t[0],i=t[1],a=t[2];return"datetime"!==n&&a!==n||r.includes(i)||e.push(i,o),e}),[]);let s=Wt(t,"largestUnit",n,"auto");if(r.includes(s))throw new RangeError(`largestUnit must be one of ${a.join(", ")}, not ${s}`);const c=Ft(t);let d=Ut(t,"trunc");"since"===e&&(d=function(e){switch(e){case"ceil":return"floor";case"floor":return"ceil";case"halfCeil":return"halfFloor";case"halfFloor":return"halfCeil";default:return e}}(d));const h=Wt(t,"smallestUnit",n,o);if(r.includes(h))throw new RangeError(`smallestUnit must be one of ${a.join(", ")}, not ${h}`);const u=Gt(i,h);if("auto"===s&&(s=u),Gt(s,h)!==s)throw new RangeError(`largestUnit ${s} cannot be smaller than smallestUnit ${h}`);const l={hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[h];return void 0!==l&&Ht(c,l,!1),{largestUnit:s,roundingIncrement:c,roundingMode:d,smallestUnit:h}}function so(e,t,n,r){const o=cn(n),i=ao(e,Zo(r),"time",[],"nanosecond","second");let a=_r(Xr(re(t,b),re(o,b),i.roundingIncrement,i.smallestUnit,i.roundingMode),i.largestUnit);return"since"===e&&(a=Sr(a)),a}function co(e,t,n,r){const o=rn(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between dates of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"date",[],"day","day"),c=ce("%Temporal.Duration%"),d=re(t,D),h=re(o,D);if(0===Ro(d,h))return new c;let u={date:jn(i,d,h,s.largestUnit),time:TimeDuration.ZERO};if("day"!==s.smallestUnit||1!==s.roundingIncrement){const e=xt(d,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});u=no(u,pr(xt(h,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0})),e,null,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode)}let l=_r(u,"day");return"since"===e&&(l=Sr(l)),l}function ho(e,t,n,r){const o=an(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between dates of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"datetime",[],"nanosecond","day"),c=ce("%Temporal.Duration%"),d=re(t,T),h=re(o,T);if(0===jo(d,h))return new c;let u=_r(oo(d,h,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode),s.largestUnit);return"since"===e&&(u=Sr(u)),u}function uo(e,t,n,r){const o=hn(n),i=ao(e,Zo(r),"time",[],"nanosecond","hour");let a=Vr(re(t,M),re(o,M));a=$o(a,i.roundingIncrement,i.smallestUnit,i.roundingMode);let s=_r(Jr({years:0,months:0,weeks:0,days:0},a),i.largestUnit);return"since"===e&&(s=Sr(s)),s}function lo(e,t,n,r){const o=ln(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between months of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"date",["week","day"],"month","year"),c=ce("%Temporal.Duration%");if(0==Ro(re(t,D),re(o,D)))return new c;const d=en(i,re(t,D),"year-month");d.day=1;const h=Ln(i,d,"constrain"),u=en(i,re(o,D),"year-month");u.day=1;const l=Ln(i,u,"constrain");let m={date:Nt(jn(i,h,l,s.largestUnit),0,0),time:TimeDuration.ZERO};if("month"!==s.smallestUnit||1!==s.roundingIncrement){const e=xt(h,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});m=no(m,pr(xt(l,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0})),e,null,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode)}let f=_r(m,"day");return"since"===e&&(f=Sr(f)),f}function mo(t,n,r,o){const i=fn(r),a=re(n,E),s=re(i,E);if(!xn(a,s))throw new RangeError(`cannot compute difference between dates of ${a} and ${s} calendars`);const c=ao(t,Zo(o),"datetime",[],"nanosecond","hour"),d=re(n,b),h=re(i,b),u=ce("%Temporal.Duration%");let l;if("date"!==Vt(c.largestUnit))l=_r(Xr(d,h,c.roundingIncrement,c.smallestUnit,c.roundingMode),c.largestUnit);else{const t=re(n,$);if(!Zn(t,re(i,$)))throw new RangeError("When calculating difference between time zones, largestUnit must be 'hours' or smaller because day lengths can vary between time zones due to DST or time zone offset changes.");if(e.equal(d,h))return new u;l=_r(io(d,h,t,a,c.largestUnit,c.roundingIncrement,c.smallestUnit,c.roundingMode),"hour")}return"since"===t&&(l=Sr(l)),l}function fo({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a){let s=n,c=i;return s+=a.sec,c+=a.subsec,Yr(e,t,s,r,o,c)}function yo(e,t){const n=t.addToEpochNs(e);return Fr(n),n}function po(e,t,n,r,o="constrain"){if(0===Er(r.date))return yo(e,r.time);const i=zn(t,e);return yo(An(t,xt(Sn(n,i.isoDate,r.date,o),i.time),"compatible"),r.time)}function go(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=Gt(Jt(t),Jt(r));if(Kt(o))throw new RangeError("For years, months, or weeks arithmetic, use date arithmetic relative to a starting point");const i=qr(t),a=qr(r);return _r(Jr({years:0,months:0,weeks:0,days:0},i.time.add(a.time)),o)}function wo(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=Jt(r);if("date"===Vt(o))throw new RangeError(`Duration field ${o} not supported by Temporal.Instant. Try Temporal.ZonedDateTime instead.`);const i=qr(r);return Cn(yo(re(t,b),i.time))}function vo(e,t,n,r){const o=re(t,E);let i=sn(n);"subtract"===e&&(i=Sr(i));const a=Wr(i),s=Lt(Zo(r));return pn(Sn(o,re(t,D),a,s),o)}function bo(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=re(t,E),s=qr(o),c=re(t,T),d=fo(c.time,s.time),h=Nt(s.date,d.deltaDays);return zr(h.years,h.months,h.weeks,h.days,0,0,0,0,0,0),wn(xt(Sn(a,c.isoDate,h,i),d),a)}function Do(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=qr(r),{hour:i,minute:a,second:s,millisecond:c,microsecond:d,nanosecond:h}=fo(re(t,M),o.time);return Tn(jt(i,a,s,c,d,h,"reject"))}function To(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=Mr(o),s=re(t,E),c=en(s,re(t,D),"year-month");c.day=1;let d=Ln(s,c,"constrain");if(a<0){const e=Sn(s,d,{months:1},"constrain");d=Or(e.year,e.month,e.day-1)}const h=Wr(o);return Lr(d),En(Pn(s,en(s,Sn(s,d,h,i),"year-month"),i),s)}function Mo(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=re(t,$),s=re(t,E),c=Ar(o);return $n(po(re(t,b),a,s,c,i),a,s)}function Eo(e,t,n){const r=Math.trunc(e/t),o=e%t,i=e<0?"negative":"positive",a=Math.abs(r),s=a+1,c=Bo(Math.abs(2*o)-t),d=a%2==0,h=ue(n,i),u=0===o?a:le(a,s,c,d,h);return t*("positive"===i?u:-u)}function Io(o,i,a,s){const c=at[a]*i;return function(o,i,a){const s=m(o),c=m(i),d=e.divide(s,c),h=e.remainder(s,c),u=ue(a,"positive");let l,g;e.lessThan(s,t)?(l=e.subtract(d,n),g=d):(l=d,g=e.add(d,n));const w=p(y(e.multiply(h,r)),c)*(e.lessThan(s,t)?-1:1)+0,v=e.equal(h,t)?d:le(l,g,w,f(l),u);return e.multiply(v,c)}(o,e.BigInt(c),s)}function Co(e,t,n,r){Zr(e);const{year:o,month:i,day:a}=e.isoDate,s=Oo(e.time,t,n,r);return xt(Or(o,i,a+s.deltaDays),s)}function Oo({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a,s,c){let d;switch(s){case"day":case"hour":d=1e3*(1e3*(1e3*(60*(60*e+t)+n)+r)+o)+i;break;case"minute":d=1e3*(1e3*(1e3*(60*t+n)+r)+o)+i;break;case"second":d=1e3*(1e3*(1e3*n+r)+o)+i;break;case"millisecond":d=1e3*(1e3*r+o)+i;break;case"microsecond":d=1e3*o+i;break;case"nanosecond":d=i}const h=at[s],u=Eo(d,h*a,c)/h;switch(s){case"day":return{deltaDays:u,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0};case"hour":return Yr(u,0,0,0,0,0);case"minute":return Yr(e,u,0,0,0,0);case"second":return Yr(e,t,u,0,0,0);case"millisecond":return Yr(e,t,n,u,0,0);case"microsecond":return Yr(e,t,n,r,u,0);case"nanosecond":return Yr(e,t,n,r,o,u);default:throw new Error(`Invalid unit ${s}`)}}function $o(t,n,r,o){const i=at[r];return t.round(e.BigInt(i*n),o)}function Yo(t,n){const r=at[n];return t.fdiv(e.BigInt(r))}function Ro(e,t){return e.year!==t.year?Bo(e.year-t.year):e.month!==t.month?Bo(e.month-t.month):e.day!==t.day?Bo(e.day-t.day):0}function So(e,t){return e.hour!==t.hour?Bo(e.hour-t.hour):e.minute!==t.minute?Bo(e.minute-t.minute):e.second!==t.second?Bo(e.second-t.second):e.millisecond!==t.millisecond?Bo(e.millisecond-t.millisecond):e.microsecond!==t.microsecond?Bo(e.microsecond-t.microsecond):e.nanosecond!==t.nanosecond?Bo(e.nanosecond-t.nanosecond):0}function jo(e,t){const n=Ro(e.isoDate,t.isoDate);return 0!==n?n:So(e.time,t.time)}function ko(e){const t=Lo(e);return void 0!==globalThis.BigInt?globalThis.BigInt(t.toString(10)):t}function No(t,n){const r=m(t),{quotient:o,remainder:i}=g(r,c);let a=e.toNumber(o);return"floor"===n&&e.toNumber(i)<0&&(a-=1),"ceil"===n&&e.toNumber(i)>0&&(a+=1),a}function xo(t){if(!Number.isInteger(t))throw new RangeError("epoch milliseconds must be an integer");return e.multiply(e.BigInt(t),c)}function Lo(t){let n=t;if("object"==typeof t){const e=t[Symbol.toPrimitive];e&&"function"==typeof e&&(n=e.call(t,"number"))}if("number"==typeof n)throw new TypeError("cannot convert number to bigint");return"bigint"==typeof n?e.BigInt(n.toString(10)):e.BigInt(n)}const Po=(()=>{let t=e.BigInt(Date.now()%1e6);return()=>{const n=Date.now(),r=e.BigInt(n),o=e.add(xo(n),t);return t=e.remainder(r,c),e.greaterThan(o,Ne)?Ne:e.lessThan(o,xe)?xe:o}})();function Uo(){return(new Intl.DateTimeFormat).resolvedOptions().timeZone}function Bo(e){return e<0?-1:e>0?1:e}function Zo(e){if(void 0===e)return Object.create(null);if(Ae(e)&&null!==e)return e;throw new TypeError("Options parameter must be an object, not "+(null===e?"null":typeof e))}function Fo(e,t){const n=Object.create(null);return n[e]=t,n}function Ho(e,t,n,r){let o=e[t];if(void 0!==o){if(o=We(o),!n.includes(o))throw new RangeError(`${t} must be one of ${n.join(", ")}, not ${o}`);return o}if(r===qt)throw new RangeError(`${t} option is required`);return r}function zo(e){const t=Ao(e);if(!He.includes(Ao(t)))throw new RangeError(`invalid calendar identifier ${t}`);switch(t){case"ethiopic-amete-alem":return"ethioaa";case"islamicc":return"islamic-civil"}return t}function Ao(e){let t="";for(let n=0;n<e.length;n++){const r=e.charCodeAt(n);t+=r>=65&&r<=90?String.fromCharCode(r+32):String.fromCharCode(r)}return t}function qo(e){throw new TypeError(`Do not use built-in arithmetic operators with Temporal objects. When comparing, use ${"PlainMonthDay"===e?"Temporal.PlainDate.compare(obj1.toPlainDate(year), obj2.toPlainDate(year))":`Temporal.${e}.compare(obj1, obj2)`}, not obj1 > obj2. When coercing to strings, use \`\${obj}\` or String(obj), not '' + obj. When coercing to numbers, use properties or methods of the object, not \`+obj\`. When concatenating with strings, use \`\${str}\${obj}\` or str.concat(obj), not str + obj. In React, coerce to a string before rendering a Temporal object.`)}const Wo=new RegExp(`^${be.source}$`),_o=new RegExp(`^${/([+-])([01][0-9]|2[0-3])(?::?([0-5][0-9])(?::?([0-5][0-9])(?:[.,](\d{1,9}))?)?)?/.source}$`);function Jo(e,t,n,r=e(t),o=e(n)){let i=t,a=n,s=r,c=o;for(;a-i>1;){let t=Math.trunc((i+a)/2);const n=e(t);n===s?(i=t,s=n):n===c&&(a=t,c=n)}return a}function Go(e){return[...e]}function Ko(e,t){if("gregory"!==e&&"iso8601"!==e)return;const n=Xo[e];let r=t.year;const{dayOfWeek:o,dayOfYear:i,daysInYear:a}=n.isoToDate(t,{dayOfWeek:!0,dayOfYear:!0,daysInYear:!0}),s=n.getFirstDayOfWeek(),c=n.getMinimalDaysInFirstWeek();let d=(o+7-s)%7,h=(o-i+7001-s)%7,u=Math.floor((i-1+h)/7);if(7-h>=c&&++u,0==u)u=function(e,t,n,r){let o=(r-e-n+1)%7;o<0&&(o+=7);let i=Math.floor((n+o-1)/7);return 7-o>=t&&++i,i}(s,c,i+n.isoToDate(n.dateAdd(t,{years:-1},"constrain"),{daysInYear:!0}).daysInYear,o),r--;else if(i>=a-5){let e=(d+a-i)%7;e<0&&(e+=7),6-e>=c&&i+7-d>a&&(u=1,r++)}return{week:u,year:r}}function Vo(e,t,n,r,o){if(t!==o.year){if(e*(t-o.year)>0)return!0}else if(n!==o.month){if(e*(n-o.month)>0)return!0}else if(r!==o.day&&e*(r-o.day)>0)return!0;return!1}const Xo={};function Qo(e){if(!e.startsWith("M"))throw new RangeError(`Invalid month code: ${e}.  Month codes must start with M.`);const t=+e.slice(1);if(Number.isNaN(t))throw new RangeError(`Invalid month code: ${e}`);return t}function ei(e,t=!1){return`M${`${e}`.padStart(2,"0")}${t?"L":""}`}function ti(e,t=void 0,n=12){let{month:r,monthCode:o}=e;if(void 0===o){if(void 0===r)throw new TypeError("Either month or monthCode are required");"reject"===t&&Nr(r,1,n),"constrain"===t&&(r=jr(r,1,n)),o=ei(r)}else{const e=Qo(o);if(o!==ei(e))throw new RangeError(`Invalid month code: ${o}`);if(void 0!==r&&r!==e)throw new RangeError(`monthCode ${o} and month ${r} must match if both are present`);if(r=e,r<1||r>n)throw new RangeError(`Invalid monthCode: ${o}`)}return{...e,month:r,monthCode:o}}Xo.iso8601={resolveFields(e,t){if(("date"===t||"year-month"===t)&&void 0===e.year)throw new TypeError("year is required");if(("date"===t||"month-day"===t)&&void 0===e.day)throw new TypeError("day is required");Object.assign(e,ti(e))},dateToISO:(e,t)=>St(e.year,e.month,e.day,t),monthDayToISOReferenceDate(e,t){const{month:n,day:r}=St(e.year??1972,e.month,e.day,t);return{month:n,day:r,year:1972}},extraFields:()=>[],fieldKeysToIgnore(e){const t=new Set;for(let n=0;n<e.length;n++){const r=e[n];t.add(r),"month"===r?t.add("monthCode"):"monthCode"===r&&t.add("month")}return Go(t)},dateAdd(e,{years:t=0,months:n=0,weeks:r=0,days:o=0},i){let{year:a,month:s,day:c}=e;return a+=t,s+=n,({year:a,month:s}=Cr(a,s)),({year:a,month:s,day:c}=St(a,s,c,i)),c+=o+7*r,Or(a,s,c)},dateUntil(e,t,n){const r=-Ro(e,t);if(0===r)return{years:0,months:0,weeks:0,days:0};let o,i=0,a=0;if("year"===n||"month"===n){let s=t.year-e.year;for(0!==s&&(s-=r);!Vo(r,e.year+s,e.month,e.day,t);)i=s,s+=r;let c=r;for(o=Cr(e.year+i,e.month+c);!Vo(r,o.year,o.month,e.day,t);)a=c,c+=r,o=Cr(o.year,o.month+r);"month"===n&&(a+=12*i,i=0)}o=Cr(e.year+i,e.month+a);const s=kr(o.year,o.month,e.day);let c=0,d=Gr(t.year,t.month-1,t.day)-Gr(s.year,s.month-1,s.day);return"week"===n&&(c=Math.trunc(d/7),d%=7),{years:i,months:a,weeks:c,days:d}},isoToDate({year:e,month:t,day:n},r){const o={era:void 0,eraYear:void 0,year:e,month:t,day:n,daysInWeek:7,monthsInYear:12};if(r.monthCode&&(o.monthCode=ei(t)),r.dayOfWeek){const r=t+(t<3?10:-2),i=e-(t<3?1:0),a=Math.floor(i/100),s=i-100*a,c=(n+Math.floor(2.6*r-.2)+(s+Math.floor(s/4))+(Math.floor(a/4)-2*a))%7;o.dayOfWeek=c+(c<=0?7:0)}if(r.dayOfYear){let r=n;for(let n=t-1;n>0;n--)r+=Tr(e,n);o.dayOfYear=r}return r.weekOfYear&&(o.weekOfYear=Ko("iso8601",{year:e,month:t,day:n})),r.daysInMonth&&(o.daysInMonth=Tr(e,t)),(r.daysInYear||r.inLeapYear)&&(o.inLeapYear=Dr(e),o.daysInYear=o.inLeapYear?366:365),o},getFirstDayOfWeek:()=>1,getMinimalDaysInFirstWeek:()=>4};class OneObjectCache{constructor(e){if(this.map=new Map,this.calls=0,this.hits=0,this.misses=0,void 0!==e){let t=0;for(const n of e.map.entries()){if(++t>OneObjectCache.MAX_CACHE_ENTRIES)break;this.map.set(...n)}}}get(e){const t=this.map.get(e);return t&&(this.hits++,this.report()),this.calls++,t}set(e,t){this.map.set(e,t),this.misses++,this.report()}report(){}setObject(e){if(OneObjectCache.objectMap.get(e))throw new RangeError("object already cached");OneObjectCache.objectMap.set(e,this),this.report()}static getCacheForObject(e){let t=OneObjectCache.objectMap.get(e);return t||(t=new OneObjectCache,OneObjectCache.objectMap.set(e,t)),t}}function ni({isoYear:e,isoMonth:t,isoDay:n}){return`${Jn(e)}-${Gn(t)}-${Gn(n)}T00:00Z`}function ri(e,t){return{years:e.year-t.year,months:e.month-t.month,days:e.day-t.day}}OneObjectCache.objectMap=new WeakMap,OneObjectCache.MAX_CACHE_ENTRIES=1e3;class HelperBase{constructor(){this.eras=[],this.hasEra=!1,this.erasBeginMidYear=!1}getFormatter(){return void 0===this.formatter&&(this.formatter=new Intl.DateTimeFormat(`en-US-u-ca-${this.id}`,{day:"numeric",month:"numeric",year:"numeric",era:"short",timeZone:"UTC"})),this.formatter}getCalendarParts(e){let t=this.getFormatter(),n=new Date(e);if("-271821-04-19T00:00Z"===e){const e=t.resolvedOptions();t=new Intl.DateTimeFormat(e.locale,{...e,timeZone:"Etc/GMT+1"}),n=new Date("-271821-04-20T00:00Z")}try{return t.formatToParts(n)}catch(t){throw new RangeError(`Invalid ISO date: ${e}`)}}isoToCalendarDate(e,t){const{year:n,month:r,day:o}=e,i=JSON.stringify({func:"isoToCalendarDate",isoYear:n,isoMonth:r,isoDay:o,id:this.id}),a=t.get(i);if(a)return a;const s=ni({isoYear:n,isoMonth:r,isoDay:o}),c=this.getCalendarParts(s),d={};for(let e=0;e<c.length;e++){const{type:t,value:n}=c[e];if("year"!==t&&"relatedYear"!==t||(this.hasEra?d.eraYear=+n:d.year=+n),"month"===t){const e=/^([0-9]*)(.*?)$/.exec(n);if(!e||3!=e.length||!e[1]&&!e[2])throw new RangeError(`Unexpected month: ${n}`);if(d.month=e[1]?+e[1]:1,d.month<1)throw new RangeError(`Invalid month ${n} from ${s}[u-ca-${this.id}] (probably due to https://bugs.chromium.org/p/v8/issues/detail?id=10527)`);if(d.month>13)throw new RangeError(`Invalid month ${n} from ${s}[u-ca-${this.id}] (probably due to https://bugs.chromium.org/p/v8/issues/detail?id=10529)`);e[2]&&(d.monthExtra=e[2])}"day"===t&&(d.day=+n),this.hasEra&&"era"===t&&null!=n&&""!==n&&(d.era=n.split(" (")[0].normalize("NFD").replace(/[^-0-9 \p{L}]/gu,"").replace(/ /g,"-").toLowerCase())}if(this.hasEra&&void 0===d.eraYear)throw new RangeError(`Intl.DateTimeFormat.formatToParts lacks relatedYear in ${this.id} calendar. Try Node 14+ or modern browsers.`);if(this.hasEra){const e=this.eras.find((e=>d.era===e.genericName));e&&(d.era=e.code)}if(this.reviseIntlEra){const{era:t,eraYear:n}=this.reviseIntlEra(d,e);d.era=t,d.eraYear=n}this.checkIcuBugs&&this.checkIcuBugs(e);const h=this.adjustCalendarDate(d,t,"constrain",!0);if(void 0===h.year)throw new RangeError(`Missing year converting ${JSON.stringify(e)}`);if(void 0===h.month)throw new RangeError(`Missing month converting ${JSON.stringify(e)}`);if(void 0===h.day)throw new RangeError(`Missing day converting ${JSON.stringify(e)}`);return t.set(i,h),["constrain","reject"].forEach((n=>{const r=JSON.stringify({func:"calendarToIsoDate",year:h.year,month:h.month,day:h.day,overflow:n,id:this.id});t.set(r,e)})),h}validateCalendarDate(e){const{month:t,year:n,day:r,eraYear:o,monthCode:i,monthExtra:a}=e;if(void 0!==a)throw new RangeError("Unexpected `monthExtra` value");if(void 0===n&&void 0===o)throw new TypeError("year or eraYear is required");if(void 0===t&&void 0===i)throw new TypeError("month or monthCode is required");if(void 0===r)throw new RangeError("Missing day");if(void 0!==i){if("string"!=typeof i)throw new RangeError("monthCode must be a string, not "+typeof i);if(!/^M([01]?\d)(L?)$/.test(i))throw new RangeError(`Invalid monthCode: ${i}`)}if(this.hasEra&&void 0===e.era!=(void 0===e.eraYear))throw new TypeError("properties era and eraYear must be provided together")}adjustCalendarDate(e,t=void 0,n="constrain",r=!1){if("lunisolar"===this.calendarType)throw new RangeError("Override required for lunisolar calendars");let o=e;this.validateCalendarDate(o);const i=this.monthsInYear(o,t);let{month:a,monthCode:s}=o;return({month:a,monthCode:s}=ti(o,n,i)),{...o,month:a,monthCode:s}}regulateMonthDayNaive(e,t,n){const r=this.monthsInYear(e,n);let{month:o,day:i}=e;return"reject"===t?(Nr(o,1,r),Nr(i,1,this.maximumMonthLength(e))):(o=jr(o,1,r),i=jr(i,1,this.maximumMonthLength({...e,month:o}))),{...e,month:o,day:i}}calendarToIsoDate(e,t="constrain",n){const r=e;let o=this.adjustCalendarDate(e,n,t,!1);o=this.regulateMonthDayNaive(o,t,n);const{year:i,month:a,day:s}=o,c=JSON.stringify({func:"calendarToIsoDate",year:i,month:a,day:s,overflow:t,id:this.id});let d,h=n.get(c);if(h)return h;if(void 0!==r.year&&void 0!==r.month&&void 0!==r.day&&(r.year!==o.year||r.month!==o.month||r.day!==o.day)&&(d=JSON.stringify({func:"calendarToIsoDate",year:r.year,month:r.month,day:r.day,overflow:t,id:this.id}),h=n.get(d),h))return h;let u=this.estimateIsoDate({year:i,month:a,day:s});const l=e=>{let r=this.addDaysIso(u,e);if(o.day>this.minimumMonthLength(o)){let e=this.isoToCalendarDate(r,n);for(;e.month!==a||e.year!==i;){if("reject"===t)throw new RangeError(`day ${s} does not exist in month ${a} of year ${i}`);r=this.addDaysIso(r,-1),e=this.isoToCalendarDate(r,n)}}return r};let m=0,f=this.isoToCalendarDate(u,n),y=ri(o,f);if(0!==y.years||0!==y.months||0!==y.days){const e=365*y.years+30*y.months+y.days;u=this.addDaysIso(u,e),f=this.isoToCalendarDate(u,n),y=ri(o,f),0===y.years&&0===y.months?u=l(y.days):m=this.compareCalendarDates(o,f)}let p=8;for(;m;){u=this.addDaysIso(u,m*p);const e=f;f=this.isoToCalendarDate(u,n);const i=m;if(m=this.compareCalendarDates(o,f),m)if(y=ri(o,f),0===y.years&&0===y.months)u=l(y.days),m=0;else if(i&&m!==i)if(p>1)p/=2;else{if("reject"===t)throw new RangeError(`Can't find ISO date from calendar date: ${JSON.stringify({...r})}`);this.compareCalendarDates(f,e)>0&&(u=this.addDaysIso(u,-1)),m=0}}if(n.set(c,u),d&&n.set(d,u),void 0===o.year||void 0===o.month||void 0===o.day||void 0===o.monthCode||this.hasEra&&(void 0===o.era||void 0===o.eraYear))throw new RangeError("Unexpected missing property");return u}compareCalendarDates(e,t){return e.year!==t.year?Bo(e.year-t.year):e.month!==t.month?Bo(e.month-t.month):e.day!==t.day?Bo(e.day-t.day):0}regulateDate(e,t="constrain",n){const r=this.calendarToIsoDate(e,t,n);return this.isoToCalendarDate(r,n)}addDaysIso(e,t){return Or(e.year,e.month,e.day+t)}addDaysCalendar(e,t,n){const r=this.calendarToIsoDate(e,"constrain",n),o=this.addDaysIso(r,t);return this.isoToCalendarDate(o,n)}addMonthsCalendar(e,t,n,r){let o=e;const{day:i}=o;for(let e=0,n=Math.abs(t);e<n;e++){const{month:e}=o,n=o,a=t<0?-Math.max(i,this.daysInPreviousMonth(o,r)):this.daysInMonth(o,r),s=this.calendarToIsoDate(o,"constrain",r);let c=this.addDaysIso(s,a);if(o=this.isoToCalendarDate(c,r),t>0){const t=this.monthsInYear(n,r);for(;o.month-1!=e%t;)c=this.addDaysIso(c,-1),o=this.isoToCalendarDate(c,r)}o.day!==i&&(o=this.regulateDate({...o,day:i},"constrain",r))}if("reject"===n&&o.day!==i)throw new RangeError(`Day ${i} does not exist in resulting calendar month`);return o}addCalendar(e,{years:t=0,months:n=0,weeks:r=0,days:o=0},i,a){const{year:s,day:c,monthCode:d}=e,h=this.adjustCalendarDate({year:s+t,monthCode:d,day:c},a),u=this.addMonthsCalendar(h,n,i,a),l=o+7*r;return this.addDaysCalendar(u,l,a)}untilCalendar(e,t,n,r){let o=0,i=0,a=0,s=0;switch(n){case"day":o=this.calendarDaysUntil(e,t,r);break;case"week":{const n=this.calendarDaysUntil(e,t,r);o=n%7,i=(n-o)/7;break}case"month":case"year":{const i=this.compareCalendarDates(t,e);if(!i)return{years:0,months:0,weeks:0,days:0};const c=t.year-e.year,d=t.day-e.day;if("year"===n&&c){let n=0;t.monthCode>e.monthCode&&(n=1),t.monthCode<e.monthCode&&(n=-1),n||(n=Math.sign(d)),s=n*i<0?c-i:c}let h,u=s?this.addCalendar(e,{years:s},"constrain",r):e;do{a+=i,h=u,u=this.addMonthsCalendar(h,i,"constrain",r),u.day!==e.day&&(u=this.regulateDate({...u,day:e.day},"constrain",r))}while(this.compareCalendarDates(t,u)*i>=0);a-=i,o=this.calendarDaysUntil(h,t,r);break}}return{years:s,months:a,weeks:i,days:o}}daysInMonth(e,t){const{day:n}=e,r=this.maximumMonthLength(e),o=this.minimumMonthLength(e);if(o===r)return o;const i=n<=r-o?r:o,a=this.calendarToIsoDate(e,"constrain",t),s=this.addDaysIso(a,i),c=this.isoToCalendarDate(s,t),d=this.addDaysIso(s,-c.day);return this.isoToCalendarDate(d,t).day}daysInPreviousMonth(e,t){const{day:n,month:r,year:o}=e;let i={year:r>1?o:o-1,month:r,day:1};const a=r>1?r-1:this.monthsInYear(i,t);i={...i,month:a};const s=this.minimumMonthLength(i),c=this.maximumMonthLength(i);if(s===c)return c;const d=this.calendarToIsoDate(e,"constrain",t),h=this.addDaysIso(d,-n);return this.isoToCalendarDate(h,t).day}startOfCalendarYear(e){return{year:e.year,month:1,monthCode:"M01",day:1}}startOfCalendarMonth(e){return{year:e.year,month:e.month,day:1}}calendarDaysUntil(e,t,n){const r=this.calendarToIsoDate(e,"constrain",n),o=this.calendarToIsoDate(t,"constrain",n);return Gr(o.year,o.month-1,o.day)-Gr(r.year,r.month-1,r.day)}monthDaySearchStartYear(e,t){return 1972}monthDayFromFields(e,t,n){let r,o,i,a,s,{era:c,eraYear:d,year:h,month:u,monthCode:l,day:m}=e;if(void 0!==u&&void 0===h&&(!this.hasEra||void 0===c||void 0===d))throw new TypeError("when month is present, year (or era and eraYear) are required");(void 0===l||void 0!==h||this.hasEra&&void 0!==d)&&({monthCode:l,day:m}=this.isoToCalendarDate(this.calendarToIsoDate(e,t,n),n));const f={year:this.monthDaySearchStartYear(l,m),month:12,day:31},y=this.isoToCalendarDate(f,n),p=y.monthCode>l||y.monthCode===l&&y.day>=m?y.year:y.year-1;for(let e=0;e<20;e++){const c=this.adjustCalendarDate({day:m,monthCode:l,year:p-e},n),d=this.calendarToIsoDate(c,"constrain",n),h=this.isoToCalendarDate(d,n);if(({year:r,month:o,day:i}=d),h.monthCode===l&&h.day===m)return{month:o,day:i,year:r};if("constrain"===t){const e=this.maxLengthOfMonthCodeInAnyYear(h.monthCode);if(h.monthCode===l&&h.day===e&&m>e)return{month:o,day:i,year:r};(void 0===a||h.monthCode===a.monthCode&&h.day>a.day)&&(a=h,s=d)}}if("constrain"===t&&void 0!==s)return s;throw new RangeError(`No recent ${this.id} year with monthCode ${l} and day ${m}`)}getFirstDayOfWeek(){}getMinimalDaysInFirstWeek(){}}class HebrewHelper extends HelperBase{constructor(){super(...arguments),this.id="hebrew",this.calendarType="lunisolar",this.months={Tishri:{leap:1,regular:1,monthCode:"M01",days:30},Heshvan:{leap:2,regular:2,monthCode:"M02",days:{min:29,max:30}},Kislev:{leap:3,regular:3,monthCode:"M03",days:{min:29,max:30}},Tevet:{leap:4,regular:4,monthCode:"M04",days:29},Shevat:{leap:5,regular:5,monthCode:"M05",days:30},Adar:{leap:void 0,regular:6,monthCode:"M06",days:29},"Adar I":{leap:6,regular:void 0,monthCode:"M05L",days:30},"Adar II":{leap:7,regular:void 0,monthCode:"M06",days:29},Nisan:{leap:8,regular:7,monthCode:"M07",days:30},Iyar:{leap:9,regular:8,monthCode:"M08",days:29},Sivan:{leap:10,regular:9,monthCode:"M09",days:30},Tamuz:{leap:11,regular:10,monthCode:"M10",days:29},Av:{leap:12,regular:11,monthCode:"M11",days:30},Elul:{leap:13,regular:12,monthCode:"M12",days:29}}}inLeapYear(e){const{year:t}=e;return(7*t+1)%19<7}monthsInYear(e){return this.inLeapYear(e)?13:12}minimumMonthLength(e){return this.minMaxMonthLength(e,"min")}maximumMonthLength(e){return this.minMaxMonthLength(e,"max")}minMaxMonthLength(e,t){const{month:n,year:r}=e,o=this.getMonthCode(r,n),i=Object.entries(this.months).find((e=>e[1].monthCode===o));if(void 0===i)throw new RangeError(`unmatched Hebrew month: ${n}`);const a=i[1].days;return"number"==typeof a?a:a[t]}maxLengthOfMonthCodeInAnyYear(e){return["M04","M06","M08","M10","M12"].includes(e)?29:30}estimateIsoDate(e){const{year:t}=e;return{year:t-3760,month:1,day:1}}getMonthCode(e,t){return this.inLeapYear({year:e})?6===t?ei(5,!0):ei(t<6?t:t-1):ei(t)}adjustCalendarDate(e,t,n="constrain",r=!1){let{year:o,month:i,monthCode:a,day:s,monthExtra:c}=e;if(void 0===o)throw new TypeError("Missing property: year");if(r){if(c){const e=this.months[c];if(!e)throw new RangeError(`Unrecognized month from formatToParts: ${c}`);i=this.inLeapYear({year:o})?e.leap:e.regular}return a=this.getMonthCode(o,i),{year:o,month:i,day:s,monthCode:a}}if(this.validateCalendarDate(e),void 0===i)if(a.endsWith("L")){if("M05L"!==a)throw new RangeError(`Hebrew leap month must have monthCode M05L, not ${a}`);if(i=6,!this.inLeapYear({year:o})){if("reject"===n)throw new RangeError(`Hebrew monthCode M05L is invalid in year ${o} which is not a leap year`);i=6,a="M06"}}else{i=Qo(a),this.inLeapYear({year:o})&&i>=6&&i++;const e=this.monthsInYear({year:o});if(i<1||i>e)throw new RangeError(`Invalid monthCode: ${a}`)}else if("reject"===n?(Nr(i,1,this.monthsInYear({year:o})),Nr(s,1,this.maximumMonthLength({year:o,month:i}))):(i=jr(i,1,this.monthsInYear({year:o})),s=jr(s,1,this.maximumMonthLength({year:o,month:i}))),void 0===a)a=this.getMonthCode(o,i);else if(this.getMonthCode(o,i)!==a)throw new RangeError(`monthCode ${a} doesn't correspond to month ${i} in Hebrew year ${o}`);return{...e,day:s,month:i,monthCode:a,year:o}}}class IslamicBaseHelper extends HelperBase{constructor(){super(...arguments),this.calendarType="lunar",this.DAYS_PER_ISLAMIC_YEAR=354+11/30,this.DAYS_PER_ISO_YEAR=365.2425}inLeapYear(e,t){const n={year:e.year,month:1,monthCode:"M01",day:1},r={year:e.year+1,month:1,monthCode:"M01",day:1};return 355===this.calendarDaysUntil(n,r,t)}monthsInYear(){return 12}minimumMonthLength(){return 29}maximumMonthLength(){return 30}maxLengthOfMonthCodeInAnyYear(){return 30}estimateIsoDate(e){const{year:t}=this.adjustCalendarDate(e);return{year:Math.floor(t*this.DAYS_PER_ISLAMIC_YEAR/this.DAYS_PER_ISO_YEAR)+622,month:1,day:1}}}class IslamicHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic"}}class IslamicUmalquraHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-umalqura"}}class IslamicTblaHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-tbla"}}class IslamicCivilHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-civil"}}class IslamicRgsaHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-rgsa"}}class IslamicCcHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamicc"}}class PersianHelper extends HelperBase{constructor(){super(...arguments),this.id="persian",this.calendarType="solar"}inLeapYear(e,t){return 30===this.daysInMonth({year:e.year,month:12,day:1},t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 12===t?29:t<=6?31:30}maximumMonthLength(e){const{month:t}=e;return 12===t?30:t<=6?31:30}maxLengthOfMonthCodeInAnyYear(e){return Qo(e)<=6?31:30}estimateIsoDate(e){const{year:t}=this.adjustCalendarDate(e);return{year:t+621,month:1,day:1}}}class IndianHelper extends HelperBase{constructor(){super(...arguments),this.id="indian",this.calendarType="solar",this.months={1:{length:30,month:3,day:22,leap:{length:31,month:3,day:21}},2:{length:31,month:4,day:21},3:{length:31,month:5,day:22},4:{length:31,month:6,day:22},5:{length:31,month:7,day:23},6:{length:31,month:8,day:23},7:{length:30,month:9,day:23},8:{length:30,month:10,day:23},9:{length:30,month:11,day:22},10:{length:30,month:12,day:22},11:{length:30,month:1,nextYear:!0,day:21},12:{length:30,month:2,nextYear:!0,day:20}},this.vulnerableToBceBug="10/11/-79 Saka"!==new Date("0000-01-01T00:00Z").toLocaleDateString("en-US-u-ca-indian",{timeZone:"UTC"})}inLeapYear(e){return oi(e.year+78)}monthsInYear(){return 12}minimumMonthLength(e){return this.getMonthInfo(e).length}maximumMonthLength(e){return this.getMonthInfo(e).length}maxLengthOfMonthCodeInAnyYear(e){const t=Qo(e);let n=this.months[t];return n=n.leap??n,n.length}getMonthInfo(e){const{month:t}=e;let n=this.months[t];if(void 0===n)throw new RangeError(`Invalid month: ${t}`);return this.inLeapYear(e)&&n.leap&&(n=n.leap),n}estimateIsoDate(e){const t=this.adjustCalendarDate(e),n=this.getMonthInfo(t);return Or(t.year+78+(n.nextYear?1:0),n.month,n.day+t.day-1)}checkIcuBugs(e){if(this.vulnerableToBceBug&&e.year<1)throw new RangeError(`calendar '${this.id}' is broken for ISO dates before 0001-01-01 (see https://bugs.chromium.org/p/v8/issues/detail?id=10529)`)}}function oi(e){return e%4==0&&(e%100!=0||e%400==0)}class GregorianBaseHelperFixedEpoch extends HelperBase{constructor(e,t){super(),this.calendarType="solar",this.id=e,this.isoEpoch=t}inLeapYear(e){const{year:t}=this.estimateIsoDate({month:1,day:1,year:e.year});return oi(t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 2===t?this.inLeapYear(e)?29:28:[4,6,9,11].indexOf(t)>=0?30:31}maximumMonthLength(e){return this.minimumMonthLength(e)}maxLengthOfMonthCodeInAnyYear(e){return[31,29,31,30,31,30,31,31,30,31,30,31][Qo(e)-1]}estimateIsoDate(e){const t=this.adjustCalendarDate(e);return St(t.year+this.isoEpoch.year,t.month+this.isoEpoch.month,t.day+this.isoEpoch.day,"constrain")}}class GregorianBaseHelper extends HelperBase{constructor(e,t){super(),this.hasEra=!0,this.calendarType="solar",this.id=e;const{eras:n,anchorEra:r}=function(e){let t,n=e;if(0===n.length)throw new RangeError("Invalid era data: eras are required");if(1===n.length&&n[0].reverseOf)throw new RangeError("Invalid era data: anchor era cannot count years backwards");if(1===n.length&&!n[0].code)throw new RangeError("Invalid era data: at least one named era is required");if(n.filter((e=>null!=e.reverseOf)).length>1)throw new RangeError("Invalid era data: only one era can count years backwards");n.forEach((e=>{if(e.isAnchor||!e.anchorEpoch&&!e.reverseOf){if(t)throw new RangeError("Invalid era data: cannot have multiple anchor eras");t=e,e.anchorEpoch={year:e.hasYearZero?0:1}}else if(!e.code)throw new RangeError("If era name is blank, it must be the anchor era")})),n=n.filter((e=>e.code)),n.forEach((e=>{const{reverseOf:t}=e;if(t){const r=n.find((e=>e.code===t));if(void 0===r)throw new RangeError(`Invalid era data: unmatched reverseOf era: ${t}`);e.reverseOf=r,e.anchorEpoch=r.anchorEpoch,e.isoEpoch=r.isoEpoch}void 0===e.anchorEpoch.month&&(e.anchorEpoch.month=1),void 0===e.anchorEpoch.day&&(e.anchorEpoch.day=1)})),n.sort(((e,t)=>{if(e.reverseOf)return 1;if(t.reverseOf)return-1;if(!e.isoEpoch||!t.isoEpoch)throw new RangeError("Invalid era data: missing ISO epoch");return t.isoEpoch.year-e.isoEpoch.year}));const r=n[n.length-1].reverseOf;if(r&&r!==n[n.length-2])throw new RangeError("Invalid era data: invalid reverse-sign era");return n.forEach(((e,t)=>{e.genericName="era"+(n.length-1-t)})),{eras:n,anchorEra:t||n[0]}}(t);this.anchorEra=r,this.eras=n}inLeapYear(e){const{year:t}=this.estimateIsoDate({month:1,day:1,year:e.year});return oi(t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 2===t?this.inLeapYear(e)?29:28:[4,6,9,11].indexOf(t)>=0?30:31}maximumMonthLength(e){return this.minimumMonthLength(e)}maxLengthOfMonthCodeInAnyYear(e){return[31,29,31,30,31,30,31,31,30,31,30,31][Qo(e)-1]}completeEraYear(e){const t=(t,n,r)=>{const o=e[t];if(null!=o&&o!=n&&!(r||[]).includes(o)){const e=r?.[0];throw new RangeError(`Input ${t} ${o} doesn't match calculated value ${e?`${n} (also called ${e})`:n}`)}},n=t=>{let n;const r={...e,year:t},o=this.eras.find(((e,o)=>{if(o===this.eras.length-1){if(e.reverseOf){if(t>0)throw new RangeError(`Signed year ${t} is invalid for era ${e.code}`);return n=e.anchorEpoch.year-t,!0}return n=t-e.anchorEpoch.year+(e.hasYearZero?0:1),!0}return this.compareCalendarDates(r,e.anchorEpoch)>=0&&(n=t-e.anchorEpoch.year+(e.hasYearZero?0:1),!0)}));if(!o)throw new RangeError(`Year ${t} was not matched by any era`);return{eraYear:n,era:o.code,eraNames:o.names}};let{year:r,eraYear:o,era:i}=e;if(null!=r){const e=n(r);({eraYear:o,era:i}=e),t("era",i,e?.eraNames),t("eraYear",o)}else{if(null==o)throw new RangeError("Either year or eraYear and era are required");{if(void 0===i)throw new RangeError("era and eraYear must be provided together");const e=this.eras.find((({code:e,names:t=[]})=>e===i||t.includes(i)));if(!e)throw new RangeError(`Era ${i} (ISO year ${o}) was not matched by any era`);r=e.reverseOf?e.anchorEpoch.year-o:o+e.anchorEpoch.year-(e.hasYearZero?0:1),t("year",r),({eraYear:o,era:i}=n(r))}}return{...e,year:r,eraYear:o,era:i}}adjustCalendarDate(e,t,n="constrain"){let r=e;const{month:o,monthCode:i}=r;return void 0===o&&(r={...r,month:Qo(i)}),this.validateCalendarDate(r),r=this.completeEraYear(r),super.adjustCalendarDate(r,t,n)}estimateIsoDate(e){const t=this.adjustCalendarDate(e),{year:n,month:r,day:o}=t,{anchorEra:i}=this;return St(n+i.isoEpoch.year-(i.hasYearZero?0:1),r,o,"constrain")}}class SameMonthDayAsGregorianBaseHelper extends GregorianBaseHelper{constructor(e,t){super(e,t)}isoToCalendarDate(e){const{year:t,month:n,day:r}=e,o=ei(n),i=t-this.anchorEra.isoEpoch.year+1;return this.completeEraYear({year:i,month:n,monthCode:o,day:r})}}const ii={inLeapYear(e){const{year:t}=e;return(t+1)%4==0},monthsInYear:()=>13,minimumMonthLength(e){const{month:t}=e;return 13===t?this.inLeapYear(e)?6:5:30},maximumMonthLength(e){return this.minimumMonthLength(e)},maxLengthOfMonthCodeInAnyYear:e=>"M13"===e?6:30};class OrthodoxBaseHelperFixedEpoch extends GregorianBaseHelperFixedEpoch{constructor(e,t){super(e,t),this.inLeapYear=ii.inLeapYear,this.monthsInYear=ii.monthsInYear,this.minimumMonthLength=ii.minimumMonthLength,this.maximumMonthLength=ii.maximumMonthLength,this.maxLengthOfMonthCodeInAnyYear=ii.maxLengthOfMonthCodeInAnyYear}}class OrthodoxBaseHelper extends GregorianBaseHelper{constructor(e,t){super(e,t),this.inLeapYear=ii.inLeapYear,this.monthsInYear=ii.monthsInYear,this.minimumMonthLength=ii.minimumMonthLength,this.maximumMonthLength=ii.maximumMonthLength,this.maxLengthOfMonthCodeInAnyYear=ii.maxLengthOfMonthCodeInAnyYear}}class EthioaaHelper extends OrthodoxBaseHelperFixedEpoch{constructor(){super("ethioaa",{year:-5492,month:7,day:17})}}class CopticHelper extends OrthodoxBaseHelper{constructor(){super("coptic",[{code:"coptic",isoEpoch:{year:284,month:8,day:29}},{code:"coptic-inverse",reverseOf:"coptic"}])}}class EthiopicHelper extends OrthodoxBaseHelper{constructor(){super("ethiopic",[{code:"ethioaa",names:["ethiopic-amete-alem","mundi"],isoEpoch:{year:-5492,month:7,day:17}},{code:"ethiopic",names:["incar"],isoEpoch:{year:8,month:8,day:27},anchorEpoch:{year:5501}}])}}class RocHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("roc",[{code:"roc",names:["minguo"],isoEpoch:{year:1912,month:1,day:1}},{code:"roc-inverse",names:["before-roc"],reverseOf:"roc"}])}}class BuddhistHelper extends GregorianBaseHelperFixedEpoch{constructor(){super("buddhist",{year:-543,month:1,day:1})}}class GregoryHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("gregory",[{code:"gregory",names:["ad","ce"],isoEpoch:{year:1,month:1,day:1}},{code:"gregory-inverse",names:["be","bce"],reverseOf:"gregory"}])}reviseIntlEra(e){let{era:t,eraYear:n}=e;return"b"===t&&(t="gregory-inverse"),"a"===t&&(t="gregory"),{era:t,eraYear:n}}getFirstDayOfWeek(){return 1}getMinimalDaysInFirstWeek(){return 1}}class JapaneseHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("japanese",[{code:"reiwa",isoEpoch:{year:2019,month:5,day:1},anchorEpoch:{year:2019,month:5,day:1}},{code:"heisei",isoEpoch:{year:1989,month:1,day:8},anchorEpoch:{year:1989,month:1,day:8}},{code:"showa",isoEpoch:{year:1926,month:12,day:25},anchorEpoch:{year:1926,month:12,day:25}},{code:"taisho",isoEpoch:{year:1912,month:7,day:30},anchorEpoch:{year:1912,month:7,day:30}},{code:"meiji",isoEpoch:{year:1868,month:9,day:8},anchorEpoch:{year:1868,month:9,day:8}},{code:"japanese",names:["japanese","gregory","ad","ce"],isoEpoch:{year:1,month:1,day:1}},{code:"japanese-inverse",names:["japanese-inverse","gregory-inverse","bc","bce"],reverseOf:"japanese"}]),this.erasBeginMidYear=!0}reviseIntlEra(e,t){const{era:n,eraYear:r}=e,{year:o}=t;return this.eras.find((e=>e.code===n))?{era:n,eraYear:r}:o<1?{era:"japanese-inverse",eraYear:1-o}:{era:"japanese",eraYear:o}}}class ChineseBaseHelper extends HelperBase{constructor(){super(...arguments),this.calendarType="lunisolar"}inLeapYear(e,t){const n=this.getMonthList(e.year,t);return 13===Object.entries(n).length}monthsInYear(e,t){return this.inLeapYear(e,t)?13:12}minimumMonthLength(){return 29}maximumMonthLength(){return 30}maxLengthOfMonthCodeInAnyYear(e){return["M01L","M09L","M10L","M11L","M12L"].includes(e)?29:30}monthDaySearchStartYear(e,t){const n={M01L:[1651,1651],M02L:[1947,1765],M03L:[1966,1955],M04L:[1963,1944],M05L:[1971,1952],M06L:[1960,1941],M07L:[1968,1938],M08L:[1957,1718],M09L:[1832,1832],M10L:[1870,1870],M11L:[1814,1814],M12L:[1890,1890]}[e]??[1972,1972];return t<30?n[0]:n[1]}getMonthList(e,t){if(void 0===e)throw new TypeError("Missing year");const n=JSON.stringify({func:"getMonthList",calendarYear:e,id:this.id}),r=t.get(n);if(r)return r;const o=this.getFormatter(),i=(e,t)=>{const n=ni({isoYear:e,isoMonth:2,isoDay:1}),r=new Date(n);r.setUTCDate(t+1);const i=o.formatToParts(r),a=i.find((e=>"month"===e.type)).value,s=+i.find((e=>"day"===e.type)).value,c=i.find((e=>"relatedYear"===e.type));let d;if(void 0===c)throw new RangeError(`Intl.DateTimeFormat.formatToParts lacks relatedYear in ${this.id} calendar. Try Node 14+ or modern browsers.`);return d=+c.value,{calendarMonthString:a,calendarDay:s,calendarYearToVerify:d}};let a=17,{calendarMonthString:s,calendarDay:c,calendarYearToVerify:d}=i(e,a);"1"!==s&&(a+=29,({calendarMonthString:s,calendarDay:c}=i(e,a))),a-=c-5;const h={};let u,l,m=1,f=!1;do{({calendarMonthString:s,calendarDay:c,calendarYearToVerify:d}=i(e,a)),u&&(h[l].daysInMonth=u+30-c),d!==e?f=!0:(h[s]={monthIndex:m++},a+=30),u=c,l=s}while(!f);return h[l].daysInMonth=u+30-c,t.set(n,h),h}estimateIsoDate(e){const{year:t,month:n}=e;return{year:t,month:n>=12?12:n+1,day:1}}adjustCalendarDate(e,t,n="constrain",r=!1){let{year:o,month:i,monthExtra:a,day:s,monthCode:c}=e;if(void 0===o)throw new TypeError("Missing property: year");if(r){if(a&&"bis"!==a)throw new RangeError(`Unexpected leap month suffix: ${a}`);const e=ei(i,void 0!==a),n=`${i}${a||""}`,r=this.getMonthList(o,t)[n];if(void 0===r)throw new RangeError(`Unmatched month ${n} in Chinese year ${o}`);return i=r.monthIndex,{year:o,month:i,day:s,monthCode:e}}if(this.validateCalendarDate(e),void 0===i){const e=this.getMonthList(o,t);let r=c.replace(/^M|L$/g,(e=>"L"===e?"bis":""));"0"===r[0]&&(r=r.slice(1));let a=e[r];if(i=a&&a.monthIndex,void 0===i&&c.endsWith("L")&&"M13L"!=c&&"constrain"===n){const t=+c.replace(/^M0?|L$/g,"");a=e[t],a&&(i=a.monthIndex,c=ei(t))}if(void 0===i)throw new RangeError(`Unmatched month ${c} in Chinese year ${o}`)}else if(void 0===c){const e=this.getMonthList(o,t),r=Object.entries(e),a=r.length;"reject"===n?(Nr(i,1,a),Nr(s,1,this.maximumMonthLength())):(i=jr(i,1,a),s=jr(s,1,this.maximumMonthLength()));const d=r.find((e=>e[1].monthIndex===i));if(void 0===d)throw new RangeError(`Invalid month ${i} in Chinese year ${o}`);c=ei(+d[0].replace("bis",""),-1!==d[0].indexOf("bis"))}else{const e=this.getMonthList(o,t);let n=c.replace(/^M|L$/g,(e=>"L"===e?"bis":""));"0"===n[0]&&(n=n.slice(1));const r=e[n];if(!r)throw new RangeError(`Unmatched monthCode ${c} in Chinese year ${o}`);if(i!==r.monthIndex)throw new RangeError(`monthCode ${c} doesn't correspond to month ${i} in Chinese year ${o}`)}return{...e,year:o,month:i,monthCode:c,day:s}}}class ChineseHelper extends ChineseBaseHelper{constructor(){super(...arguments),this.id="chinese"}}class DangiHelper extends ChineseBaseHelper{constructor(){super(...arguments),this.id="dangi"}}class NonIsoCalendar{constructor(e){this.helper=e}extraFields(e){return this.helper.hasEra&&e.includes("year")?["era","eraYear"]:[]}resolveFields(e){if("lunisolar"!==this.helper.calendarType){const t=new OneObjectCache;ti(e,void 0,this.helper.monthsInYear({year:e.year??1972},t))}}dateToISO(e,t){const n=new OneObjectCache,r=this.helper.calendarToIsoDate(e,t,n);return n.setObject(r),r}monthDayToISOReferenceDate(e,t){const n=new OneObjectCache,r=this.helper.monthDayFromFields(e,t,n);return n.setObject(r),r}fieldKeysToIgnore(e){const t=new Set;for(let n=0;n<e.length;n++){const r=e[n];switch(t.add(r),r){case"era":t.add("eraYear"),t.add("year");break;case"eraYear":t.add("era"),t.add("year");break;case"year":t.add("era"),t.add("eraYear");break;case"month":t.add("monthCode"),this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"));break;case"monthCode":t.add("month"),this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"));break;case"day":this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"))}}return Go(t)}dateAdd(e,{years:t,months:n,weeks:r,days:o},i){const a=OneObjectCache.getCacheForObject(e),s=this.helper.isoToCalendarDate(e,a),c=this.helper.addCalendar(s,{years:t,months:n,weeks:r,days:o},i,a),d=this.helper.calendarToIsoDate(c,"constrain",a);return OneObjectCache.getCacheForObject(d)||new OneObjectCache(a).setObject(d),d}dateUntil(e,t,n){const r=OneObjectCache.getCacheForObject(e),o=OneObjectCache.getCacheForObject(t),i=this.helper.isoToCalendarDate(e,r),a=this.helper.isoToCalendarDate(t,o);return this.helper.untilCalendar(i,a,n,r)}isoToDate(e,t){const n=OneObjectCache.getCacheForObject(e),r=this.helper.isoToCalendarDate(e,n);if(t.dayOfWeek&&(r.dayOfWeek=Xo.iso8601.isoToDate(e,{dayOfWeek:!0}).dayOfWeek),t.dayOfYear){const e=this.helper.startOfCalendarYear(r),t=this.helper.calendarDaysUntil(e,r,n);r.dayOfYear=t+1}if(t.weekOfYear&&(r.weekOfYear=Ko(this.helper.id,e)),r.daysInWeek=7,t.daysInMonth&&(r.daysInMonth=this.helper.daysInMonth(r,n)),t.daysInYear){const e=this.helper.startOfCalendarYear(r),t=this.helper.addCalendar(e,{years:1},"constrain",n);r.daysInYear=this.helper.calendarDaysUntil(e,t,n)}return t.monthsInYear&&(r.monthsInYear=this.helper.monthsInYear(r,n)),t.inLeapYear&&(r.inLeapYear=this.helper.inLeapYear(r,n)),r}getFirstDayOfWeek(){return this.helper.getFirstDayOfWeek()}getMinimalDaysInFirstWeek(){return this.helper.getMinimalDaysInFirstWeek()}}for(const e of[HebrewHelper,PersianHelper,EthiopicHelper,EthioaaHelper,CopticHelper,ChineseHelper,DangiHelper,RocHelper,IndianHelper,BuddhistHelper,GregoryHelper,JapaneseHelper,IslamicHelper,IslamicUmalquraHelper,IslamicTblaHelper,IslamicCivilHelper,IslamicRgsaHelper,IslamicCcHelper]){const t=new e;Xo[t.id]=new NonIsoCalendar(t)}se("calendarImpl",(function(e){return Xo[e]}));const ai=Intl.DateTimeFormat;function si(e,t){let n=re(e,t);return"function"==typeof n&&(n=new ai(re(e,G),n(re(e,K))),function(e,t,n){const r=Q(e);if(void 0===r)throw new TypeError("Missing slots for the given container");if(void 0===r[t])throw new TypeError(`tried to reset ${t} which was not set`);r[t]=n}(e,t,n)),n}function ci(e){return ne(e,q)}class DateTimeFormatImpl{constructor(e=void 0,t=void 0){!function(e,t,n){const r=void 0!==n;let o;if(r){const e=["localeMatcher","calendar","numberingSystem","hour12","hourCycle","timeZone","weekday","era","year","month","day","dayPeriod","hour","minute","second","fractionalSecondDigits","timeZoneName","formatMatcher","dateStyle","timeStyle"];o=function(e){if(null==e)throw new TypeError(`Expected object not ${e}`);return Object(e)}(n);const t=Object.create(null);for(let n=0;n<e.length;n++){const r=e[n];Object.prototype.hasOwnProperty.call(o,r)&&(t[r]=o[r])}o=t}else o=Object.create(null);const i=new ai(t,o),a=i.resolvedOptions();if(te(e),r){const t=Object.assign(Object.create(null),a);for(const e in t)Object.prototype.hasOwnProperty.call(o,e)||delete t[e];t.hour12=o.hour12,t.hourCycle=o.hourCycle,oe(e,K,t)}else oe(e,K,o);oe(e,G,a.locale),oe(e,q,i),oe(e,W,a.timeZone),oe(e,J,a.calendar),oe(e,B,vi),oe(e,Z,gi),oe(e,F,wi),oe(e,H,pi),oe(e,z,bi),oe(e,A,Di);const s=r?o.timeZone:void 0;if(void 0===s)oe(e,_,a.timeZone);else{const t=We(s);if(t.startsWith("−"))throw new RangeError("Unicode minus (U+2212) is not supported in time zone offsets");oe(e,_,Bn(t))}}(this,e,t)}get format(){vt(this,ci);const e=ui.bind(this);return Object.defineProperties(e,{length:{value:1,enumerable:!1,writable:!1,configurable:!0},name:{value:"",enumerable:!1,writable:!1,configurable:!0}}),e}formatRange(e,t){return vt(this,ci),mi.call(this,e,t)}formatToParts(e,...t){return vt(this,ci),li.call(this,e,...t)}formatRangeToParts(e,t){return vt(this,ci),fi.call(this,e,t)}resolvedOptions(){return vt(this,ci),hi.call(this)}}"formatToParts"in ai.prototype||delete DateTimeFormatImpl.prototype.formatToParts,"formatRangeToParts"in ai.prototype||delete DateTimeFormatImpl.prototype.formatRangeToParts;const di=function(e=void 0,t=void 0){return new DateTimeFormatImpl(e,t)};function hi(){const e=re(this,q).resolvedOptions();return e.timeZone=re(this,_),e}function ui(e,...t){let n,r,o=$i(e,this);return o.formatter?(n=o.formatter,r=[No(o.epochNs,"floor")]):(n=re(this,q),r=[e,...t]),n.format(...r)}function li(e,...t){let n,r,o=$i(e,this);return o.formatter?(n=o.formatter,r=[No(o.epochNs,"floor")]):(n=re(this,q),r=[e,...t]),n.formatToParts(...r)}function mi(e,t){if(void 0===e||void 0===t)throw new TypeError("Intl.DateTimeFormat.formatRange requires two values");const n=Ci(e),r=Ci(t);let o,i=[n,r];if(Ii(n)!==Ii(r))throw new TypeError("Intl.DateTimeFormat.formatRange accepts two values of the same type");if(Ii(n)){if(!Oi(n,r))throw new TypeError("Intl.DateTimeFormat.formatRange accepts two values of the same type");const{epochNs:e,formatter:t}=$i(n,this),{epochNs:a,formatter:s}=$i(r,this);t&&(o=t,i=[No(e,"floor"),No(a,"floor")])}return o||(o=re(this,q)),o.formatRange(...i)}function fi(e,t){if(void 0===e||void 0===t)throw new TypeError("Intl.DateTimeFormat.formatRange requires two values");const n=Ci(e),r=Ci(t);let o,i=[n,r];if(Ii(n)!==Ii(r))throw new TypeError("Intl.DateTimeFormat.formatRangeToParts accepts two values of the same type");if(Ii(n)){if(!Oi(n,r))throw new TypeError("Intl.DateTimeFormat.formatRangeToParts accepts two values of the same type");const{epochNs:e,formatter:t}=$i(n,this),{epochNs:a,formatter:s}=$i(r,this);t&&(o=t,i=[No(e,"floor"),No(a,"floor")])}return o||(o=re(this,q)),o.formatRangeToParts(...i)}function yi(e={},t={}){const n=Object.assign({},e),r=["year","month","day","hour","minute","second","weekday","dayPeriod","timeZoneName","dateStyle","timeStyle"];for(let e=0;e<r.length;e++){const o=r[e];n[o]=o in t?t[o]:n[o],!1!==n[o]&&void 0!==n[o]||delete n[o]}return n}function pi(e){const t=yi(e,{year:!1,month:!1,day:!1,weekday:!1,timeZoneName:!1,dateStyle:!1});if("long"!==t.timeStyle&&"full"!==t.timeStyle||(delete t.timeStyle,Object.assign(t,{hour:"numeric",minute:"2-digit",second:"2-digit"})),!Mi(t)){if(Ei(e))throw new TypeError(`cannot format Temporal.PlainTime with options [${Object.keys(e)}]`);Object.assign(t,{hour:"numeric",minute:"numeric",second:"numeric"})}return t}function gi(e){const t={short:{year:"2-digit",month:"numeric"},medium:{year:"numeric",month:"short"},long:{year:"numeric",month:"long"},full:{year:"numeric",month:"long"}},n=yi(e,{day:!1,hour:!1,minute:!1,second:!1,weekday:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if("dateStyle"in n&&n.dateStyle){const e=n.dateStyle;delete n.dateStyle,Object.assign(n,t[e])}if(!("year"in n||"month"in n||"era"in n)){if(Ei(e))throw new TypeError(`cannot format PlainYearMonth with options [${Object.keys(e)}]`);Object.assign(n,{year:"numeric",month:"numeric"})}return n}function wi(e){const t={short:{month:"numeric",day:"numeric"},medium:{month:"short",day:"numeric"},long:{month:"long",day:"numeric"},full:{month:"long",day:"numeric"}},n=yi(e,{year:!1,hour:!1,minute:!1,second:!1,weekday:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if("dateStyle"in n&&n.dateStyle){const e=n.dateStyle;delete n.dateStyle,Object.assign(n,t[e])}if(!("month"in n)&&!("day"in n)){if(Ei(e))throw new TypeError(`cannot format PlainMonthDay with options [${Object.keys(e)}]`);Object.assign(n,{month:"numeric",day:"numeric"})}return n}function vi(e){const t=yi(e,{hour:!1,minute:!1,second:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if(!Ti(t)){if(Ei(e))throw new TypeError(`cannot format PlainDate with options [${Object.keys(e)}]`);Object.assign(t,{year:"numeric",month:"numeric",day:"numeric"})}return t}function bi(e){const t=yi(e,{timeZoneName:!1});if(("long"===t.timeStyle||"full"===t.timeStyle)&&(delete t.timeStyle,Object.assign(t,{hour:"numeric",minute:"2-digit",second:"2-digit"}),t.dateStyle)){const e={short:{year:"numeric",month:"numeric",day:"numeric"},medium:{year:"numeric",month:"short",day:"numeric"},long:{year:"numeric",month:"long",day:"numeric"},full:{year:"numeric",month:"long",day:"numeric",weekday:"long"}};Object.assign(t,e[t.dateStyle]),delete t.dateStyle}if(!Mi(t)&&!Ti(t)){if(Ei(e))throw new TypeError(`cannot format PlainDateTime with options [${Object.keys(e)}]`);Object.assign(t,{year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"})}return t}function Di(e){let t=e;return Mi(t)||Ti(t)||(t=Object.assign({},t,{year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"})),t}function Ti(e){return"year"in e||"month"in e||"day"in e||"weekday"in e||"dateStyle"in e||"era"in e}function Mi(e){return"hour"in e||"minute"in e||"second"in e||"timeStyle"in e||"dayPeriod"in e||"fractionalSecondDigits"in e}function Ei(e){return Ti(e)||Mi(e)||"dateStyle"in e||"timeStyle"in e||"timeZoneName"in e}function Ii(e){return mt(e)||ft(e)||yt(e)||wt(e)||pt(e)||gt(e)||ut(e)}function Ci(e){return Ii(e)?e:qe(e)}function Oi(e,t){return!(!Ii(e)||!Ii(t)||ft(e)&&!ft(t)||mt(e)&&!mt(t)||yt(e)&&!yt(t)||wt(e)&&!wt(t)||pt(e)&&!pt(t)||gt(e)&&!gt(t)||ut(e)&&!ut(t))}function $i(e,t){if(ft(e)){const n={isoDate:{year:1970,month:1,day:1},time:re(e,M)};return{epochNs:An(re(t,W),n,"compatible"),formatter:si(t,H)}}if(pt(e)){const n=re(e,E),r=re(t,J);if(n!==r)throw new RangeError(`cannot format PlainYearMonth with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,Z)}}if(gt(e)){const n=re(e,E),r=re(t,J);if(n!==r)throw new RangeError(`cannot format PlainMonthDay with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,F)}}if(mt(e)){const n=re(e,E),r=re(t,J);if("iso8601"!==n&&n!==r)throw new RangeError(`cannot format PlainDate with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,B)}}if(yt(e)){const n=re(e,E),r=re(t,J);if("iso8601"!==n&&n!==r)throw new RangeError(`cannot format PlainDateTime with calendar ${n} in locale with calendar ${r}`);const o=re(e,T);return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,z)}}if(wt(e))throw new TypeError("Temporal.ZonedDateTime not supported in DateTimeFormat methods. Use toLocaleString() instead.");return ut(e)?{epochNs:re(e,b),formatter:si(t,A)}:{}}function Yi(e){const t=Object.create(null);return t.years=re(e,Y),t.months=re(e,R),t.weeks=re(e,S),t.days=re(e,j),t.hours=re(e,k),t.minutes=re(e,N),t.seconds=re(e,x),t.milliseconds=re(e,L),t.microseconds=re(e,P),t.nanoseconds=re(e,U),t}DateTimeFormatImpl.prototype.constructor=di,Object.defineProperty(di,"prototype",{value:DateTimeFormatImpl.prototype,writable:!1,enumerable:!1,configurable:!1}),di.supportedLocalesOf=ai.supportedLocalesOf,ae(di,"Intl.DateTimeFormat");const{format:Ri,formatToParts:Si}=Intl.DurationFormat?.prototype??Object.create(null);function ji(e){Intl.DurationFormat.prototype.resolvedOptions.call(this);const t=Yi(sn(e));return Ri.call(this,t)}Intl.DurationFormat?.prototype&&(Intl.DurationFormat.prototype.format=ji,Intl.DurationFormat.prototype.formatToParts=function(e){Intl.DurationFormat.prototype.resolvedOptions.call(this);const t=Yi(sn(e));return Si.call(this,t)});var ki=Object.freeze({__proto__:null,DateTimeFormat:di,ModifiedIntlDurationFormatPrototypeFormat:ji});class Instant{constructor(e){if(arguments.length<1)throw new TypeError("missing argument: epochNanoseconds is required");In(this,Lo(e))}get epochMilliseconds(){return vt(this,ut),No(re(this,b),"floor")}get epochNanoseconds(){return vt(this,ut),ko(e.BigInt(re(this,b)))}add(e){return vt(this,ut),wo("add",this,e)}subtract(e){return vt(this,ut),wo("subtract",this,e)}until(e,t=void 0){return vt(this,ut),so("until",this,e,t)}since(e,t=void 0){return vt(this,ut),so("since",this,e,t)}round(e){if(vt(this,ut),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt);return Ht(n,{hour:24,minute:1440,second:86400,millisecond:864e5,microsecond:864e8,nanosecond:864e11}[o],!0),Cn(Io(re(this,b),n,o,r))}equals(t){vt(this,ut);const n=cn(t),r=re(this,b),o=re(n,b);return e.equal(e.BigInt(r),e.BigInt(o))}toString(e=void 0){vt(this,ut);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o)throw new RangeError('smallestUnit must be a time unit other than "hour"');let i=t.timeZone;void 0!==i&&(i=Bn(i));const{precision:a,unit:s,increment:c}=At(o,n);return Xn(Cn(Io(re(this,b),c,s,r)),i,a)}toJSON(){return vt(this,ut),Xn(this,void 0,"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,ut),new di(e,t).format(this)}valueOf(){qo("Instant")}toZonedDateTimeISO(e){vt(this,ut);const t=Bn(e);return $n(re(this,b),t,"iso8601")}static fromEpochMilliseconds(e){return Cn(xo(qe(e)))}static fromEpochNanoseconds(e){return Cn(Lo(e))}static from(e){return cn(e)}static compare(t,n){const r=cn(t),o=cn(n),i=re(r,b),a=re(o,b);return e.lessThan(i,a)?-1:e.greaterThan(i,a)?1:0}}ae(Instant,"Temporal.Instant");class PlainDate{constructor(e,t,n,r="iso8601"){const o=_e(e),i=_e(t),a=_e(n),s=zo(void 0===r?"iso8601":Ve(r));xr(o,i,a),yn(this,{year:o,month:i,day:a},s)}get calendarId(){return vt(this,mt),re(this,E)}get era(){return Ni(this,"era")}get eraYear(){return Ni(this,"eraYear")}get year(){return Ni(this,"year")}get month(){return Ni(this,"month")}get monthCode(){return Ni(this,"monthCode")}get day(){return Ni(this,"day")}get dayOfWeek(){return Ni(this,"dayOfWeek")}get dayOfYear(){return Ni(this,"dayOfYear")}get weekOfYear(){return Ni(this,"weekOfYear")?.week}get yearOfWeek(){return Ni(this,"weekOfYear")?.year}get daysInWeek(){return Ni(this,"daysInWeek")}get daysInMonth(){return Ni(this,"daysInMonth")}get daysInYear(){return Ni(this,"daysInYear")}get monthsInYear(){return Ni(this,"monthsInYear")}get inLeapYear(){return Ni(this,"inLeapYear")}with(e,t=void 0){if(vt(this,mt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D));return r=Rn(n,r,tn(n,e,["year","month","monthCode","day"],[],"partial")),pn(Ln(n,r,Lt(Zo(t))),n)}withCalendar(e){vt(this,mt);const t=kn(e);return pn(re(this,D),t)}add(e,t=void 0){return vt(this,mt),vo("add",this,e,t)}subtract(e,t=void 0){return vt(this,mt),vo("subtract",this,e,t)}until(e,t=void 0){return vt(this,mt),co("until",this,e,t)}since(e,t=void 0){return vt(this,mt),co("since",this,e,t)}equals(e){vt(this,mt);const t=rn(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,mt),er(this,Zt(Zo(e)))}toJSON(){return vt(this,mt),er(this)}toLocaleString(e=void 0,t=void 0){return vt(this,mt),new di(e,t).format(this)}valueOf(){qo("PlainDate")}toPlainDateTime(e=void 0){vt(this,mt);const t=un(e);return wn(xt(re(this,D),t),re(this,E))}toZonedDateTime(e){let t,n;if(vt(this,mt),Ae(e)){const r=e.timeZone;void 0===r?t=Bn(e):(t=Bn(r),n=e.plainTime)}else t=Bn(e);const r=re(this,D);let o;return void 0===n?o=_n(t,r):(n=hn(n),o=An(t,xt(r,re(n,M)),"compatible")),$n(o,t,re(this,E))}toPlainYearMonth(){vt(this,mt);const e=re(this,E);return En(Pn(e,en(e,re(this,D)),"constrain"),e)}toPlainMonthDay(){vt(this,mt);const e=re(this,E);return bn(Un(e,en(e,re(this,D)),"constrain"),e)}static from(e,t=void 0){return rn(e,t)}static compare(e,t){const n=rn(e),r=rn(t);return Ro(re(n,D),re(r,D))}}function Ni(e,t){vt(e,mt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}ae(PlainDate,"Temporal.PlainDate");class PlainDateTime{constructor(e,t,n,r=0,o=0,i=0,a=0,s=0,c=0,d="iso8601"){const h=_e(e),u=_e(t),l=_e(n),m=void 0===r?0:_e(r),f=void 0===o?0:_e(o),y=void 0===i?0:_e(i),p=void 0===a?0:_e(a),g=void 0===s?0:_e(s),w=void 0===c?0:_e(c),v=zo(void 0===d?"iso8601":Ve(d));Ur(h,u,l,m,f,y,p,g,w),gn(this,{isoDate:{year:h,month:u,day:l},time:{hour:m,minute:f,second:y,millisecond:p,microsecond:g,nanosecond:w}},v)}get calendarId(){return vt(this,yt),re(this,E)}get year(){return xi(this,"year")}get month(){return xi(this,"month")}get monthCode(){return xi(this,"monthCode")}get day(){return xi(this,"day")}get hour(){return Li(this,"hour")}get minute(){return Li(this,"minute")}get second(){return Li(this,"second")}get millisecond(){return Li(this,"millisecond")}get microsecond(){return Li(this,"microsecond")}get nanosecond(){return Li(this,"nanosecond")}get era(){return xi(this,"era")}get eraYear(){return xi(this,"eraYear")}get dayOfWeek(){return xi(this,"dayOfWeek")}get dayOfYear(){return xi(this,"dayOfYear")}get weekOfYear(){return xi(this,"weekOfYear")?.week}get yearOfWeek(){return xi(this,"weekOfYear")?.year}get daysInWeek(){return xi(this,"daysInWeek")}get daysInYear(){return xi(this,"daysInYear")}get daysInMonth(){return xi(this,"daysInMonth")}get monthsInYear(){return xi(this,"monthsInYear")}get inLeapYear(){return xi(this,"inLeapYear")}with(e,t=void 0){if(vt(this,yt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E),r=re(this,T);let o={...en(n,r.isoDate),...r.time};return o=Rn(n,o,tn(n,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond"],"partial")),wn(on(n,o,Lt(Zo(t))),n)}withPlainTime(e=void 0){vt(this,yt);const t=un(e);return wn(xt(re(this,T).isoDate,t),re(this,E))}withCalendar(e){vt(this,yt);const t=kn(e);return wn(re(this,T),t)}add(e,t=void 0){return vt(this,yt),bo("add",this,e,t)}subtract(e,t=void 0){return vt(this,yt),bo("subtract",this,e,t)}until(e,t=void 0){return vt(this,yt),ho("until",this,e,t)}since(e,t=void 0){return vt(this,yt),ho("since",this,e,t)}round(e){if(vt(this,yt),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt,["day"]),i={day:1,hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[o];Ht(n,i,1===i);const a=re(this,T);return wn(1===n&&"nanosecond"===o?a:Co(a,n,o,r),re(this,E))}equals(e){vt(this,yt);const t=an(e);return 0===jo(re(this,T),re(t,T))&&xn(re(this,E),re(t,E))}toString(e=void 0){vt(this,yt);const t=Zo(e),n=Zt(t),r=zt(t),o=Ut(t,"trunc"),i=Wt(t,"smallestUnit","time",void 0);if("hour"===i)throw new RangeError('smallestUnit must be a time unit other than "hour"');const{precision:a,unit:s,increment:c}=At(i,r),d=Co(re(this,T),c,s,o);return Br(d),nr(d,re(this,E),a,n)}toJSON(){return vt(this,yt),nr(re(this,T),re(this,E),"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,yt),new di(e,t).format(this)}valueOf(){qo("PlainDateTime")}toZonedDateTime(e,t=void 0){vt(this,yt);const n=Bn(e),r=Pt(Zo(t));return $n(An(n,re(this,T),r),n,re(this,E))}toPlainDate(){return vt(this,yt),pn(re(this,T).isoDate,re(this,E))}toPlainTime(){return vt(this,yt),Tn(re(this,T).time)}static from(e,t=void 0){return an(e,t)}static compare(e,t){const n=an(e),r=an(t);return jo(re(n,T),re(r,T))}}function xi(e,t){vt(e,yt);const n=re(e,T).isoDate;return Qt(e).isoToDate(n,{[t]:!0})[t]}function Li(e,t){return vt(e,yt),re(e,T).time[t]}ae(PlainDateTime,"Temporal.PlainDateTime");class Duration{constructor(e=0,t=0,n=0,r=0,o=0,i=0,a=0,s=0,c=0,d=0){const h=void 0===e?0:Ge(e),u=void 0===t?0:Ge(t),l=void 0===n?0:Ge(n),m=void 0===r?0:Ge(r),f=void 0===o?0:Ge(o),y=void 0===i?0:Ge(i),p=void 0===a?0:Ge(a),g=void 0===s?0:Ge(s),w=void 0===c?0:Ge(c),v=void 0===d?0:Ge(d);zr(h,u,l,m,f,y,p,g,w,v),te(this),oe(this,Y,h),oe(this,R,u),oe(this,S,l),oe(this,j,m),oe(this,k,f),oe(this,N,y),oe(this,x,p),oe(this,L,g),oe(this,P,w),oe(this,U,v)}get years(){return vt(this,lt),re(this,Y)}get months(){return vt(this,lt),re(this,R)}get weeks(){return vt(this,lt),re(this,S)}get days(){return vt(this,lt),re(this,j)}get hours(){return vt(this,lt),re(this,k)}get minutes(){return vt(this,lt),re(this,N)}get seconds(){return vt(this,lt),re(this,x)}get milliseconds(){return vt(this,lt),re(this,L)}get microseconds(){return vt(this,lt),re(this,P)}get nanoseconds(){return vt(this,lt),re(this,U)}get sign(){return vt(this,lt),Mr(this)}get blank(){return vt(this,lt),0===Mr(this)}with(e){vt(this,lt);const t=kt(e),{years:n=re(this,Y),months:r=re(this,R),weeks:o=re(this,S),days:i=re(this,j),hours:a=re(this,k),minutes:s=re(this,N),seconds:c=re(this,x),milliseconds:d=re(this,L),microseconds:h=re(this,P),nanoseconds:u=re(this,U)}=t;return new Duration(n,r,o,i,a,s,c,d,h,u)}negated(){return vt(this,lt),Sr(this)}abs(){return vt(this,lt),new Duration(Math.abs(re(this,Y)),Math.abs(re(this,R)),Math.abs(re(this,S)),Math.abs(re(this,j)),Math.abs(re(this,k)),Math.abs(re(this,N)),Math.abs(re(this,x)),Math.abs(re(this,L)),Math.abs(re(this,P)),Math.abs(re(this,U)))}add(e){return vt(this,lt),go("add",this,e)}subtract(e){return vt(this,lt),go("subtract",this,e)}round(e){if(vt(this,lt),void 0===e)throw new TypeError("options parameter is required");const t=Jt(this),n="string"==typeof e?Fo("smallestUnit",e):Zo(e);let r=Wt(n,"largestUnit","datetime",void 0,["auto"]),{plainRelativeTo:o,zonedRelativeTo:i}=_t(n);const a=Ft(n),s=Ut(n,"halfExpand");let c=Wt(n,"smallestUnit","datetime",void 0),d=!0;c||(d=!1,c="nanosecond");const h=Gt(t,c);let u=!0;if(r||(u=!1,r=h),"auto"===r&&(r=h),!d&&!u)throw new RangeError("at least one of smallestUnit or largestUnit is required");if(Gt(r,c)!==r)throw new RangeError(`largestUnit ${r} cannot be smaller than smallestUnit ${c}`);const l={hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[c];if(void 0!==l&&Ht(a,l,!1),a>1&&"date"===Vt(c)&&r!==c)throw new RangeError("For calendar units with roundingIncrement > 1, use largestUnit = smallestUnit");if(i){let e=Ar(this);const t=re(i,$),n=re(i,E),o=re(i,b);return e=io(o,po(o,t,n,e),t,n,r,a,c,s),"date"===Vt(r)&&(r="hour"),_r(e,r)}if(o){let e=qr(this);const t=fo({deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},e.time),n=re(o,D),i=re(o,E),d=Sn(i,n,Nt(e.date,t.deltaDays),"constrain");return e=oo(xt(n,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),xt(d,t),i,r,a,c,s),_r(e,r)}if(Kt(t))throw new RangeError(`a starting point is required for ${t}s balancing`);if(Kt(r))throw new RangeError(`a starting point is required for ${r}s balancing`);let m=qr(this);if("day"===c){const{quotient:e,remainder:t}=m.time.divmod(Se);let n=m.date.days+e+Yo(t,"day");n=Eo(n,a,s),m=Jr({years:0,months:0,weeks:0,days:n},TimeDuration.ZERO)}else m=Jr({years:0,months:0,weeks:0,days:0},$o(m.time,a,c,s));return _r(m,r)}total(t){if(vt(this,lt),void 0===t)throw new TypeError("options argument is required");const n="string"==typeof t?Fo("unit",t):Zo(t);let{plainRelativeTo:r,zonedRelativeTo:o}=_t(n);const i=Wt(n,"unit","datetime",qt);if(o){const e=Ar(this),t=re(o,$),n=re(o,E),r=re(o,b);return function(e,t,n,r,o){return"time"===Vt(o)?Yo(TimeDuration.fromEpochNsDiff(t,e),o):ro(eo(e,t,n,r,o),t,zn(n,e),n,r,o)}(r,po(r,t,n,e),t,n,i)}if(r){const t=qr(this);let n=fo({deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},t.time);const o=re(r,D),a=re(r,E),s=Sn(a,o,Nt(t.date,n.deltaDays),"constrain");return function(t,n,r,o){if(0==jo(t,n))return 0;Br(t),Br(n);const i=Qr(t,n,r,o);return"nanosecond"===o?e.toNumber(i.time.totalNs):ro(i,pr(n),t,null,r,o)}(xt(o,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),xt(s,n),a,i)}const a=Jt(this);if(Kt(a))throw new RangeError(`a starting point is required for ${a}s total`);if(Kt(i))throw new RangeError(`a starting point is required for ${i}s total`);return Yo(qr(this).time,i)}toString(e=void 0){vt(this,lt);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o||"minute"===o)throw new RangeError('smallestUnit must be a time unit other than "hours" or "minutes"');const{precision:i,unit:a,increment:s}=At(o,n);if("nanosecond"===a&&1===s)return Qn(this,i);const c=Jt(this);let d=Ar(this);const h=$o(d.time,s,a,r);return d=Jr(d.date,h),Qn(_r(d,Gt(c,"second")),i)}toJSON(){return vt(this,lt),Qn(this,"auto")}toLocaleString(e=void 0,t=void 0){if(vt(this,lt),"function"==typeof Intl.DurationFormat){const n=new Intl.DurationFormat(e,t);return ji.call(n,this)}return console.warn("Temporal.Duration.prototype.toLocaleString() requires Intl.DurationFormat."),Qn(this,"auto")}valueOf(){qo("Duration")}static from(e){return sn(e)}static compare(t,n,r=void 0){const o=sn(t),i=sn(n),a=Zo(r),{plainRelativeTo:s,zonedRelativeTo:c}=_t(a);if(re(o,Y)===re(i,Y)&&re(o,R)===re(i,R)&&re(o,S)===re(i,S)&&re(o,j)===re(i,j)&&re(o,k)===re(i,k)&&re(o,N)===re(i,N)&&re(o,x)===re(i,x)&&re(o,L)===re(i,L)&&re(o,P)===re(i,P)&&re(o,U)===re(i,U))return 0;const d=Jt(o),h=Jt(i),u=Ar(o),l=Ar(i);if(c&&("date"===Vt(d)||"date"===Vt(h))){const t=re(c,$),n=re(c,E),r=re(c,b),o=po(r,t,n,u),i=po(r,t,n,l);return Bo(e.toNumber(e.subtract(o,i)))}let m=u.date.days,f=l.date.days;if(Kt(d)||Kt(h)){if(!s)throw new RangeError("A starting point is required for years, months, or weeks comparison");m=Rr(u.date,s),f=Rr(l.date,s)}const y=u.time.add24HourDays(m),p=l.time.add24HourDays(f);return y.cmp(p)}}ae(Duration,"Temporal.Duration");class PlainMonthDay{constructor(e,t,n="iso8601",r=1972){const o=_e(e),i=_e(t),a=zo(void 0===n?"iso8601":Ve(n)),s=_e(r);xr(s,o,i),vn(this,{year:s,month:o,day:i},a)}get monthCode(){return Pi(this,"monthCode")}get day(){return Pi(this,"day")}get calendarId(){return vt(this,gt),re(this,E)}with(e,t=void 0){if(vt(this,gt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D),"month-day");return r=Rn(n,r,tn(n,e,["year","month","monthCode","day"],[],"partial")),bn(Un(n,r,Lt(Zo(t))),n)}equals(e){vt(this,gt);const t=dn(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,gt),rr(this,Zt(Zo(e)))}toJSON(){return vt(this,gt),rr(this)}toLocaleString(e=void 0,t=void 0){return vt(this,gt),new di(e,t).format(this)}valueOf(){qo("PlainMonthDay")}toPlainDate(e){if(vt(this,gt),!Ae(e))throw new TypeError("argument should be an object");const t=re(this,E);return pn(Ln(t,Rn(t,en(t,re(this,D),"month-day"),tn(t,e,["year"],[],[])),"constrain"),t)}static from(e,t=void 0){return dn(e,t)}}function Pi(e,t){vt(e,gt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}function Ui(e){return zn(e,Po())}ae(PlainMonthDay,"Temporal.PlainMonthDay");const Bi={instant:()=>Cn(Po()),plainDateTimeISO:(e=Uo())=>wn(Ui(Bn(e)),"iso8601"),plainDateISO:(e=Uo())=>pn(Ui(Bn(e)).isoDate,"iso8601"),plainTimeISO:(e=Uo())=>Tn(Ui(Bn(e)).time),timeZoneId:()=>Uo(),zonedDateTimeISO:(e=Uo())=>{const t=Bn(e);return $n(Po(),t,"iso8601")},[Symbol.toStringTag]:"Temporal.Now"};Object.defineProperty(Bi,Symbol.toStringTag,{value:"Temporal.Now",writable:!1,enumerable:!1,configurable:!0});class PlainTime{constructor(e=0,t=0,n=0,r=0,o=0,i=0){const a=void 0===e?0:_e(e),s=void 0===t?0:_e(t),c=void 0===n?0:_e(n),d=void 0===r?0:_e(r),h=void 0===o?0:_e(o),u=void 0===i?0:_e(i);Pr(a,s,c,d,h,u),Dn(this,{hour:a,minute:s,second:c,millisecond:d,microsecond:h,nanosecond:u})}get hour(){return vt(this,ft),re(this,M).hour}get minute(){return vt(this,ft),re(this,M).minute}get second(){return vt(this,ft),re(this,M).second}get millisecond(){return vt(this,ft),re(this,M).millisecond}get microsecond(){return vt(this,ft),re(this,M).microsecond}get nanosecond(){return vt(this,ft),re(this,M).nanosecond}with(e,t=void 0){if(vt(this,ft),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=nn(e,"partial"),r=nn(this);let{hour:o,minute:i,second:a,millisecond:s,microsecond:c,nanosecond:d}=Object.assign(r,n);const h=Lt(Zo(t));return({hour:o,minute:i,second:a,millisecond:s,microsecond:c,nanosecond:d}=jt(o,i,a,s,c,d,h)),new PlainTime(o,i,a,s,c,d)}add(e){return vt(this,ft),Do("add",this,e)}subtract(e){return vt(this,ft),Do("subtract",this,e)}until(e,t=void 0){return vt(this,ft),uo("until",this,e,t)}since(e,t=void 0){return vt(this,ft),uo("since",this,e,t)}round(e){if(vt(this,ft),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt);return Ht(n,{hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[o],!1),Tn(Oo(re(this,M),n,o,r))}equals(e){vt(this,ft);const t=hn(e);return 0===So(re(this,M),re(t,M))}toString(e=void 0){vt(this,ft);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o)throw new RangeError('smallestUnit must be a time unit other than "hour"');const{precision:i,unit:a,increment:s}=At(o,n);return tr(Oo(re(this,M),s,a,r),i)}toJSON(){return vt(this,ft),tr(re(this,M),"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,ft),new di(e,t).format(this)}valueOf(){qo("PlainTime")}static from(e,t=void 0){return hn(e,t)}static compare(e,t){const n=hn(e),r=hn(t);return So(re(n,M),re(r,M))}}ae(PlainTime,"Temporal.PlainTime");class PlainYearMonth{constructor(e,t,n="iso8601",r=1){const o=_e(e),i=_e(t),a=zo(void 0===n?"iso8601":Ve(n)),s=_e(r);xr(o,i,s),Mn(this,{year:o,month:i,day:s},a)}get year(){return Zi(this,"year")}get month(){return Zi(this,"month")}get monthCode(){return Zi(this,"monthCode")}get calendarId(){return vt(this,pt),re(this,E)}get era(){return Zi(this,"era")}get eraYear(){return Zi(this,"eraYear")}get daysInMonth(){return Zi(this,"daysInMonth")}get daysInYear(){return Zi(this,"daysInYear")}get monthsInYear(){return Zi(this,"monthsInYear")}get inLeapYear(){return Zi(this,"inLeapYear")}with(e,t=void 0){if(vt(this,pt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D),"year-month");return r=Rn(n,r,tn(n,e,["year","month","monthCode"],[],"partial")),En(Pn(n,r,Lt(Zo(t))),n)}add(e,t=void 0){return vt(this,pt),To("add",this,e,t)}subtract(e,t=void 0){return vt(this,pt),To("subtract",this,e,t)}until(e,t=void 0){return vt(this,pt),lo("until",this,e,t)}since(e,t=void 0){return vt(this,pt),lo("since",this,e,t)}equals(e){vt(this,pt);const t=ln(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,pt),or(this,Zt(Zo(e)))}toJSON(){return vt(this,pt),or(this)}toLocaleString(e=void 0,t=void 0){return vt(this,pt),new di(e,t).format(this)}valueOf(){qo("PlainYearMonth")}toPlainDate(e){if(vt(this,pt),!Ae(e))throw new TypeError("argument should be an object");const t=re(this,E);return pn(Ln(t,Rn(t,en(t,re(this,D),"year-month"),tn(t,e,["day"],[],[])),"constrain"),t)}static from(e,t=void 0){return ln(e,t)}static compare(e,t){const n=ln(e),r=ln(t);return Ro(re(n,D),re(r,D))}}function Zi(e,t){vt(e,pt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}ae(PlainYearMonth,"Temporal.PlainYearMonth");const Fi=di.prototype.resolvedOptions;class ZonedDateTime{constructor(e,t,n="iso8601"){if(arguments.length<1)throw new TypeError("missing argument: epochNanoseconds is required");const r=Lo(e);let o=Ve(t);const{tzName:i,offsetMinutes:a}=Rt(o);if(void 0===a){const e=hr(i);if(!e)throw new RangeError(`unknown time zone ${i}`);o=e.identifier}else o=mr(a);On(this,r,o,zo(void 0===n?"iso8601":Ve(n)))}get calendarId(){return vt(this,wt),re(this,E)}get timeZoneId(){return vt(this,wt),re(this,$)}get year(){return zi(this,"year")}get month(){return zi(this,"month")}get monthCode(){return zi(this,"monthCode")}get day(){return zi(this,"day")}get hour(){return Ai(this,"hour")}get minute(){return Ai(this,"minute")}get second(){return Ai(this,"second")}get millisecond(){return Ai(this,"millisecond")}get microsecond(){return Ai(this,"microsecond")}get nanosecond(){return Ai(this,"nanosecond")}get era(){return zi(this,"era")}get eraYear(){return zi(this,"eraYear")}get epochMilliseconds(){return vt(this,wt),No(re(this,b),"floor")}get epochNanoseconds(){return vt(this,wt),ko(re(this,b))}get dayOfWeek(){return zi(this,"dayOfWeek")}get dayOfYear(){return zi(this,"dayOfYear")}get weekOfYear(){return zi(this,"weekOfYear")?.week}get yearOfWeek(){return zi(this,"weekOfYear")?.year}get hoursInDay(){vt(this,wt);const e=re(this,$),t=Hi(this).isoDate,n=Or(t.year,t.month,t.day+1),r=_n(e,t),o=_n(e,n);return Yo(TimeDuration.fromEpochNsDiff(o,r),"hour")}get daysInWeek(){return zi(this,"daysInWeek")}get daysInMonth(){return zi(this,"daysInMonth")}get daysInYear(){return zi(this,"daysInYear")}get monthsInYear(){return zi(this,"monthsInYear")}get inLeapYear(){return zi(this,"inLeapYear")}get offset(){return vt(this,wt),Hn(Fn(re(this,$),re(this,b)))}get offsetNanoseconds(){return vt(this,wt),Fn(re(this,$),re(this,b))}with(e,t=void 0){if(vt(this,wt),!Ae(e))throw new TypeError("invalid zoned-date-time-like");bt(e);const n=re(this,E),r=re(this,$),o=Fn(r,re(this,b)),i=Hi(this);let a={...en(n,i.isoDate),...i.time,offset:Hn(o)};a=Rn(n,a,tn(n,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset"],"partial"));const s=Zo(t),c=Pt(s),d=Bt(s,"prefer"),h=on(n,a,Lt(s)),u=sr(a.offset);return $n(mn(h.isoDate,h.time,"option",u,r,c,d,!1),r,n)}withPlainTime(e=void 0){vt(this,wt);const t=re(this,$),n=re(this,E),r=Hi(this).isoDate;let o;return o=void 0===e?_n(t,r):An(t,xt(r,re(hn(e),M)),"compatible"),$n(o,t,n)}withTimeZone(e){vt(this,wt);const t=Bn(e);return $n(re(this,b),t,re(this,E))}withCalendar(e){vt(this,wt);const t=kn(e);return $n(re(this,b),re(this,$),t)}add(e,t=void 0){return vt(this,wt),Mo("add",this,e,t)}subtract(e,t=void 0){return vt(this,wt),Mo("subtract",this,e,t)}until(e,t=void 0){return vt(this,wt),mo("until",this,e,t)}since(e,t=void 0){return vt(this,wt),mo("since",this,e,t)}round(t){if(vt(this,wt),void 0===t)throw new TypeError("options parameter is required");const n="string"==typeof t?Fo("smallestUnit",t):Zo(t),r=Ft(n),o=Ut(n,"halfExpand"),i=Wt(n,"smallestUnit","time",qt,["day"]),a={day:1,hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[i];if(Ht(r,a,1===a),"nanosecond"===i&&1===r)return $n(re(this,b),re(this,$),re(this,E));const s=re(this,$),c=re(this,b),d=Hi(this);let h;if("day"===i){const t=d.isoDate,n=Or(t.year,t.month,t.day+1),r=_n(s,t),i=_n(s,n),a=e.subtract(i,r);h=TimeDuration.fromEpochNsDiff(c,r).round(a,o).addToEpochNs(r)}else{const e=Co(d,r,i,o),t=Fn(s,c);h=mn(e.isoDate,e.time,"option",t,s,"compatible","prefer",!1)}return $n(h,s,re(this,E))}equals(t){vt(this,wt);const n=fn(t),r=re(this,b),o=re(n,b);return!!e.equal(e.BigInt(r),e.BigInt(o))&&!!Zn(re(this,$),re(n,$))&&xn(re(this,E),re(n,E))}toString(e=void 0){vt(this,wt);const t=Zo(e),n=Zt(t),r=zt(t),o=function(e){return Ho(e,"offset",["auto","never"],"auto")}(t),i=Ut(t,"trunc"),a=Wt(t,"smallestUnit","time",void 0);if("hour"===a)throw new RangeError('smallestUnit must be a time unit other than "hour"');const s=function(e){return Ho(e,"timeZoneName",["auto","never","critical"],"auto")}(t),{precision:c,unit:d,increment:h}=At(a,r);return ir(this,c,n,s,o,{unit:d,increment:h,roundingMode:i})}toLocaleString(e=void 0,t=void 0){vt(this,wt);const n=Zo(t),r=Object.create(null);if(function(e,t,n,r){if(null==t)return;const o=Reflect.ownKeys(t);for(let i=0;i<o.length;i++){const a=o[i];if(!n.some((e=>Object.is(e,a)))&&Object.prototype.propertyIsEnumerable.call(t,a)){const n=t[a];r,e[a]=n}}}(r,n,["timeZone"]),void 0!==n.timeZone)throw new TypeError("ZonedDateTime toLocaleString does not accept a timeZone option");if(void 0===r.year&&void 0===r.month&&void 0===r.day&&void 0===r.era&&void 0===r.weekday&&void 0===r.dateStyle&&void 0===r.hour&&void 0===r.minute&&void 0===r.second&&void 0===r.fractionalSecondDigits&&void 0===r.timeStyle&&void 0===r.dayPeriod&&void 0===r.timeZoneName&&(r.timeZoneName="short"),r.timeZone=re(this,$),ar(r.timeZone))throw new RangeError("toLocaleString does not currently support offset time zones");const o=new di(e,r),i=Fi.call(o).calendar,a=re(this,E);if("iso8601"!==a&&"iso8601"!==i&&!xn(i,a))throw new RangeError(`cannot format ZonedDateTime with calendar ${a} in locale with calendar ${i}`);return o.format(Cn(re(this,b)))}toJSON(){return vt(this,wt),ir(this,"auto")}valueOf(){qo("ZonedDateTime")}startOfDay(){vt(this,wt);const e=re(this,$);return $n(_n(e,Hi(this).isoDate),e,re(this,E))}getTimeZoneTransition(e){vt(this,wt);const t=re(this,$);if(void 0===e)throw new TypeError("options parameter is required");const n=Ho("string"==typeof e?Fo("direction",e):Zo(e),"direction",["next","previous"],qt);if(void 0===n)throw new TypeError("direction option is required");if(ar(t)||"UTC"===t)return null;const r=re(this,b),o="next"===n?wr(t,r):vr(t,r);return null===o?null:$n(o,t,re(this,E))}toInstant(){return vt(this,wt),Cn(re(this,b))}toPlainDate(){return vt(this,wt),pn(Hi(this).isoDate,re(this,E))}toPlainTime(){return vt(this,wt),Tn(Hi(this).time)}toPlainDateTime(){return vt(this,wt),wn(Hi(this),re(this,E))}static from(e,t=void 0){return fn(e,t)}static compare(t,n){const r=fn(t),o=fn(n),i=re(r,b),a=re(o,b);return e.lessThan(e.BigInt(i),e.BigInt(a))?-1:e.greaterThan(e.BigInt(i),e.BigInt(a))?1:0}}function Hi(e){return zn(re(e,$),re(e,b))}function zi(e,t){vt(e,wt);const n=Hi(e).isoDate;return Qt(e).isoToDate(n,{[t]:!0})[t]}function Ai(e,t){return vt(e,wt),Hi(e).time[t]}ae(ZonedDateTime,"Temporal.ZonedDateTime");var qi=Object.freeze({__proto__:null,Duration,Instant,Now:Bi,PlainDate,PlainDateTime,PlainMonthDay,PlainTime,PlainYearMonth,ZonedDateTime});const Wi=class LegacyDateImpl{toTemporalInstant(){return Cn(xo(Date.prototype.valueOf.call(this)))}}.prototype.toTemporalInstant,_i=[Instant,PlainDate,PlainDateTime,Duration,PlainMonthDay,PlainTime,PlainYearMonth,ZonedDateTime];for(const e of _i){const t=Object.getOwnPropertyDescriptor(e,"prototype");(t.configurable||t.enumerable||t.writable)&&(t.configurable=!1,t.enumerable=!1,t.writable=!1,Object.defineProperty(e,"prototype",t))}exports.Intl=ki,exports.Temporal=qi,exports.toTemporalInstant=Wi;
+//# sourceMappingURL=index.cjs.map
 
 
 /***/ })
