@@ -7,30 +7,19 @@ import { type RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-meth
 import { throttling, type ThrottlingOptions } from '@octokit/plugin-throttling';
 import { type OctokitResponse } from '@octokit/types';
 
+import { Minimatch, type MinimatchOptions } from 'minimatch';
 import { Temporal } from '@js-temporal/polyfill';
 
 type Octokit = ReturnType<typeof getOctokit>;
 type PackageVersion =
     RestEndpointMethodTypes['packages']['getPackageVersionForAuthenticatedUser']['response']['data'];
 
-abstract class Owner {
-    constructor(
-        readonly github: Octokit,
-        readonly name: string
-    ) {}
-
-    abstract getPackage(packageName: string): Package;
-}
-
 abstract class Package {
     constructor(
-        readonly owner: Owner,
+        readonly github: Octokit,
+        readonly owner: string,
         readonly name: string
     ) {}
-
-    get github() {
-        return this.owner.github;
-    }
 
     abstract listVersions(): AsyncIterableIterator<
         OctokitResponse<PackageVersion[]>
@@ -46,7 +35,7 @@ class UserPackage extends Package {
         return github.paginate.iterator(
             github.rest.packages.getAllPackageVersionsForPackageOwnedByUser,
             {
-                username: this.owner.name,
+                username: this.owner,
                 package_name: this.name,
                 package_type: 'container',
                 per_page: 100,
@@ -56,17 +45,11 @@ class UserPackage extends Package {
 
     deleteVersion(id: number) {
         return this.github.rest.packages.deletePackageVersionForUser({
-            username: this.owner.name,
+            username: this.owner,
             package_name: this.name,
             package_type: 'container',
             package_version_id: id,
         });
-    }
-}
-
-class User extends Owner {
-    getPackage(packageName: string): Package {
-        return new UserPackage(this, packageName);
     }
 }
 
@@ -75,7 +58,7 @@ class OrgPackage extends Package {
         return this.github.paginate.iterator(
             this.github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg,
             {
-                org: this.owner.name,
+                org: this.owner,
                 package_name: this.name,
                 package_type: 'container',
                 per_page: 100,
@@ -85,7 +68,7 @@ class OrgPackage extends Package {
 
     deleteVersion(id: number) {
         return this.github.rest.packages.deletePackageVersionForOrg({
-            org: this.owner.name,
+            org: this.owner,
             package_name: this.name,
             package_type: 'container',
             package_version_id: id,
@@ -93,34 +76,89 @@ class OrgPackage extends Package {
     }
 }
 
-class Organization extends Owner {
-    getPackage(packageName: string): Package {
-        return new OrgPackage(this, packageName);
-    }
-}
-
-async function getOwner(github: Octokit, name: string) {
-    const ownerTypes: Record<
+async function getPackage(
+    github: Octokit,
+    ownerName: string,
+    packageName: string
+) {
+    const packageTypes: Record<
         string,
-        new (...args: ConstructorParameters<typeof Owner>) => Owner
+        new (...args: ConstructorParameters<typeof Package>) => Package
     > = {
-        User,
-        Organization,
+        User: UserPackage,
+        Organization: OrgPackage,
     };
 
-    const user = await github.rest.users.getByUsername({ username: name });
-    const ownerType = ownerTypes[user.data.type];
+    const user = await github.rest.users.getByUsername({ username: ownerName });
+    const packageType = packageTypes[user.data.type];
 
-    if (!ownerType) {
+    if (!packageType) {
         throw new Error(
-            `Owner type should be ${Object.keys(ownerTypes).join(' or ')}. Got ${JSON.stringify(name)} instead`
+            `Owner type should be ${Object.keys(packageTypes).join(' or ')}. Got ${JSON.stringify(user.data.type)} instead`
         );
     }
 
-    return new ownerType(github, name);
+    return new packageType(github, ownerName, packageName);
+}
+
+class RetentionPolicy {
+    constructor(
+        readonly tagPatterns: Minimatch[],
+        readonly matchingTagRetentionDuration: Temporal.Duration | null,
+        readonly mismatchingTagRetentionDuration: Temporal.Duration | null,
+        readonly untaggedRetentionDuration: Temporal.Duration | null
+    ) {}
+
+    isMatchingTag(tag: string) {
+        const match = this.tagPatterns.find(pattern => pattern.match(tag));
+
+        return match && !match.negate;
+    }
+
+    getRetentionDuration(version: PackageVersion) {
+        const metadata = version.metadata?.container;
+
+        if (!metadata) {
+            throw new Error('Missing container metadata');
+        }
+
+        const { tags } = metadata;
+
+        if (tags.length === 0) {
+            return this.untaggedRetentionDuration;
+        }
+
+        const matching = tags.filter(tag => this.isMatchingTag(tag));
+
+        if (matching.length === 0) {
+            return this.mismatchingTagRetentionDuration;
+        }
+
+        if (tags.length === matching.length) {
+            return this.matchingTagRetentionDuration;
+        }
+
+        if (
+            !this.matchingTagRetentionDuration ||
+            !this.mismatchingTagRetentionDuration
+        ) {
+            return null;
+        }
+
+        return Temporal.Duration.compare(
+            this.matchingTagRetentionDuration,
+            this.mismatchingTagRetentionDuration
+        ) === 1
+            ? this.matchingTagRetentionDuration
+            : this.mismatchingTagRetentionDuration;
+    }
 }
 
 function parseDuration(value: string) {
+    if (!value) {
+        return null;
+    }
+
     try {
         return Temporal.Duration.from(
             /^[Pp+-]/.test(value) ? value : `P${value}`
@@ -132,47 +170,43 @@ function parseDuration(value: string) {
     }
 }
 
-function isVersionOutdated(
-    version: PackageVersion,
-    untaggedRetentionDuration: Temporal.Duration
-) {
-    const metadata = version.metadata?.container;
-
-    if (!metadata) {
-        throw new Error('Missing container metadata');
-    }
-
-    const now = Temporal.Now.instant();
-    const age = Temporal.Instant.from(version.updated_at).until(now);
-
-    return (
-        metadata.tags.length === 0 &&
-        Temporal.Duration.compare(age, untaggedRetentionDuration) === 1
-    );
-}
-
 async function processVersion(
     pkg: Package,
     version: PackageVersion,
-    untaggedRetentionDuration: Temporal.Duration,
+    policy: RetentionPolicy,
     dryRun: boolean
 ) {
+    const info = {
+        name: version.name,
+        url: version.url,
+        html_url: version.html_url,
+    };
+
     try {
-        if (isVersionOutdated(version, untaggedRetentionDuration)) {
+        const now = Temporal.Now.instant();
+        const age = Temporal.Instant.from(version.updated_at).until(now);
+        const retentionDuration = policy.getRetentionDuration(version);
+
+        Object.assign(info, { age, retentionDuration });
+
+        if (
+            retentionDuration &&
+            Temporal.Duration.compare(age, retentionDuration) === 1
+        ) {
             if (dryRun) {
-                core.notice(`Would delete ${pkg.name} ${version.name}`);
+                core.notice(`Would delete ${JSON.stringify(info, null, ' ')}`);
             } else {
                 await pkg.deleteVersion(version.id);
-                core.notice(`Deleted ${pkg.name} ${version.name}`);
+                core.notice(`Deleted ${JSON.stringify(info, null, ' ')}`);
             }
 
             return true;
         }
 
-        core.info(`Keeping ${pkg.name} ${version.name}`);
+        core.info(`Keeping ${JSON.stringify(info, null, ' ')}`);
     } catch (ex) {
         core.error(
-            `Processing ${pkg.name} ${version.name} failed: ${String(ex)}`
+            `Processing ${JSON.stringify(info, null, ' ')} failed: ${String(ex)}`
         );
     } finally {
         core.debug(JSON.stringify(version, null, ' '));
@@ -186,10 +220,50 @@ async function main() {
     const dryRun = core.getBooleanInput('dry-run', { required: true });
     const ownerName = core.getInput('owner', { required: true });
     const packageName = core.getInput('name', { required: true });
+
+    const matchingTagRetentionDuration = parseDuration(
+        core.getInput('matching-tags-retention-duration', {
+            required: false,
+        })
+    );
+
+    const mismatchingTagRetentionDuration = parseDuration(
+        core.getInput('mismatching-tags-retention-duration', {
+            required: false,
+        })
+    );
+
     const untaggedRetentionDuration = parseDuration(
         core.getInput('untagged-retention-duration', {
-            required: true,
+            required: false,
         })
+    );
+
+    const minimatchOptions: MinimatchOptions = {
+        platform: 'linux',
+        dot: true,
+        flipNegate: true,
+    };
+
+    const tagPatterns = core
+        .getMultilineInput('tag-patterns', { required: false })
+        .map(pattern => new Minimatch(pattern.trim(), minimatchOptions))
+        .filter(pattern => !pattern.comment && !pattern.empty)
+        .reverse();
+
+    if (tagPatterns.length > 0) {
+        const allNegated = !tagPatterns.some(pattern => !pattern.negate);
+
+        if (allNegated) {
+            tagPatterns.push(new Minimatch('**', minimatchOptions));
+        }
+    }
+
+    const policy = new RetentionPolicy(
+        tagPatterns,
+        matchingTagRetentionDuration,
+        mismatchingTagRetentionDuration,
+        untaggedRetentionDuration
     );
 
     const log = {
@@ -222,20 +296,14 @@ async function main() {
     };
 
     const github = getOctokit(token, { log, throttle }, requestLog, throttling);
-    const owner = await getOwner(github, ownerName);
-    const pkg = owner.getPackage(packageName);
+    const pkg = await getPackage(github, ownerName, packageName);
     const deleted: PackageVersion[] = [];
 
     try {
         for await (const response of pkg.listVersions()) {
             await Promise.allSettled(
                 response.data.map(version =>
-                    processVersion(
-                        pkg,
-                        version,
-                        untaggedRetentionDuration,
-                        dryRun
-                    ).then(value => {
+                    processVersion(pkg, version, policy, dryRun).then(value => {
                         if (value) {
                             deleted.push(version);
                         }

@@ -18,11 +18,30 @@ inputs:
     description: >-
       Package name
 
+  tag-patterns:
+    description: >-
+      Glob (minimatch) patterns, one per line.
+      Allows applying different storage durations (`matching-tags-retention-duration` and `mismatching-tags-retention-duration`) based on tags.
+
+  matching-tags-retention-duration:
+    description: >-
+      Storage duration for images with tags matching `tag-patterns`, as ISO 8601 duration.
+      If more than this amount of time elapsed since last update of the image, the image will be deleted.
+      If the same image (version) also has tags not matching `tag-patterns`, maximum of the two durations will be chosen.
+      If not set, images with tags matching `tag-patterns` won't be deleted.
+
+  mismatching-tags-retention-duration:
+    description: >-
+      Storage duration for images with tags not matching `tag-patterns`, as ISO 8601 duration.
+      If more than this amount of time elapsed since last update of the image, the image will be deleted.
+      If the same image (version) also has tags matching `tag-patterns`, maximum of the two durations will be chosen.
+      If not set, images with tags not matching `tag-patterns` won't be deleted.
+
   untagged-retention-duration:
-    required: true
     description: >-
       Storage duration for untagged images, as ISO 8601 duration.
       If more than this amount of time elapsed since last update of the image, the image will be deleted.
+      If not set, untagged images won't be deleted.
 
   github-token:
     required: true

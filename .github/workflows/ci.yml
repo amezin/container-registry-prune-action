@@ -42,6 +42,9 @@ jobs:
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=tag2
 
       - id: build1
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
@@ -58,26 +61,106 @@ jobs:
 
       - run: sleep 2
 
-      - id: test-all-tagged
-        name: One version, tagged
-        uses: ./.
+      - uses: ./.github/actions/test
+        name: No durations set, do nothing
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          expected-deletions: ''
+
+      - uses: ./.github/actions/test
+        name: Untagged duration set, but no untagged versions
         with:
           name: ${{ env.PACKAGE_NAME }}
           untagged-retention-duration: 0dT1s
-          dry-run: true
+          expected-deletions: ''
 
-      - run: test "$N_DELETED" -eq 0
-        env:
-          N_DELETED: ${{ steps.test-all-tagged.outputs.deleted-count }}
+      - uses: ./.github/actions/test
+        name: All tags match, matching retention duration expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: |
+            !nomatch
+          matching-tags-retention-duration: 0dT1s
+          expected-deletions: ${{ steps.build1.outputs.digest }}
 
-      - run: test "$DELETED_JSON" = "[]"
-        env:
-          DELETED_JSON: ${{ steps.test-all-tagged.outputs.deleted-json }}
+      - uses: ./.github/actions/test
+        name: No matching tags, mismatching retention duration expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: |
+            *
+            !latest
+            !tag2
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: ${{ steps.build1.outputs.digest }}
+
+      - uses: ./.github/actions/test
+        name: No matching tags, empty tag-patterns, mismatching retention duration expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: |
+            # empty
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: ${{ steps.build1.outputs.digest }}
+
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, both retention durations expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: latest
+          matching-tags-retention-duration: 0dT1s
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: ${{ steps.build1.outputs.digest }}
+
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, mismatching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: |
+            *
+            !tag2
+          matching-tags-retention-duration: 0dT1s
+          mismatching-tags-retention-duration: 1d
+          expected-deletions: ''
+
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, matching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: latest
+          matching-tags-retention-duration: 1d
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: ''
+
+      - uses: ./.github/actions/test
+        name: All tags match, matching retention duration expired, mismatching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: |
+            !*
+            latest
+            tag2
+          matching-tags-retention-duration: 0dT1s
+          mismatching-tags-retention-duration: 1d
+          expected-deletions: ${{ steps.build1.outputs.digest }}
+
+      - uses: ./.github/actions/test
+        name: No matching tags, mismatching retention duration expired, matching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          tag-patterns: |
+            !*
+          matching-tags-retention-duration: 1d
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: ${{ steps.build1.outputs.digest }}
 
       - id: meta2
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=tag2
 
       - id: build2
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
@@ -92,56 +175,29 @@ jobs:
           cache-to: type=inline
           push: true
 
-      - id: test-max-age-not-reached
-        name: One version tagged, one untagged, retention duration not exceeded
-        uses: ./.
+      - run: sleep 2
+
+      - uses: ./.github/actions/test
+        name: Untagged retention duration not expired
         with:
           name: ${{ env.PACKAGE_NAME }}
           untagged-retention-duration: 1d
-          dry-run: true
+          expected-deletions: ''
 
-      - run: test "$N_DELETED" -eq 0
-        env:
-          N_DELETED: ${{ steps.test-max-age-not-reached.outputs.deleted-count }}
-
-      - run: test "$DELETED_JSON" = "[]"
-        env:
-          DELETED_JSON: ${{ steps.test-max-age-not-reached.outputs.deleted-json }}
-
-      - run: sleep 2
-
-      - id: test-max-age-reached-dry-run
-        name: One version tagged, one untagged, retention duration exceeded, dry-run
-        uses: ./.
+      - uses: ./.github/actions/test
+        name: Untagged retention duration expired
         with:
           name: ${{ env.PACKAGE_NAME }}
           untagged-retention-duration: 0dT1s
-          dry-run: true
+          expected-deletions: ${{ steps.build1.outputs.digest }}
 
-      - run: test "$N_DELETED" -eq 1
-        env:
-          N_DELETED: ${{ steps.test-max-age-reached-dry-run.outputs.deleted-count }}
-
-      - run: test "$(echo "$DELETED_JSON" | jq -r '.[].name')" = "$DIGEST1"
-        env:
-          DELETED_JSON: ${{ steps.test-max-age-reached-dry-run.outputs.deleted-json }}
-          DIGEST1: ${{ steps.build1.outputs.digest }}
-
-      - id: test-max-age-reached-remove
-        name: One version tagged, one untagged, retention duration exceeded, actual removal
-        uses: ./.
+      - uses: ./.github/actions/test
+        name: Untagged retention duration expired, actual deletion
         with:
           name: ${{ env.PACKAGE_NAME }}
           untagged-retention-duration: 0dT1s
-
-      - run: test "$N_DELETED" -eq 1
-        env:
-          N_DELETED: ${{ steps.test-max-age-reached-remove.outputs.deleted-count }}
-
-      - run: test "$(echo "$DELETED_JSON" | jq -r '.[].name')" = "$DIGEST1"
-        env:
-          DELETED_JSON: ${{ steps.test-max-age-reached-remove.outputs.deleted-json }}
-          DIGEST1: ${{ steps.build1.outputs.digest }}
+          expected-deletions: ${{ steps.build1.outputs.digest }}
+          dry-run: false
 
       - run: >-
           test "$(gh api --jq '.[].name' "$OWNER_URL/packages/container/${PACKAGE_NAME////%2F}/versions")" = "$DIGEST2"

@@ -1,0 +1,60 @@
+name: Test
+description: >-
+  Run the main action and check the outcome
+
+inputs:
+  name:
+    required: true
+    description: >-
+      Package name
+
+  tag-patterns:
+    description: >-
+      `tag-patterns` input
+
+  matching-tags-retention-duration:
+    description: >-
+      `matching-tags-retention-duration` input
+
+  mismatching-tags-retention-duration:
+    description: >-
+      `mismatching-tags-retention-duration` input
+
+  untagged-retention-duration:
+    description: >-
+      `untagged-retention-duration` input
+
+  dry-run:
+    required: true
+    default: 'true'
+    description: >-
+      `dry-run` input, default value flipped
+
+  expected-deletions:
+    description: >-
+      Image digests expected to be deleted, one per line
+
+runs:
+  using: composite
+  steps:
+    - id: run-action
+      uses: ./.
+      with:
+        name: ${{ inputs.name }}
+        tag-patterns: ${{ inputs.tag-patterns }}
+        matching-tags-retention-duration: ${{ inputs.matching-tags-retention-duration }}
+        mismatching-tags-retention-duration: ${{ inputs.mismatching-tags-retention-duration }}
+        untagged-retention-duration: ${{ inputs.untagged-retention-duration }}
+        dry-run: ${{ inputs.dry-run }}
+
+    - run: diff -u <(echo "$EXPECTED_DELETIONS" | grep -v -e '^$' | sort | uniq) <(echo "$DELETED" | jq -r '.[].name' | grep -v -e '^$' | sort | uniq)
+      shell: bash
+      env:
+        DELETED: ${{ steps.run-action.outputs.deleted-json }}
+        EXPECTED_DELETIONS: ${{ inputs.expected-deletions }}
+
+    - run: test "$N_DELETED" -eq "$(echo "$EXPECTED_DELETIONS" | grep -v -e '^$' | sort | uniq | wc -l)"
+      shell: bash
+      env:
+        N_DELETED: ${{ steps.run-action.outputs.deleted-count }}
+        EXPECTED_DELETIONS: ${{ inputs.expected-deletions }}
