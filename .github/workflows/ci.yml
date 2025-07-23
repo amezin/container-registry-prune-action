@@ -128,7 +128,7 @@ jobs:
         with:
           name: ${{ env.PACKAGE_NAME }}
           tag-patterns: latest
-          matching-tags-retention-duration: 1d
+          matching-tags-retention-duration: 1w
           mismatching-tags-retention-duration: 0dT1s
           expected-deletions: ''
 
@@ -141,7 +141,7 @@ jobs:
             latest
             tag2
           matching-tags-retention-duration: 0dT1s
-          mismatching-tags-retention-duration: 1d
+          mismatching-tags-retention-duration: 1y
           expected-deletions: ${{ steps.build1.outputs.digest }}
 
       - uses: ./.github/actions/test
@@ -150,7 +150,7 @@ jobs:
           name: ${{ env.PACKAGE_NAME }}
           tag-patterns: |
             !*
-          matching-tags-retention-duration: 1d
+          matching-tags-retention-duration: 1m
           mismatching-tags-retention-duration: 0dT1s
           expected-deletions: ${{ steps.build1.outputs.digest }}
 
