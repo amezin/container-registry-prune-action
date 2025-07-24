@@ -31947,8 +31947,9 @@ async function processVersion(pkg, version, policy, dryRun) {
         }
         core.info(`Keeping ${JSON.stringify(info, null, ' ')}`);
     }
-    catch (ex) {
-        core.error(`Processing ${JSON.stringify(info, null, ' ')} failed: ${String(ex)}`);
+    catch (error) {
+        core.error(`Processing ${JSON.stringify(info, null, ' ')} failed: ${(0, node_util_1.inspect)(error)}`);
+        throw error;
     }
     finally {
         core.debug(JSON.stringify(version, null, ' '));
@@ -32014,11 +32015,16 @@ async function main() {
     const deleted = [];
     try {
         for await (const response of pkg.listVersions()) {
-            await Promise.allSettled(response.data.map(version => processVersion(pkg, version, policy, dryRun).then(value => {
+            const results = await Promise.allSettled(response.data.map(version => processVersion(pkg, version, policy, dryRun).then(value => {
                 if (value) {
                     deleted.push(version);
                 }
             })));
+            for (const result of results) {
+                if (result.status === 'rejected') {
+                    throw result.reason;
+                }
+            }
         }
     }
     finally {
