@@ -31887,7 +31887,7 @@ class RetentionPolicy {
         const match = this.tagPatterns.find(pattern => pattern.match(tag));
         return match && !match.negate;
     }
-    getRetentionDuration(version) {
+    getRetentionDuration(version, relativeTo) {
         const metadata = version.metadata?.container;
         if (!metadata) {
             throw new Error('Missing container metadata');
@@ -31907,9 +31907,9 @@ class RetentionPolicy {
             !this.mismatchingTagRetentionDuration) {
             return null;
         }
-        return polyfill_1.Temporal.Duration.compare(this.matchingTagRetentionDuration, this.mismatchingTagRetentionDuration) === 1
-            ? this.matchingTagRetentionDuration
-            : this.mismatchingTagRetentionDuration;
+        return polyfill_1.Temporal.Duration.compare(this.matchingTagRetentionDuration.negated(), this.mismatchingTagRetentionDuration.negated(), { relativeTo }) === 1
+            ? this.mismatchingTagRetentionDuration
+            : this.matchingTagRetentionDuration;
     }
 }
 function parseDuration(value) {
@@ -31928,14 +31928,16 @@ async function processVersion(pkg, version, policy, dryRun) {
         name: version.name,
         url: version.url,
         html_url: version.html_url,
+        updated_at: version.updated_at,
     };
     try {
-        const now = polyfill_1.Temporal.Now.instant();
-        const age = polyfill_1.Temporal.Instant.from(version.updated_at).until(now);
-        const retentionDuration = policy.getRetentionDuration(version);
-        Object.assign(info, { age, retentionDuration });
+        const tz = 'UTC';
+        const now = polyfill_1.Temporal.Now.zonedDateTimeISO(tz);
+        const retentionDuration = policy.getRetentionDuration(version, now);
+        const updated = polyfill_1.Temporal.Instant.from(version.updated_at).toZonedDateTimeISO(tz);
+        Object.assign(info, { retentionDuration, age: updated.until(now) });
         if (retentionDuration &&
-            polyfill_1.Temporal.Duration.compare(age, retentionDuration) === 1) {
+            polyfill_1.Temporal.ZonedDateTime.compare(updated, now.subtract(retentionDuration)) === -1) {
             if (dryRun) {
                 core.notice(`Would delete ${JSON.stringify(info, null, ' ')}`);
             }

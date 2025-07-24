@@ -115,7 +115,10 @@ class RetentionPolicy {
         return match && !match.negate;
     }
 
-    getRetentionDuration(version: PackageVersion) {
+    getRetentionDuration(
+        version: PackageVersion,
+        relativeTo: Temporal.ZonedDateTimeLike
+    ) {
         const metadata = version.metadata?.container;
 
         if (!metadata) {
@@ -146,11 +149,12 @@ class RetentionPolicy {
         }
 
         return Temporal.Duration.compare(
-            this.matchingTagRetentionDuration,
-            this.mismatchingTagRetentionDuration
+            this.matchingTagRetentionDuration.negated(),
+            this.mismatchingTagRetentionDuration.negated(),
+            { relativeTo }
         ) === 1
-            ? this.matchingTagRetentionDuration
-            : this.mismatchingTagRetentionDuration;
+            ? this.mismatchingTagRetentionDuration
+            : this.matchingTagRetentionDuration;
     }
 }
 
@@ -180,18 +184,25 @@ async function processVersion(
         name: version.name,
         url: version.url,
         html_url: version.html_url,
+        updated_at: version.updated_at,
     };
 
     try {
-        const now = Temporal.Now.instant();
-        const age = Temporal.Instant.from(version.updated_at).until(now);
-        const retentionDuration = policy.getRetentionDuration(version);
+        const tz = 'UTC';
+        const now = Temporal.Now.zonedDateTimeISO(tz);
+        const retentionDuration = policy.getRetentionDuration(version, now);
+        const updated = Temporal.Instant.from(
+            version.updated_at
+        ).toZonedDateTimeISO(tz);
 
-        Object.assign(info, { age, retentionDuration });
+        Object.assign(info, { retentionDuration, age: updated.until(now) });
 
         if (
             retentionDuration &&
-            Temporal.Duration.compare(age, retentionDuration) === 1
+            Temporal.ZonedDateTime.compare(
+                updated,
+                now.subtract(retentionDuration)
+            ) === -1
         ) {
             if (dryRun) {
                 core.notice(`Would delete ${JSON.stringify(info, null, ' ')}`);
