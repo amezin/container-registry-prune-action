@@ -23,7 +23,7 @@
     "@amezin/eslint-config-js-actions": "1.1.2",
     "@types/node": "20.19.9",
     "@vercel/ncc": "0.38.3",
-    "typescript": "5.8.3"
+    "typescript": "5.9.2"
   },
   "scripts": {
     "build": "ncc build --source-map --license dependencies.txt src/main.ts",
