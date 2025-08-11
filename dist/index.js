@@ -3449,6 +3449,125 @@ function copyFile(srcFile, destFile, force) {
 
 /***/ }),
 
+/***/ 309:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getOctokit = getOctokit;
+const node_util_1 = __importDefault(__nccwpck_require__(7975));
+const core = __importStar(__nccwpck_require__(7484));
+const github = __importStar(__nccwpck_require__(3228));
+const request_error_1 = __nccwpck_require__(3708);
+const plugin_retry_1 = __nccwpck_require__(3450);
+const plugin_throttling_1 = __nccwpck_require__(4759);
+const log = {
+    debug: (...args) => core.debug(node_util_1.default.format(...args)),
+    info: (...args) => core.info(node_util_1.default.format(...args)),
+    warn: (...args) => core.warning(node_util_1.default.format(...args)),
+    error: (...args) => core.error(node_util_1.default.format(...args)),
+};
+function requestDescription(octokit, options) {
+    const requestOptions = octokit.request.endpoint.parse(options);
+    const path = requestOptions.url.replace(options.baseUrl, '');
+    return `${requestOptions.method} ${path}`;
+}
+function responseDescription(octokit, options, response, start) {
+    const requestId = response?.headers['x-github-request-id'];
+    return `${requestDescription(octokit, options)} - ${response?.status} with id ${requestId} in ${Date.now() - start}ms`;
+}
+function requestLog(octokit) {
+    octokit.hook.wrap('request', (request, options) => {
+        if (core.isDebug()) {
+            core.startGroup(requestDescription(octokit, options));
+            core.info(node_util_1.default.inspect(options));
+            core.endGroup();
+        }
+        const start = Date.now();
+        return request(options)
+            .then(response => {
+            core.startGroup(responseDescription(octokit, options, response, start));
+            core.info(node_util_1.default.inspect({ request: options, response }));
+            core.endGroup();
+            return response;
+        })
+            .catch(error => {
+            if (error instanceof request_error_1.RequestError) {
+                const { response } = error;
+                core.error(responseDescription(octokit, options, response, start));
+                core.startGroup('Details');
+                core.info(node_util_1.default.inspect({
+                    request: options,
+                    response,
+                }));
+                core.endGroup();
+            }
+            throw error;
+        });
+    });
+}
+function rateLimit(what, retryAfter, options, octokit, retryCount) {
+    if (retryCount === 0) {
+        octokit.log.warn(`${what} for request ${options.method} ${options.url}. Will retry after ${retryAfter} seconds!`);
+        return true;
+    }
+    else {
+        octokit.log.warn(`${what} for request ${options.method} ${options.url}. Retry limit exceeded!`);
+        return false;
+    }
+}
+const throttle = {
+    onRateLimit: rateLimit.bind(globalThis, 'Request quota exhausted'),
+    onSecondaryRateLimit: rateLimit.bind(globalThis, 'SecondaryRateLimit detected'),
+};
+function getOctokit(token, options, ...additionalPlugins) {
+    return github.getOctokit(token, {
+        log,
+        throttle,
+        ...options,
+    }, requestLog, plugin_retry_1.retry, plugin_throttling_1.throttling, ...additionalPlugins);
+}
+//# sourceMappingURL=main.js.map
+
+/***/ }),
+
 /***/ 7864:
 /***/ ((module) => {
 
@@ -4646,66 +4765,6 @@ function paginateRest(octokit) {
   };
 }
 paginateRest.VERSION = VERSION;
-// Annotate the CommonJS export names for ESM import in node:
-0 && (0);
-
-
-/***/ }),
-
-/***/ 6966:
-/***/ ((module) => {
-
-"use strict";
-
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// pkg/dist-src/index.js
-var dist_src_exports = {};
-__export(dist_src_exports, {
-  requestLog: () => requestLog
-});
-module.exports = __toCommonJS(dist_src_exports);
-
-// pkg/dist-src/version.js
-var VERSION = "4.0.1";
-
-// pkg/dist-src/index.js
-function requestLog(octokit) {
-  octokit.hook.wrap("request", (request, options) => {
-    octokit.log.debug("request", options);
-    const start = Date.now();
-    const requestOptions = octokit.request.endpoint.parse(options);
-    const path = requestOptions.url.replace(options.baseUrl, "");
-    return request(options).then((response) => {
-      octokit.log.info(
-        `${requestOptions.method} ${path} - ${response.status} in ${Date.now() - start}ms`
-      );
-      return response;
-    }).catch((error) => {
-      octokit.log.info(
-        `${requestOptions.method} ${path} - ${error.status} in ${Date.now() - start}ms`
-      );
-      throw error;
-    });
-  });
-}
-requestLog.VERSION = VERSION;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (0);
 
@@ -6876,6 +6935,128 @@ function legacyRestEndpointMethods(octokit) {
   };
 }
 legacyRestEndpointMethods.VERSION = VERSION;
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
+/***/ 3450:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  VERSION: () => VERSION,
+  retry: () => retry
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_core = __nccwpck_require__(1897);
+
+// pkg/dist-src/error-request.js
+async function errorRequest(state, octokit, error, options) {
+  if (!error.request || !error.request.request) {
+    throw error;
+  }
+  if (error.status >= 400 && !state.doNotRetry.includes(error.status)) {
+    const retries = options.request.retries != null ? options.request.retries : state.retries;
+    const retryAfter = Math.pow((options.request.retryCount || 0) + 1, 2);
+    throw octokit.retry.retryRequest(error, retries, retryAfter);
+  }
+  throw error;
+}
+
+// pkg/dist-src/wrap-request.js
+var import_light = __toESM(__nccwpck_require__(3251));
+var import_request_error = __nccwpck_require__(3708);
+async function wrapRequest(state, octokit, request, options) {
+  const limiter = new import_light.default();
+  limiter.on("failed", function(error, info) {
+    const maxRetries = ~~error.request.request.retries;
+    const after = ~~error.request.request.retryAfter;
+    options.request.retryCount = info.retryCount + 1;
+    if (maxRetries > info.retryCount) {
+      return after * state.retryAfterBaseValue;
+    }
+  });
+  return limiter.schedule(
+    requestWithGraphqlErrorHandling.bind(null, state, octokit, request),
+    options
+  );
+}
+async function requestWithGraphqlErrorHandling(state, octokit, request, options) {
+  const response = await request(request, options);
+  if (response.data && response.data.errors && response.data.errors.length > 0 && /Something went wrong while executing your query/.test(
+    response.data.errors[0].message
+  )) {
+    const error = new import_request_error.RequestError(response.data.errors[0].message, 500, {
+      request: options,
+      response
+    });
+    return errorRequest(state, octokit, error, options);
+  }
+  return response;
+}
+
+// pkg/dist-src/index.js
+var VERSION = "6.1.0";
+function retry(octokit, octokitOptions) {
+  const state = Object.assign(
+    {
+      enabled: true,
+      retryAfterBaseValue: 1e3,
+      doNotRetry: [400, 401, 403, 404, 422, 451],
+      retries: 3
+    },
+    octokitOptions.retry
+  );
+  if (state.enabled) {
+    octokit.hook.error("request", errorRequest.bind(null, state, octokit));
+    octokit.hook.wrap("request", wrapRequest.bind(null, state, octokit));
+  }
+  return {
+    retry: {
+      retryRequest: (error, retries, retryAfter) => {
+        error.request.request = Object.assign({}, error.request.request, {
+          retries,
+          retryAfter
+        });
+        return error;
+      }
+    }
+  };
+}
+retry.VERSION = VERSION;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (0);
 
@@ -31815,9 +31996,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const node_util_1 = __nccwpck_require__(7975);
 const core = __importStar(__nccwpck_require__(7484));
-const github_1 = __nccwpck_require__(3228);
-const plugin_request_log_1 = __nccwpck_require__(6966);
-const plugin_throttling_1 = __nccwpck_require__(4759);
+const js_actions_octokit_1 = __nccwpck_require__(309);
 const minimatch_1 = __nccwpck_require__(6507);
 const polyfill_1 = __nccwpck_require__(7946);
 class Package {
@@ -31989,30 +32168,7 @@ async function main() {
         }
     }
     const policy = new RetentionPolicy(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration);
-    const log = {
-        debug: core.isDebug()
-            ? console.debug.bind(console)
-            : (..._args) => { },
-        info: console.info.bind(console),
-        warn: console.warn.bind(console),
-        error: console.error.bind(console),
-    };
-    const throttle = {
-        onRateLimit: (retryAfter, options, octokit, retryCount) => {
-            const baseWarn = `Request quota exhausted for request ${options.method} ${options.url}`;
-            if (retryCount < 1) {
-                octokit.log.warn(`${baseWarn}. Will retry after ${retryAfter} seconds!`);
-                return true;
-            }
-            else {
-                octokit.log.warn(`${baseWarn}. Retry limit exceeded!`);
-            }
-        },
-        onSecondaryRateLimit: (retryAfter, options, octokit) => {
-            octokit.log.warn(`Secondary rate limit detected for request ${options.method} ${options.url}`);
-        },
-    };
-    const github = (0, github_1.getOctokit)(token, { log, throttle }, plugin_request_log_1.requestLog, plugin_throttling_1.throttling);
+    const github = (0, js_actions_octokit_1.getOctokit)(token);
     const pkg = await getPackage(github, ownerName, packageName);
     const deleted = [];
     try {

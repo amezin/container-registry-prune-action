@@ -1,10 +1,8 @@
 import { inspect } from 'node:util';
 
 import * as core from '@actions/core';
-import { getOctokit } from '@actions/github';
-import { requestLog } from '@octokit/plugin-request-log';
+import { getOctokit } from '@amezin/js-actions-octokit';
 import { type RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
-import { throttling, type ThrottlingOptions } from '@octokit/plugin-throttling';
 import { type OctokitResponse } from '@octokit/types';
 
 import { Minimatch, type MinimatchOptions } from 'minimatch';
@@ -279,36 +277,7 @@ async function main() {
         untaggedRetentionDuration
     );
 
-    const log = {
-        debug: core.isDebug()
-            ? console.debug.bind(console)
-            : (..._args: unknown[]) => {},
-        info: console.info.bind(console),
-        warn: console.warn.bind(console),
-        error: console.error.bind(console),
-    };
-
-    const throttle: ThrottlingOptions = {
-        onRateLimit: (retryAfter, options, octokit, retryCount) => {
-            const baseWarn = `Request quota exhausted for request ${options.method} ${options.url}`;
-
-            if (retryCount < 1) {
-                octokit.log.warn(
-                    `${baseWarn}. Will retry after ${retryAfter} seconds!`
-                );
-                return true;
-            } else {
-                octokit.log.warn(`${baseWarn}. Retry limit exceeded!`);
-            }
-        },
-        onSecondaryRateLimit: (retryAfter, options, octokit) => {
-            octokit.log.warn(
-                `Secondary rate limit detected for request ${options.method} ${options.url}`
-            );
-        },
-    };
-
-    const github = getOctokit(token, { log, throttle }, requestLog, throttling);
+    const github = getOctokit(token);
     const pkg = await getPackage(github, ownerName, packageName);
     const deleted: PackageVersion[] = [];
 
