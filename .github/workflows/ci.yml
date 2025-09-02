@@ -200,15 +200,13 @@ jobs:
           dry-run: false
 
       - run: >-
-          test "$(gh api --jq '.[].name' "$OWNER_URL/packages/container/${PACKAGE_NAME////%2F}/versions")" = "$DIGEST2"
+          test "$(gh api --jq '.[].name' "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME////%2F}/versions")" = "$DIGEST2"
         env:
-          OWNER_URL: ${{ github.event.repository.owner.url }}
           GH_TOKEN: ${{ github.token }}
           DIGEST2: ${{ steps.build2.outputs.digest }}
 
       - if: always() && steps.build1.outcome == 'success'
         run: >-
-          gh api --method DELETE "$OWNER_URL/packages/container/${PACKAGE_NAME////%2F}"
+          gh api --method DELETE "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME////%2F}"
         env:
-          OWNER_URL: ${{ github.event.repository.owner.url }}
           GH_TOKEN: ${{ github.token }}
