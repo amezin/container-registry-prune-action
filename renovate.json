@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>amezin/js-actions-common#v1.2.0"],
+  "extends": ["github>amezin/js-actions-common#v2.0.0"],
   "packageRules": [
     {
       "matchPackageNames": ["@octokit/plugin-*"],
