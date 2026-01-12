@@ -17,12 +17,12 @@
   "dependencies": {
     "@actions/core": "2.0.1",
     "@actions/http-client": "3.0.0",
-    "@amezin/js-actions-octokit": "2.0.1",
+    "@amezin/js-actions-octokit": "2.0.2",
     "@js-temporal/polyfill": "0.5.1",
     "minimatch": "10.1.1"
   },
   "devDependencies": {
-    "@amezin/eslint-config-js-actions": "2.0.1",
+    "@amezin/eslint-config-js-actions": "2.0.2",
     "@types/node": "24.10.2",
     "@vercel/ncc": "0.38.4",
     "typescript": "5.9.3"

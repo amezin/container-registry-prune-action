@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   shared:
-    uses: amezin/js-actions-common/.github/workflows/shared-ci.yml@933656d56f84eb22c3bdf9d092f793dc7d5c5daa # v2.0.1
+    uses: amezin/js-actions-common/.github/workflows/shared-ci.yml@961ae80497f79f886278f1d47b1d4bf70963b941 # v2.0.2
     permissions:
       contents: read
 
