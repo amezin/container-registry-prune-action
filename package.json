@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@actions/core": "2.0.3",
-    "@amezin/js-actions-octokit": "2.1.0",
+    "@amezin/js-actions-octokit": "3.0.2",
     "@js-temporal/polyfill": "0.5.1",
     "minimatch": "10.1.1"
   },
