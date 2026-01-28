@@ -19,6 +19,19 @@ jobs:
     permissions:
       contents: read
 
+  release:
+    uses: amezin/js-actions-common/.github/workflows/shared-release.yml@1065538742a47b2913b4f0e8e98f3b6920a4421b # v4.0.0
+
+    needs:
+      - shared
+      - test
+
+    permissions:
+      contents: write
+
+    with:
+      draft: true
+
   test:
     needs: shared
     runs-on: ubuntu-latest
