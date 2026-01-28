@@ -7,6 +7,6 @@ on:
 
 jobs:
   tag:
-    uses: amezin/js-actions-common/.github/workflows/shared-tags.yml@4383e5abf3fa3f1295a5f991a90427ce9af04ad1 # v2.1.0
+    uses: amezin/js-actions-common/.github/workflows/shared-tags.yml@6e9d841c3ea1f175bfa67d68b2c9f60f5c4f4be3 # v3.0.2
     permissions:
       contents: write

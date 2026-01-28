@@ -19,9 +19,7 @@ abstract class Package {
         readonly name: string
     ) {}
 
-    abstract listVersions(): AsyncIterableIterator<
-        OctokitResponse<PackageVersion[]>
-    >;
+    abstract listVersions(): AsyncIterable<OctokitResponse<PackageVersion[]>>;
 
     abstract deleteVersion(id: number): Promise<OctokitResponse<never>>;
 }
