@@ -33020,10 +33020,2951 @@ var __webpack_exports__ = {};
 var external_node_util_ = __nccwpck_require__(7975);
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(7484);
-// EXTERNAL MODULE: external "fs"
-var external_fs_ = __nccwpck_require__(9896);
 // EXTERNAL MODULE: external "os"
 var external_os_ = __nccwpck_require__(857);
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/utils.js
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Sanitizes an input into a string so it can be passed into issueCommand safely
+ * @param input input to sanitize into a string
+ */
+function utils_toCommandValue(input) {
+    if (input === null || input === undefined) {
+        return '';
+    }
+    else if (typeof input === 'string' || input instanceof String) {
+        return input;
+    }
+    return JSON.stringify(input);
+}
+/**
+ *
+ * @param annotationProperties
+ * @returns The command properties to send with the actual annotation command
+ * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
+ */
+function utils_toCommandProperties(annotationProperties) {
+    if (!Object.keys(annotationProperties).length) {
+        return {};
+    }
+    return {
+        title: annotationProperties.title,
+        file: annotationProperties.file,
+        line: annotationProperties.startLine,
+        endLine: annotationProperties.endLine,
+        col: annotationProperties.startColumn,
+        endColumn: annotationProperties.endColumn
+    };
+}
+//# sourceMappingURL=utils.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/command.js
+
+
+/**
+ * Issues a command to the GitHub Actions runner
+ *
+ * @param command - The command name to issue
+ * @param properties - Additional properties for the command (key-value pairs)
+ * @param message - The message to include with the command
+ * @remarks
+ * This function outputs a specially formatted string to stdout that the Actions
+ * runner interprets as a command. These commands can control workflow behavior,
+ * set outputs, create annotations, mask values, and more.
+ *
+ * Command Format:
+ *   ::name key=value,key=value::message
+ *
+ * @example
+ * ```typescript
+ * // Issue a warning annotation
+ * issueCommand('warning', {}, 'This is a warning message');
+ * // Output: ::warning::This is a warning message
+ *
+ * // Set an environment variable
+ * issueCommand('set-env', { name: 'MY_VAR' }, 'some value');
+ * // Output: ::set-env name=MY_VAR::some value
+ *
+ * // Add a secret mask
+ * issueCommand('add-mask', {}, 'secretValue123');
+ * // Output: ::add-mask::secretValue123
+ * ```
+ *
+ * @internal
+ * This is an internal utility function that powers the public API functions
+ * such as setSecret, warning, error, and exportVariable.
+ */
+function command_issueCommand(command, properties, message) {
+    const cmd = new Command(command, properties, message);
+    process.stdout.write(cmd.toString() + external_os_.EOL);
+}
+function command_issue(name, message = '') {
+    command_issueCommand(name, {}, message);
+}
+const CMD_STRING = '::';
+class Command {
+    constructor(command, properties, message) {
+        if (!command) {
+            command = 'missing.command';
+        }
+        this.command = command;
+        this.properties = properties;
+        this.message = message;
+    }
+    toString() {
+        let cmdStr = CMD_STRING + this.command;
+        if (this.properties && Object.keys(this.properties).length > 0) {
+            cmdStr += ' ';
+            let first = true;
+            for (const key in this.properties) {
+                if (this.properties.hasOwnProperty(key)) {
+                    const val = this.properties[key];
+                    if (val) {
+                        if (first) {
+                            first = false;
+                        }
+                        else {
+                            cmdStr += ',';
+                        }
+                        cmdStr += `${key}=${escapeProperty(val)}`;
+                    }
+                }
+            }
+        }
+        cmdStr += `${CMD_STRING}${escapeData(this.message)}`;
+        return cmdStr;
+    }
+}
+function escapeData(s) {
+    return utils_toCommandValue(s)
+        .replace(/%/g, '%25')
+        .replace(/\r/g, '%0D')
+        .replace(/\n/g, '%0A');
+}
+function escapeProperty(s) {
+    return utils_toCommandValue(s)
+        .replace(/%/g, '%25')
+        .replace(/\r/g, '%0D')
+        .replace(/\n/g, '%0A')
+        .replace(/:/g, '%3A')
+        .replace(/,/g, '%2C');
+}
+//# sourceMappingURL=command.js.map
+// EXTERNAL MODULE: external "crypto"
+var external_crypto_ = __nccwpck_require__(6982);
+// EXTERNAL MODULE: external "fs"
+var external_fs_ = __nccwpck_require__(9896);
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/file-command.js
+// For internal use, subject to change.
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+
+
+
+function file_command_issueFileCommand(command, message) {
+    const filePath = process.env[`GITHUB_${command}`];
+    if (!filePath) {
+        throw new Error(`Unable to find environment variable for file command ${command}`);
+    }
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`Missing file at path: ${filePath}`);
+    }
+    fs.appendFileSync(filePath, `${toCommandValue(message)}${os.EOL}`, {
+        encoding: 'utf8'
+    });
+}
+function file_command_prepareKeyValueMessage(key, value) {
+    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
+    const convertedValue = toCommandValue(value);
+    // These should realistically never happen, but just in case someone finds a
+    // way to exploit uuid generation let's not allow keys or values that contain
+    // the delimiter.
+    if (key.includes(delimiter)) {
+        throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
+    }
+    if (convertedValue.includes(delimiter)) {
+        throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
+    }
+    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
+}
+//# sourceMappingURL=file-command.js.map
+// EXTERNAL MODULE: external "path"
+var external_path_ = __nccwpck_require__(6928);
+// EXTERNAL MODULE: external "http"
+var external_http_ = __nccwpck_require__(8611);
+// EXTERNAL MODULE: external "https"
+var external_https_ = __nccwpck_require__(5692);
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/http-client/lib/proxy.js
+function getProxyUrl(reqUrl) {
+    const usingSsl = reqUrl.protocol === 'https:';
+    if (checkBypass(reqUrl)) {
+        return undefined;
+    }
+    const proxyVar = (() => {
+        if (usingSsl) {
+            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+        }
+        else {
+            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        }
+    })();
+    if (proxyVar) {
+        try {
+            return new DecodedURL(proxyVar);
+        }
+        catch (_a) {
+            if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
+                return new DecodedURL(`http://${proxyVar}`);
+        }
+    }
+    else {
+        return undefined;
+    }
+}
+function checkBypass(reqUrl) {
+    if (!reqUrl.hostname) {
+        return false;
+    }
+    const reqHost = reqUrl.hostname;
+    if (isLoopbackAddress(reqHost)) {
+        return true;
+    }
+    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
+    if (!noProxy) {
+        return false;
+    }
+    // Determine the request port
+    let reqPort;
+    if (reqUrl.port) {
+        reqPort = Number(reqUrl.port);
+    }
+    else if (reqUrl.protocol === 'http:') {
+        reqPort = 80;
+    }
+    else if (reqUrl.protocol === 'https:') {
+        reqPort = 443;
+    }
+    // Format the request hostname and hostname with port
+    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
+    if (typeof reqPort === 'number') {
+        upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
+    }
+    // Compare request host against noproxy
+    for (const upperNoProxyItem of noProxy
+        .split(',')
+        .map(x => x.trim().toUpperCase())
+        .filter(x => x)) {
+        if (upperNoProxyItem === '*' ||
+            upperReqHosts.some(x => x === upperNoProxyItem ||
+                x.endsWith(`.${upperNoProxyItem}`) ||
+                (upperNoProxyItem.startsWith('.') &&
+                    x.endsWith(`${upperNoProxyItem}`)))) {
+            return true;
+        }
+    }
+    return false;
+}
+function isLoopbackAddress(host) {
+    const hostLower = host.toLowerCase();
+    return (hostLower === 'localhost' ||
+        hostLower.startsWith('127.') ||
+        hostLower.startsWith('[::1]') ||
+        hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
+}
+class DecodedURL extends URL {
+    constructor(url, base) {
+        super(url, base);
+        this._decodedUsername = decodeURIComponent(super.username);
+        this._decodedPassword = decodeURIComponent(super.password);
+    }
+    get username() {
+        return this._decodedUsername;
+    }
+    get password() {
+        return this._decodedPassword;
+    }
+}
+//# sourceMappingURL=proxy.js.map
+// EXTERNAL MODULE: ./node_modules/tunnel/index.js
+var node_modules_tunnel = __nccwpck_require__(770);
+// EXTERNAL MODULE: ./node_modules/undici/index.js
+var undici = __nccwpck_require__(6752);
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/http-client/lib/index.js
+/* eslint-disable @typescript-eslint/no-explicit-any */
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+var HttpCodes;
+(function (HttpCodes) {
+    HttpCodes[HttpCodes["OK"] = 200] = "OK";
+    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
+    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
+    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
+    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
+    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
+    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
+    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
+    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
+    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
+    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
+    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
+    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
+    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
+    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
+    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
+    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
+    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
+    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
+    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
+    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
+    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
+    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
+    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
+    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
+    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
+    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
+})(HttpCodes || (HttpCodes = {}));
+var Headers;
+(function (Headers) {
+    Headers["Accept"] = "accept";
+    Headers["ContentType"] = "content-type";
+})(Headers || (Headers = {}));
+var MediaTypes;
+(function (MediaTypes) {
+    MediaTypes["ApplicationJson"] = "application/json";
+})(MediaTypes || (MediaTypes = {}));
+/**
+ * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
+ * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+ */
+function lib_getProxyUrl(serverUrl) {
+    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+    return proxyUrl ? proxyUrl.href : '';
+}
+const HttpRedirectCodes = [
+    HttpCodes.MovedPermanently,
+    HttpCodes.ResourceMoved,
+    HttpCodes.SeeOther,
+    HttpCodes.TemporaryRedirect,
+    HttpCodes.PermanentRedirect
+];
+const HttpResponseRetryCodes = [
+    HttpCodes.BadGateway,
+    HttpCodes.ServiceUnavailable,
+    HttpCodes.GatewayTimeout
+];
+const RetryableHttpVerbs = (/* unused pure expression or super */ null && (['OPTIONS', 'GET', 'DELETE', 'HEAD']));
+const ExponentialBackoffCeiling = 10;
+const ExponentialBackoffTimeSlice = 5;
+class HttpClientError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.name = 'HttpClientError';
+        this.statusCode = statusCode;
+        Object.setPrototypeOf(this, HttpClientError.prototype);
+    }
+}
+class HttpClientResponse {
+    constructor(message) {
+        this.message = message;
+    }
+    readBody() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                let output = Buffer.alloc(0);
+                this.message.on('data', (chunk) => {
+                    output = Buffer.concat([output, chunk]);
+                });
+                this.message.on('end', () => {
+                    resolve(output.toString());
+                });
+            }));
+        });
+    }
+    readBodyBuffer() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                const chunks = [];
+                this.message.on('data', (chunk) => {
+                    chunks.push(chunk);
+                });
+                this.message.on('end', () => {
+                    resolve(Buffer.concat(chunks));
+                });
+            }));
+        });
+    }
+}
+function isHttps(requestUrl) {
+    const parsedUrl = new URL(requestUrl);
+    return parsedUrl.protocol === 'https:';
+}
+class lib_HttpClient {
+    constructor(userAgent, handlers, requestOptions) {
+        this._ignoreSslError = false;
+        this._allowRedirects = true;
+        this._allowRedirectDowngrade = false;
+        this._maxRedirects = 50;
+        this._allowRetries = false;
+        this._maxRetries = 1;
+        this._keepAlive = false;
+        this._disposed = false;
+        this.userAgent = this._getUserAgentWithOrchestrationId(userAgent);
+        this.handlers = handlers || [];
+        this.requestOptions = requestOptions;
+        if (requestOptions) {
+            if (requestOptions.ignoreSslError != null) {
+                this._ignoreSslError = requestOptions.ignoreSslError;
+            }
+            this._socketTimeout = requestOptions.socketTimeout;
+            if (requestOptions.allowRedirects != null) {
+                this._allowRedirects = requestOptions.allowRedirects;
+            }
+            if (requestOptions.allowRedirectDowngrade != null) {
+                this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
+            }
+            if (requestOptions.maxRedirects != null) {
+                this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
+            }
+            if (requestOptions.keepAlive != null) {
+                this._keepAlive = requestOptions.keepAlive;
+            }
+            if (requestOptions.allowRetries != null) {
+                this._allowRetries = requestOptions.allowRetries;
+            }
+            if (requestOptions.maxRetries != null) {
+                this._maxRetries = requestOptions.maxRetries;
+            }
+        }
+    }
+    options(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    get(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('GET', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    del(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    post(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('POST', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    patch(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    put(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    head(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    sendStream(verb, requestUrl, stream, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request(verb, requestUrl, stream, additionalHeaders);
+        });
+    }
+    /**
+     * Gets a typed object from an endpoint
+     * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
+     */
+    getJson(requestUrl_1) {
+        return __awaiter(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            const res = yield this.get(requestUrl, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    postJson(requestUrl_1, obj_1) {
+        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] =
+                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+            const res = yield this.post(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    putJson(requestUrl_1, obj_1) {
+        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] =
+                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+            const res = yield this.put(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    patchJson(requestUrl_1, obj_1) {
+        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] =
+                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+            const res = yield this.patch(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    /**
+     * Makes a raw http request.
+     * All other methods such as get, post, patch, and request ultimately call this.
+     * Prefer get, del, post and patch
+     */
+    request(verb, requestUrl, data, headers) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._disposed) {
+                throw new Error('Client has already been disposed.');
+            }
+            const parsedUrl = new URL(requestUrl);
+            let info = this._prepareRequest(verb, parsedUrl, headers);
+            // Only perform retries on reads since writes may not be idempotent.
+            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
+                ? this._maxRetries + 1
+                : 1;
+            let numTries = 0;
+            let response;
+            do {
+                response = yield this.requestRaw(info, data);
+                // Check if it's an authentication challenge
+                if (response &&
+                    response.message &&
+                    response.message.statusCode === HttpCodes.Unauthorized) {
+                    let authenticationHandler;
+                    for (const handler of this.handlers) {
+                        if (handler.canHandleAuthentication(response)) {
+                            authenticationHandler = handler;
+                            break;
+                        }
+                    }
+                    if (authenticationHandler) {
+                        return authenticationHandler.handleAuthentication(this, info, data);
+                    }
+                    else {
+                        // We have received an unauthorized response but have no handlers to handle it.
+                        // Let the response return to the caller.
+                        return response;
+                    }
+                }
+                let redirectsRemaining = this._maxRedirects;
+                while (response.message.statusCode &&
+                    HttpRedirectCodes.includes(response.message.statusCode) &&
+                    this._allowRedirects &&
+                    redirectsRemaining > 0) {
+                    const redirectUrl = response.message.headers['location'];
+                    if (!redirectUrl) {
+                        // if there's no location to redirect to, we won't
+                        break;
+                    }
+                    const parsedRedirectUrl = new URL(redirectUrl);
+                    if (parsedUrl.protocol === 'https:' &&
+                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
+                        !this._allowRedirectDowngrade) {
+                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
+                    }
+                    // we need to finish reading the response before reassigning response
+                    // which will leak the open socket.
+                    yield response.readBody();
+                    // strip authorization header if redirected to a different hostname
+                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                        for (const header in headers) {
+                            // header names are case insensitive
+                            if (header.toLowerCase() === 'authorization') {
+                                delete headers[header];
+                            }
+                        }
+                    }
+                    // let's make the request with the new redirectUrl
+                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+                    response = yield this.requestRaw(info, data);
+                    redirectsRemaining--;
+                }
+                if (!response.message.statusCode ||
+                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+                    // If not a retry code, return immediately instead of retrying
+                    return response;
+                }
+                numTries += 1;
+                if (numTries < maxTries) {
+                    yield response.readBody();
+                    yield this._performExponentialBackoff(numTries);
+                }
+            } while (numTries < maxTries);
+            return response;
+        });
+    }
+    /**
+     * Needs to be called if keepAlive is set to true in request options.
+     */
+    dispose() {
+        if (this._agent) {
+            this._agent.destroy();
+        }
+        this._disposed = true;
+    }
+    /**
+     * Raw request.
+     * @param info
+     * @param data
+     */
+    requestRaw(info, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                function callbackForResult(err, res) {
+                    if (err) {
+                        reject(err);
+                    }
+                    else if (!res) {
+                        // If `err` is not passed, then `res` must be passed.
+                        reject(new Error('Unknown error'));
+                    }
+                    else {
+                        resolve(res);
+                    }
+                }
+                this.requestRawWithCallback(info, data, callbackForResult);
+            });
+        });
+    }
+    /**
+     * Raw request with callback.
+     * @param info
+     * @param data
+     * @param onResult
+     */
+    requestRawWithCallback(info, data, onResult) {
+        if (typeof data === 'string') {
+            if (!info.options.headers) {
+                info.options.headers = {};
+            }
+            info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
+        }
+        let callbackCalled = false;
+        function handleResult(err, res) {
+            if (!callbackCalled) {
+                callbackCalled = true;
+                onResult(err, res);
+            }
+        }
+        const req = info.httpModule.request(info.options, (msg) => {
+            const res = new HttpClientResponse(msg);
+            handleResult(undefined, res);
+        });
+        let socket;
+        req.on('socket', sock => {
+            socket = sock;
+        });
+        // If we ever get disconnected, we want the socket to timeout eventually
+        req.setTimeout(this._socketTimeout || 3 * 60000, () => {
+            if (socket) {
+                socket.end();
+            }
+            handleResult(new Error(`Request timeout: ${info.options.path}`));
+        });
+        req.on('error', function (err) {
+            // err has statusCode property
+            // res should have headers
+            handleResult(err);
+        });
+        if (data && typeof data === 'string') {
+            req.write(data, 'utf8');
+        }
+        if (data && typeof data !== 'string') {
+            data.on('close', function () {
+                req.end();
+            });
+            data.pipe(req);
+        }
+        else {
+            req.end();
+        }
+    }
+    /**
+     * Gets an http agent. This function is useful when you need an http agent that handles
+     * routing through a proxy server - depending upon the url and proxy environment variables.
+     * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+     */
+    getAgent(serverUrl) {
+        const parsedUrl = new URL(serverUrl);
+        return this._getAgent(parsedUrl);
+    }
+    getAgentDispatcher(serverUrl) {
+        const parsedUrl = new URL(serverUrl);
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
+        if (!useProxy) {
+            return;
+        }
+        return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
+    }
+    _prepareRequest(method, requestUrl, headers) {
+        const info = {};
+        info.parsedUrl = requestUrl;
+        const usingSsl = info.parsedUrl.protocol === 'https:';
+        info.httpModule = usingSsl ? https : http;
+        const defaultPort = usingSsl ? 443 : 80;
+        info.options = {};
+        info.options.host = info.parsedUrl.hostname;
+        info.options.port = info.parsedUrl.port
+            ? parseInt(info.parsedUrl.port)
+            : defaultPort;
+        info.options.path =
+            (info.parsedUrl.pathname || '') + (info.parsedUrl.search || '');
+        info.options.method = method;
+        info.options.headers = this._mergeHeaders(headers);
+        if (this.userAgent != null) {
+            info.options.headers['user-agent'] = this.userAgent;
+        }
+        info.options.agent = this._getAgent(info.parsedUrl);
+        // gives handlers an opportunity to participate
+        if (this.handlers) {
+            for (const handler of this.handlers) {
+                handler.prepareRequest(info.options);
+            }
+        }
+        return info;
+    }
+    _mergeHeaders(headers) {
+        if (this.requestOptions && this.requestOptions.headers) {
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
+        }
+        return lowercaseKeys(headers || {});
+    }
+    /**
+     * Gets an existing header value or returns a default.
+     * Handles converting number header values to strings since HTTP headers must be strings.
+     * Note: This returns string | string[] since some headers can have multiple values.
+     * For headers that must always be a single string (like Content-Type), use the
+     * specialized _getExistingOrDefaultContentTypeHeader method instead.
+     */
+    _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
+        let clientHeader;
+        if (this.requestOptions && this.requestOptions.headers) {
+            const headerValue = lowercaseKeys(this.requestOptions.headers)[header];
+            if (headerValue) {
+                clientHeader =
+                    typeof headerValue === 'number' ? headerValue.toString() : headerValue;
+            }
+        }
+        const additionalValue = additionalHeaders[header];
+        if (additionalValue !== undefined) {
+            return typeof additionalValue === 'number'
+                ? additionalValue.toString()
+                : additionalValue;
+        }
+        if (clientHeader !== undefined) {
+            return clientHeader;
+        }
+        return _default;
+    }
+    /**
+     * Specialized version of _getExistingOrDefaultHeader for Content-Type header.
+     * Always returns a single string (not an array) since Content-Type should be a single value.
+     * Converts arrays to comma-separated strings and numbers to strings to ensure type safety.
+     * This was split from _getExistingOrDefaultHeader to provide stricter typing for callers
+     * that assign the result to places expecting a string (e.g., additionalHeaders[Headers.ContentType]).
+     */
+    _getExistingOrDefaultContentTypeHeader(additionalHeaders, _default) {
+        let clientHeader;
+        if (this.requestOptions && this.requestOptions.headers) {
+            const headerValue = lowercaseKeys(this.requestOptions.headers)[Headers.ContentType];
+            if (headerValue) {
+                if (typeof headerValue === 'number') {
+                    clientHeader = String(headerValue);
+                }
+                else if (Array.isArray(headerValue)) {
+                    clientHeader = headerValue.join(', ');
+                }
+                else {
+                    clientHeader = headerValue;
+                }
+            }
+        }
+        const additionalValue = additionalHeaders[Headers.ContentType];
+        // Return the first non-undefined value, converting numbers or arrays to strings if necessary
+        if (additionalValue !== undefined) {
+            if (typeof additionalValue === 'number') {
+                return String(additionalValue);
+            }
+            else if (Array.isArray(additionalValue)) {
+                return additionalValue.join(', ');
+            }
+            else {
+                return additionalValue;
+            }
+        }
+        if (clientHeader !== undefined) {
+            return clientHeader;
+        }
+        return _default;
+    }
+    _getAgent(parsedUrl) {
+        let agent;
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
+        if (this._keepAlive && useProxy) {
+            agent = this._proxyAgent;
+        }
+        if (!useProxy) {
+            agent = this._agent;
+        }
+        // if agent is already assigned use that agent.
+        if (agent) {
+            return agent;
+        }
+        const usingSsl = parsedUrl.protocol === 'https:';
+        let maxSockets = 100;
+        if (this.requestOptions) {
+            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+        }
+        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
+        if (proxyUrl && proxyUrl.hostname) {
+            const agentOptions = {
+                maxSockets,
+                keepAlive: this._keepAlive,
+                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
+                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+                })), { host: proxyUrl.hostname, port: proxyUrl.port })
+            };
+            let tunnelAgent;
+            const overHttps = proxyUrl.protocol === 'https:';
+            if (usingSsl) {
+                tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
+            }
+            else {
+                tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
+            }
+            agent = tunnelAgent(agentOptions);
+            this._proxyAgent = agent;
+        }
+        // if tunneling agent isn't assigned create a new agent
+        if (!agent) {
+            const options = { keepAlive: this._keepAlive, maxSockets };
+            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
+            this._agent = agent;
+        }
+        if (usingSsl && this._ignoreSslError) {
+            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
+            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
+            // we have to cast it to any and change it directly
+            agent.options = Object.assign(agent.options || {}, {
+                rejectUnauthorized: false
+            });
+        }
+        return agent;
+    }
+    _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
+        let proxyAgent;
+        if (this._keepAlive) {
+            proxyAgent = this._proxyAgentDispatcher;
+        }
+        // if agent is already assigned use that agent.
+        if (proxyAgent) {
+            return proxyAgent;
+        }
+        const usingSsl = parsedUrl.protocol === 'https:';
+        proxyAgent = new ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
+            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
+        })));
+        this._proxyAgentDispatcher = proxyAgent;
+        if (usingSsl && this._ignoreSslError) {
+            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
+            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
+            // we have to cast it to any and change it directly
+            proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
+                rejectUnauthorized: false
+            });
+        }
+        return proxyAgent;
+    }
+    _getUserAgentWithOrchestrationId(userAgent) {
+        const baseUserAgent = userAgent || 'actions/http-client';
+        const orchId = process.env['ACTIONS_ORCHESTRATION_ID'];
+        if (orchId) {
+            // Sanitize the orchestration ID to ensure it contains only valid characters
+            // Valid characters: 0-9, a-z, _, -, .
+            const sanitizedId = orchId.replace(/[^a-z0-9_.-]/gi, '_');
+            return `${baseUserAgent} actions_orchestration_id/${sanitizedId}`;
+        }
+        return baseUserAgent;
+    }
+    _performExponentialBackoff(retryNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+            return new Promise(resolve => setTimeout(() => resolve(), ms));
+        });
+    }
+    _processResponse(res, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                const statusCode = res.message.statusCode || 0;
+                const response = {
+                    statusCode,
+                    result: null,
+                    headers: {}
+                };
+                // not found leads to null obj returned
+                if (statusCode === HttpCodes.NotFound) {
+                    resolve(response);
+                }
+                // get the result from the body
+                function dateTimeDeserializer(key, value) {
+                    if (typeof value === 'string') {
+                        const a = new Date(value);
+                        if (!isNaN(a.valueOf())) {
+                            return a;
+                        }
+                    }
+                    return value;
+                }
+                let obj;
+                let contents;
+                try {
+                    contents = yield res.readBody();
+                    if (contents && contents.length > 0) {
+                        if (options && options.deserializeDates) {
+                            obj = JSON.parse(contents, dateTimeDeserializer);
+                        }
+                        else {
+                            obj = JSON.parse(contents);
+                        }
+                        response.result = obj;
+                    }
+                    response.headers = res.message.headers;
+                }
+                catch (err) {
+                    // Invalid resource (contents not json);  leaving result obj null
+                }
+                // note that 3xx redirects are handled by the http layer.
+                if (statusCode > 299) {
+                    let msg;
+                    // if exception/error in body, attempt to get better error
+                    if (obj && obj.message) {
+                        msg = obj.message;
+                    }
+                    else if (contents && contents.length > 0) {
+                        // it may be the case that the exception is in the body message as string
+                        msg = contents;
+                    }
+                    else {
+                        msg = `Failed request: (${statusCode})`;
+                    }
+                    const err = new HttpClientError(msg, statusCode);
+                    err.result = response.result;
+                    reject(err);
+                }
+                else {
+                    resolve(response);
+                }
+            }));
+        });
+    }
+}
+const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+//# sourceMappingURL=index.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/http-client/lib/auth.js
+var auth_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+class BasicCredentialHandler {
+    constructor(username, password) {
+        this.username = username;
+        this.password = password;
+    }
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return auth_awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+class auth_BearerCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return auth_awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+class PersonalAccessTokenCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`PAT:${this.token}`).toString('base64')}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return auth_awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+//# sourceMappingURL=auth.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/oidc-utils.js
+var oidc_utils_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+class oidc_utils_OidcClient {
+    static createHttpClient(allowRetry = true, maxRetry = 10) {
+        const requestOptions = {
+            allowRetries: allowRetry,
+            maxRetries: maxRetry
+        };
+        return new HttpClient('actions/oidc-client', [new BearerCredentialHandler(oidc_utils_OidcClient.getRequestToken())], requestOptions);
+    }
+    static getRequestToken() {
+        const token = process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'];
+        if (!token) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_TOKEN env variable');
+        }
+        return token;
+    }
+    static getIDTokenUrl() {
+        const runtimeUrl = process.env['ACTIONS_ID_TOKEN_REQUEST_URL'];
+        if (!runtimeUrl) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable');
+        }
+        return runtimeUrl;
+    }
+    static getCall(id_token_url) {
+        return oidc_utils_awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const httpclient = oidc_utils_OidcClient.createHttpClient();
+            const res = yield httpclient
+                .getJson(id_token_url)
+                .catch(error => {
+                throw new Error(`Failed to get ID Token. \n 
+        Error Code : ${error.statusCode}\n 
+        Error Message: ${error.message}`);
+            });
+            const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
+            if (!id_token) {
+                throw new Error('Response json body do not have ID Token field');
+            }
+            return id_token;
+        });
+    }
+    static getIDToken(audience) {
+        return oidc_utils_awaiter(this, void 0, void 0, function* () {
+            try {
+                // New ID Token is requested from action service
+                let id_token_url = oidc_utils_OidcClient.getIDTokenUrl();
+                if (audience) {
+                    const encodedAudience = encodeURIComponent(audience);
+                    id_token_url = `${id_token_url}&audience=${encodedAudience}`;
+                }
+                debug(`ID token url is ${id_token_url}`);
+                const id_token = yield oidc_utils_OidcClient.getCall(id_token_url);
+                setSecret(id_token);
+                return id_token;
+            }
+            catch (error) {
+                throw new Error(`Error message: ${error.message}`);
+            }
+        });
+    }
+}
+//# sourceMappingURL=oidc-utils.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/summary.js
+var summary_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+const { access, appendFile, writeFile } = external_fs_.promises;
+const SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
+const SUMMARY_DOCS_URL = 'https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary';
+class Summary {
+    constructor() {
+        this._buffer = '';
+    }
+    /**
+     * Finds the summary file path from the environment, rejects if env var is not found or file does not exist
+     * Also checks r/w permissions.
+     *
+     * @returns step summary file path
+     */
+    filePath() {
+        return summary_awaiter(this, void 0, void 0, function* () {
+            if (this._filePath) {
+                return this._filePath;
+            }
+            const pathFromEnv = process.env[SUMMARY_ENV_VAR];
+            if (!pathFromEnv) {
+                throw new Error(`Unable to find environment variable for $${SUMMARY_ENV_VAR}. Check if your runtime environment supports job summaries.`);
+            }
+            try {
+                yield access(pathFromEnv, external_fs_.constants.R_OK | external_fs_.constants.W_OK);
+            }
+            catch (_a) {
+                throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
+            }
+            this._filePath = pathFromEnv;
+            return this._filePath;
+        });
+    }
+    /**
+     * Wraps content in an HTML tag, adding any HTML attributes
+     *
+     * @param {string} tag HTML tag to wrap
+     * @param {string | null} content content within the tag
+     * @param {[attribute: string]: string} attrs key-value list of HTML attributes to add
+     *
+     * @returns {string} content wrapped in HTML element
+     */
+    wrap(tag, content, attrs = {}) {
+        const htmlAttrs = Object.entries(attrs)
+            .map(([key, value]) => ` ${key}="${value}"`)
+            .join('');
+        if (!content) {
+            return `<${tag}${htmlAttrs}>`;
+        }
+        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+    }
+    /**
+     * Writes text in the buffer to the summary buffer file and empties buffer. Will append by default.
+     *
+     * @param {SummaryWriteOptions} [options] (optional) options for write operation
+     *
+     * @returns {Promise<Summary>} summary instance
+     */
+    write(options) {
+        return summary_awaiter(this, void 0, void 0, function* () {
+            const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
+            const filePath = yield this.filePath();
+            const writeFunc = overwrite ? writeFile : appendFile;
+            yield writeFunc(filePath, this._buffer, { encoding: 'utf8' });
+            return this.emptyBuffer();
+        });
+    }
+    /**
+     * Clears the summary buffer and wipes the summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    clear() {
+        return summary_awaiter(this, void 0, void 0, function* () {
+            return this.emptyBuffer().write({ overwrite: true });
+        });
+    }
+    /**
+     * Returns the current summary buffer as a string
+     *
+     * @returns {string} string of summary buffer
+     */
+    stringify() {
+        return this._buffer;
+    }
+    /**
+     * If the summary buffer is empty
+     *
+     * @returns {boolen} true if the buffer is empty
+     */
+    isEmptyBuffer() {
+        return this._buffer.length === 0;
+    }
+    /**
+     * Resets the summary buffer without writing to summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    emptyBuffer() {
+        this._buffer = '';
+        return this;
+    }
+    /**
+     * Adds raw text to the summary buffer
+     *
+     * @param {string} text content to add
+     * @param {boolean} [addEOL=false] (optional) append an EOL to the raw text (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addRaw(text, addEOL = false) {
+        this._buffer += text;
+        return addEOL ? this.addEOL() : this;
+    }
+    /**
+     * Adds the operating system-specific end-of-line marker to the buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addEOL() {
+        return this.addRaw(external_os_.EOL);
+    }
+    /**
+     * Adds an HTML codeblock to the summary buffer
+     *
+     * @param {string} code content to render within fenced code block
+     * @param {string} lang (optional) language to syntax highlight code
+     *
+     * @returns {Summary} summary instance
+     */
+    addCodeBlock(code, lang) {
+        const attrs = Object.assign({}, (lang && { lang }));
+        const element = this.wrap('pre', this.wrap('code', code), attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML list to the summary buffer
+     *
+     * @param {string[]} items list of items to render
+     * @param {boolean} [ordered=false] (optional) if the rendered list should be ordered or not (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addList(items, ordered = false) {
+        const tag = ordered ? 'ol' : 'ul';
+        const listItems = items.map(item => this.wrap('li', item)).join('');
+        const element = this.wrap(tag, listItems);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML table to the summary buffer
+     *
+     * @param {SummaryTableCell[]} rows table rows
+     *
+     * @returns {Summary} summary instance
+     */
+    addTable(rows) {
+        const tableBody = rows
+            .map(row => {
+            const cells = row
+                .map(cell => {
+                if (typeof cell === 'string') {
+                    return this.wrap('td', cell);
+                }
+                const { header, data, colspan, rowspan } = cell;
+                const tag = header ? 'th' : 'td';
+                const attrs = Object.assign(Object.assign({}, (colspan && { colspan })), (rowspan && { rowspan }));
+                return this.wrap(tag, data, attrs);
+            })
+                .join('');
+            return this.wrap('tr', cells);
+        })
+            .join('');
+        const element = this.wrap('table', tableBody);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds a collapsable HTML details element to the summary buffer
+     *
+     * @param {string} label text for the closed state
+     * @param {string} content collapsable content
+     *
+     * @returns {Summary} summary instance
+     */
+    addDetails(label, content) {
+        const element = this.wrap('details', this.wrap('summary', label) + content);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML image tag to the summary buffer
+     *
+     * @param {string} src path to the image you to embed
+     * @param {string} alt text description of the image
+     * @param {SummaryImageOptions} options (optional) addition image attributes
+     *
+     * @returns {Summary} summary instance
+     */
+    addImage(src, alt, options) {
+        const { width, height } = options || {};
+        const attrs = Object.assign(Object.assign({}, (width && { width })), (height && { height }));
+        const element = this.wrap('img', null, Object.assign({ src, alt }, attrs));
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML section heading element
+     *
+     * @param {string} text heading text
+     * @param {number | string} [level=1] (optional) the heading level, default: 1
+     *
+     * @returns {Summary} summary instance
+     */
+    addHeading(text, level) {
+        const tag = `h${level}`;
+        const allowedTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)
+            ? tag
+            : 'h1';
+        const element = this.wrap(allowedTag, text);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML thematic break (<hr>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addSeparator() {
+        const element = this.wrap('hr', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML line break (<br>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addBreak() {
+        const element = this.wrap('br', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML blockquote to the summary buffer
+     *
+     * @param {string} text quote text
+     * @param {string} cite (optional) citation url
+     *
+     * @returns {Summary} summary instance
+     */
+    addQuote(text, cite) {
+        const attrs = Object.assign({}, (cite && { cite }));
+        const element = this.wrap('blockquote', text, attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML anchor tag to the summary buffer
+     *
+     * @param {string} text link text/content
+     * @param {string} href hyperlink
+     *
+     * @returns {Summary} summary instance
+     */
+    addLink(text, href) {
+        const element = this.wrap('a', text, { href });
+        return this.addRaw(element).addEOL();
+    }
+}
+const _summary = new Summary();
+/**
+ * @deprecated use `core.summary`
+ */
+const markdownSummary = (/* unused pure expression or super */ null && (_summary));
+const summary = (/* unused pure expression or super */ null && (_summary));
+//# sourceMappingURL=summary.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/path-utils.js
+
+/**
+ * toPosixPath converts the given path to the posix form. On Windows, \\ will be
+ * replaced with /.
+ *
+ * @param pth. Path to transform.
+ * @return string Posix path.
+ */
+function toPosixPath(pth) {
+    return pth.replace(/[\\]/g, '/');
+}
+/**
+ * toWin32Path converts the given path to the win32 form. On Linux, / will be
+ * replaced with \\.
+ *
+ * @param pth. Path to transform.
+ * @return string Win32 path.
+ */
+function toWin32Path(pth) {
+    return pth.replace(/[/]/g, '\\');
+}
+/**
+ * toPlatformPath converts the given path to a platform-specific path. It does
+ * this by replacing instances of / and \ with the platform-specific path
+ * separator.
+ *
+ * @param pth The path to platformize.
+ * @return string The platform-specific path.
+ */
+function toPlatformPath(pth) {
+    return pth.replace(/[/\\]/g, path.sep);
+}
+//# sourceMappingURL=path-utils.js.map
+// EXTERNAL MODULE: external "string_decoder"
+var external_string_decoder_ = __nccwpck_require__(3193);
+// EXTERNAL MODULE: external "events"
+var external_events_ = __nccwpck_require__(4434);
+// EXTERNAL MODULE: external "child_process"
+var external_child_process_ = __nccwpck_require__(5317);
+// EXTERNAL MODULE: external "assert"
+var external_assert_ = __nccwpck_require__(2613);
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/io/lib/io-util.js
+var io_util_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+const { chmod, copyFile, lstat, mkdir, open: io_util_open, readdir, rename, rm, rmdir, stat, symlink, unlink } = external_fs_.promises;
+// export const {open} = 'fs'
+const IS_WINDOWS = process.platform === 'win32';
+/**
+ * Custom implementation of readlink to ensure Windows junctions
+ * maintain trailing backslash for backward compatibility with Node.js < 24
+ *
+ * In Node.js 20, Windows junctions (directory symlinks) always returned paths
+ * with trailing backslashes. Node.js 24 removed this behavior, which breaks
+ * code that relied on this format for path operations.
+ *
+ * This implementation restores the Node 20 behavior by adding a trailing
+ * backslash to all junction results on Windows.
+ */
+function readlink(fsPath) {
+    return io_util_awaiter(this, void 0, void 0, function* () {
+        const result = yield fs.promises.readlink(fsPath);
+        // On Windows, restore Node 20 behavior: add trailing backslash to all results
+        // since junctions on Windows are always directory links
+        if (IS_WINDOWS && !result.endsWith('\\')) {
+            return `${result}\\`;
+        }
+        return result;
+    });
+}
+// See https://github.com/nodejs/node/blob/d0153aee367422d0858105abec186da4dff0a0c5/deps/uv/include/uv/win.h#L691
+const UV_FS_O_EXLOCK = 0x10000000;
+const READONLY = external_fs_.constants.O_RDONLY;
+function exists(fsPath) {
+    return io_util_awaiter(this, void 0, void 0, function* () {
+        try {
+            yield stat(fsPath);
+        }
+        catch (err) {
+            if (err.code === 'ENOENT') {
+                return false;
+            }
+            throw err;
+        }
+        return true;
+    });
+}
+function isDirectory(fsPath_1) {
+    return io_util_awaiter(this, arguments, void 0, function* (fsPath, useStat = false) {
+        const stats = useStat ? yield stat(fsPath) : yield lstat(fsPath);
+        return stats.isDirectory();
+    });
+}
+/**
+ * On OSX/Linux, true if path starts with '/'. On Windows, true for paths like:
+ * \, \hello, \\hello\share, C:, and C:\hello (and corresponding alternate separator cases).
+ */
+function isRooted(p) {
+    p = normalizeSeparators(p);
+    if (!p) {
+        throw new Error('isRooted() parameter "p" cannot be empty');
+    }
+    if (IS_WINDOWS) {
+        return (p.startsWith('\\') || /^[A-Z]:/i.test(p) // e.g. \ or \hello or \\hello
+        ); // e.g. C: or C:\hello
+    }
+    return p.startsWith('/');
+}
+/**
+ * Best effort attempt to determine whether a file exists and is executable.
+ * @param filePath    file path to check
+ * @param extensions  additional file extensions to try
+ * @return if file exists and is executable, returns the file path. otherwise empty string.
+ */
+function tryGetExecutablePath(filePath, extensions) {
+    return io_util_awaiter(this, void 0, void 0, function* () {
+        let stats = undefined;
+        try {
+            // test file exists
+            stats = yield stat(filePath);
+        }
+        catch (err) {
+            if (err.code !== 'ENOENT') {
+                // eslint-disable-next-line no-console
+                console.log(`Unexpected error attempting to determine if executable file exists '${filePath}': ${err}`);
+            }
+        }
+        if (stats && stats.isFile()) {
+            if (IS_WINDOWS) {
+                // on Windows, test for valid extension
+                const upperExt = external_path_.extname(filePath).toUpperCase();
+                if (extensions.some(validExt => validExt.toUpperCase() === upperExt)) {
+                    return filePath;
+                }
+            }
+            else {
+                if (isUnixExecutable(stats)) {
+                    return filePath;
+                }
+            }
+        }
+        // try each extension
+        const originalFilePath = filePath;
+        for (const extension of extensions) {
+            filePath = originalFilePath + extension;
+            stats = undefined;
+            try {
+                stats = yield stat(filePath);
+            }
+            catch (err) {
+                if (err.code !== 'ENOENT') {
+                    // eslint-disable-next-line no-console
+                    console.log(`Unexpected error attempting to determine if executable file exists '${filePath}': ${err}`);
+                }
+            }
+            if (stats && stats.isFile()) {
+                if (IS_WINDOWS) {
+                    // preserve the case of the actual file (since an extension was appended)
+                    try {
+                        const directory = external_path_.dirname(filePath);
+                        const upperName = external_path_.basename(filePath).toUpperCase();
+                        for (const actualName of yield readdir(directory)) {
+                            if (upperName === actualName.toUpperCase()) {
+                                filePath = external_path_.join(directory, actualName);
+                                break;
+                            }
+                        }
+                    }
+                    catch (err) {
+                        // eslint-disable-next-line no-console
+                        console.log(`Unexpected error attempting to determine the actual case of the file '${filePath}': ${err}`);
+                    }
+                    return filePath;
+                }
+                else {
+                    if (isUnixExecutable(stats)) {
+                        return filePath;
+                    }
+                }
+            }
+        }
+        return '';
+    });
+}
+function normalizeSeparators(p) {
+    p = p || '';
+    if (IS_WINDOWS) {
+        // convert slashes on Windows
+        p = p.replace(/\//g, '\\');
+        // remove redundant slashes
+        return p.replace(/\\\\+/g, '\\');
+    }
+    // remove redundant slashes
+    return p.replace(/\/\/+/g, '/');
+}
+// on Mac/Linux, test the execute bit
+//     R   W  X  R  W X R W X
+//   256 128 64 32 16 8 4 2 1
+function isUnixExecutable(stats) {
+    return ((stats.mode & 1) > 0 ||
+        ((stats.mode & 8) > 0 &&
+            process.getgid !== undefined &&
+            stats.gid === process.getgid()) ||
+        ((stats.mode & 64) > 0 &&
+            process.getuid !== undefined &&
+            stats.uid === process.getuid()));
+}
+// Get the path of cmd.exe in windows
+function getCmdPath() {
+    var _a;
+    return (_a = process.env['COMSPEC']) !== null && _a !== void 0 ? _a : `cmd.exe`;
+}
+//# sourceMappingURL=io-util.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/io/lib/io.js
+var io_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+/**
+ * Copies a file or folder.
+ * Based off of shelljs - https://github.com/shelljs/shelljs/blob/9237f66c52e5daa40458f94f9565e18e8132f5a6/src/cp.js
+ *
+ * @param     source    source path
+ * @param     dest      destination path
+ * @param     options   optional. See CopyOptions.
+ */
+function cp(source_1, dest_1) {
+    return io_awaiter(this, arguments, void 0, function* (source, dest, options = {}) {
+        const { force, recursive, copySourceDirectory } = readCopyOptions(options);
+        const destStat = (yield ioUtil.exists(dest)) ? yield ioUtil.stat(dest) : null;
+        // Dest is an existing file, but not forcing
+        if (destStat && destStat.isFile() && !force) {
+            return;
+        }
+        // If dest is an existing directory, should copy inside.
+        const newDest = destStat && destStat.isDirectory() && copySourceDirectory
+            ? path.join(dest, path.basename(source))
+            : dest;
+        if (!(yield ioUtil.exists(source))) {
+            throw new Error(`no such file or directory: ${source}`);
+        }
+        const sourceStat = yield ioUtil.stat(source);
+        if (sourceStat.isDirectory()) {
+            if (!recursive) {
+                throw new Error(`Failed to copy. ${source} is a directory, but tried to copy without recursive flag.`);
+            }
+            else {
+                yield cpDirRecursive(source, newDest, 0, force);
+            }
+        }
+        else {
+            if (path.relative(source, newDest) === '') {
+                // a file cannot be copied to itself
+                throw new Error(`'${newDest}' and '${source}' are the same file`);
+            }
+            yield io_copyFile(source, newDest, force);
+        }
+    });
+}
+/**
+ * Moves a path.
+ *
+ * @param     source    source path
+ * @param     dest      destination path
+ * @param     options   optional. See MoveOptions.
+ */
+function mv(source_1, dest_1) {
+    return io_awaiter(this, arguments, void 0, function* (source, dest, options = {}) {
+        if (yield ioUtil.exists(dest)) {
+            let destExists = true;
+            if (yield ioUtil.isDirectory(dest)) {
+                // If dest is directory copy src into dest
+                dest = path.join(dest, path.basename(source));
+                destExists = yield ioUtil.exists(dest);
+            }
+            if (destExists) {
+                if (options.force == null || options.force) {
+                    yield rmRF(dest);
+                }
+                else {
+                    throw new Error('Destination already exists');
+                }
+            }
+        }
+        yield mkdirP(path.dirname(dest));
+        yield ioUtil.rename(source, dest);
+    });
+}
+/**
+ * Remove a path recursively with force
+ *
+ * @param inputPath path to remove
+ */
+function rmRF(inputPath) {
+    return io_awaiter(this, void 0, void 0, function* () {
+        if (ioUtil.IS_WINDOWS) {
+            // Check for invalid characters
+            // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+            if (/[*"<>|]/.test(inputPath)) {
+                throw new Error('File path must not contain `*`, `"`, `<`, `>` or `|` on Windows');
+            }
+        }
+        try {
+            // note if path does not exist, error is silent
+            yield ioUtil.rm(inputPath, {
+                force: true,
+                maxRetries: 3,
+                recursive: true,
+                retryDelay: 300
+            });
+        }
+        catch (err) {
+            throw new Error(`File was unable to be removed ${err}`);
+        }
+    });
+}
+/**
+ * Make a directory.  Creates the full path with folders in between
+ * Will throw if it fails
+ *
+ * @param   fsPath        path to create
+ * @returns Promise<void>
+ */
+function mkdirP(fsPath) {
+    return io_awaiter(this, void 0, void 0, function* () {
+        ok(fsPath, 'a path argument must be provided');
+        yield ioUtil.mkdir(fsPath, { recursive: true });
+    });
+}
+/**
+ * Returns path of a tool had the tool actually been invoked.  Resolves via paths.
+ * If you check and the tool does not exist, it will throw.
+ *
+ * @param     tool              name of the tool
+ * @param     check             whether to check if tool exists
+ * @returns   Promise<string>   path to tool
+ */
+function which(tool, check) {
+    return io_awaiter(this, void 0, void 0, function* () {
+        if (!tool) {
+            throw new Error("parameter 'tool' is required");
+        }
+        // recursive when check=true
+        if (check) {
+            const result = yield which(tool, false);
+            if (!result) {
+                if (IS_WINDOWS) {
+                    throw new Error(`Unable to locate executable file: ${tool}. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also verify the file has a valid extension for an executable file.`);
+                }
+                else {
+                    throw new Error(`Unable to locate executable file: ${tool}. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also check the file mode to verify the file is executable.`);
+                }
+            }
+            return result;
+        }
+        const matches = yield findInPath(tool);
+        if (matches && matches.length > 0) {
+            return matches[0];
+        }
+        return '';
+    });
+}
+/**
+ * Returns a list of all occurrences of the given tool on the system path.
+ *
+ * @returns   Promise<string[]>  the paths of the tool
+ */
+function findInPath(tool) {
+    return io_awaiter(this, void 0, void 0, function* () {
+        if (!tool) {
+            throw new Error("parameter 'tool' is required");
+        }
+        // build the list of extensions to try
+        const extensions = [];
+        if (IS_WINDOWS && process.env['PATHEXT']) {
+            for (const extension of process.env['PATHEXT'].split(external_path_.delimiter)) {
+                if (extension) {
+                    extensions.push(extension);
+                }
+            }
+        }
+        // if it's rooted, return it if exists. otherwise return empty.
+        if (isRooted(tool)) {
+            const filePath = yield tryGetExecutablePath(tool, extensions);
+            if (filePath) {
+                return [filePath];
+            }
+            return [];
+        }
+        // if any path separators, return empty
+        if (tool.includes(external_path_.sep)) {
+            return [];
+        }
+        // build the list of directories
+        //
+        // Note, technically "where" checks the current directory on Windows. From a toolkit perspective,
+        // it feels like we should not do this. Checking the current directory seems like more of a use
+        // case of a shell, and the which() function exposed by the toolkit should strive for consistency
+        // across platforms.
+        const directories = [];
+        if (process.env.PATH) {
+            for (const p of process.env.PATH.split(external_path_.delimiter)) {
+                if (p) {
+                    directories.push(p);
+                }
+            }
+        }
+        // find all matches
+        const matches = [];
+        for (const directory of directories) {
+            const filePath = yield tryGetExecutablePath(external_path_.join(directory, tool), extensions);
+            if (filePath) {
+                matches.push(filePath);
+            }
+        }
+        return matches;
+    });
+}
+function readCopyOptions(options) {
+    const force = options.force == null ? true : options.force;
+    const recursive = Boolean(options.recursive);
+    const copySourceDirectory = options.copySourceDirectory == null
+        ? true
+        : Boolean(options.copySourceDirectory);
+    return { force, recursive, copySourceDirectory };
+}
+function cpDirRecursive(sourceDir, destDir, currentDepth, force) {
+    return io_awaiter(this, void 0, void 0, function* () {
+        // Ensure there is not a run away recursive copy
+        if (currentDepth >= 255)
+            return;
+        currentDepth++;
+        yield mkdirP(destDir);
+        const files = yield ioUtil.readdir(sourceDir);
+        for (const fileName of files) {
+            const srcFile = `${sourceDir}/${fileName}`;
+            const destFile = `${destDir}/${fileName}`;
+            const srcFileStat = yield ioUtil.lstat(srcFile);
+            if (srcFileStat.isDirectory()) {
+                // Recurse
+                yield cpDirRecursive(srcFile, destFile, currentDepth, force);
+            }
+            else {
+                yield io_copyFile(srcFile, destFile, force);
+            }
+        }
+        // Change the mode for the newly created directory
+        yield ioUtil.chmod(destDir, (yield ioUtil.stat(sourceDir)).mode);
+    });
+}
+// Buffered file copy
+function io_copyFile(srcFile, destFile, force) {
+    return io_awaiter(this, void 0, void 0, function* () {
+        if ((yield ioUtil.lstat(srcFile)).isSymbolicLink()) {
+            // unlink/re-link it
+            try {
+                yield ioUtil.lstat(destFile);
+                yield ioUtil.unlink(destFile);
+            }
+            catch (e) {
+                // Try to override file permission
+                if (e.code === 'EPERM') {
+                    yield ioUtil.chmod(destFile, '0666');
+                    yield ioUtil.unlink(destFile);
+                }
+                // other errors = it doesn't exist, no work to do
+            }
+            // Copy over symlink
+            const symlinkFull = yield ioUtil.readlink(srcFile);
+            yield ioUtil.symlink(symlinkFull, destFile, ioUtil.IS_WINDOWS ? 'junction' : null);
+        }
+        else if (!(yield ioUtil.exists(destFile)) || force) {
+            yield ioUtil.copyFile(srcFile, destFile);
+        }
+    });
+}
+//# sourceMappingURL=io.js.map
+// EXTERNAL MODULE: external "timers"
+var external_timers_ = __nccwpck_require__(3557);
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/exec/lib/toolrunner.js
+var toolrunner_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+
+
+/* eslint-disable @typescript-eslint/unbound-method */
+const toolrunner_IS_WINDOWS = process.platform === 'win32';
+/*
+ * Class for running command line tools. Handles quoting and arg parsing in a platform agnostic way.
+ */
+class ToolRunner extends external_events_.EventEmitter {
+    constructor(toolPath, args, options) {
+        super();
+        if (!toolPath) {
+            throw new Error("Parameter 'toolPath' cannot be null or empty.");
+        }
+        this.toolPath = toolPath;
+        this.args = args || [];
+        this.options = options || {};
+    }
+    _debug(message) {
+        if (this.options.listeners && this.options.listeners.debug) {
+            this.options.listeners.debug(message);
+        }
+    }
+    _getCommandString(options, noPrefix) {
+        const toolPath = this._getSpawnFileName();
+        const args = this._getSpawnArgs(options);
+        let cmd = noPrefix ? '' : '[command]'; // omit prefix when piped to a second tool
+        if (toolrunner_IS_WINDOWS) {
+            // Windows + cmd file
+            if (this._isCmdFile()) {
+                cmd += toolPath;
+                for (const a of args) {
+                    cmd += ` ${a}`;
+                }
+            }
+            // Windows + verbatim
+            else if (options.windowsVerbatimArguments) {
+                cmd += `"${toolPath}"`;
+                for (const a of args) {
+                    cmd += ` ${a}`;
+                }
+            }
+            // Windows (regular)
+            else {
+                cmd += this._windowsQuoteCmdArg(toolPath);
+                for (const a of args) {
+                    cmd += ` ${this._windowsQuoteCmdArg(a)}`;
+                }
+            }
+        }
+        else {
+            // OSX/Linux - this can likely be improved with some form of quoting.
+            // creating processes on Unix is fundamentally different than Windows.
+            // on Unix, execvp() takes an arg array.
+            cmd += toolPath;
+            for (const a of args) {
+                cmd += ` ${a}`;
+            }
+        }
+        return cmd;
+    }
+    _processLineBuffer(data, strBuffer, onLine) {
+        try {
+            let s = strBuffer + data.toString();
+            let n = s.indexOf(external_os_.EOL);
+            while (n > -1) {
+                const line = s.substring(0, n);
+                onLine(line);
+                // the rest of the string ...
+                s = s.substring(n + external_os_.EOL.length);
+                n = s.indexOf(external_os_.EOL);
+            }
+            return s;
+        }
+        catch (err) {
+            // streaming lines to console is best effort.  Don't fail a build.
+            this._debug(`error processing line. Failed with error ${err}`);
+            return '';
+        }
+    }
+    _getSpawnFileName() {
+        if (toolrunner_IS_WINDOWS) {
+            if (this._isCmdFile()) {
+                return process.env['COMSPEC'] || 'cmd.exe';
+            }
+        }
+        return this.toolPath;
+    }
+    _getSpawnArgs(options) {
+        if (toolrunner_IS_WINDOWS) {
+            if (this._isCmdFile()) {
+                let argline = `/D /S /C "${this._windowsQuoteCmdArg(this.toolPath)}`;
+                for (const a of this.args) {
+                    argline += ' ';
+                    argline += options.windowsVerbatimArguments
+                        ? a
+                        : this._windowsQuoteCmdArg(a);
+                }
+                argline += '"';
+                return [argline];
+            }
+        }
+        return this.args;
+    }
+    _endsWith(str, end) {
+        return str.endsWith(end);
+    }
+    _isCmdFile() {
+        const upperToolPath = this.toolPath.toUpperCase();
+        return (this._endsWith(upperToolPath, '.CMD') ||
+            this._endsWith(upperToolPath, '.BAT'));
+    }
+    _windowsQuoteCmdArg(arg) {
+        // for .exe, apply the normal quoting rules that libuv applies
+        if (!this._isCmdFile()) {
+            return this._uvQuoteCmdArg(arg);
+        }
+        // otherwise apply quoting rules specific to the cmd.exe command line parser.
+        // the libuv rules are generic and are not designed specifically for cmd.exe
+        // command line parser.
+        //
+        // for a detailed description of the cmd.exe command line parser, refer to
+        // http://stackoverflow.com/questions/4094699/how-does-the-windows-command-interpreter-cmd-exe-parse-scripts/7970912#7970912
+        // need quotes for empty arg
+        if (!arg) {
+            return '""';
+        }
+        // determine whether the arg needs to be quoted
+        const cmdSpecialChars = [
+            ' ',
+            '\t',
+            '&',
+            '(',
+            ')',
+            '[',
+            ']',
+            '{',
+            '}',
+            '^',
+            '=',
+            ';',
+            '!',
+            "'",
+            '+',
+            ',',
+            '`',
+            '~',
+            '|',
+            '<',
+            '>',
+            '"'
+        ];
+        let needsQuotes = false;
+        for (const char of arg) {
+            if (cmdSpecialChars.some(x => x === char)) {
+                needsQuotes = true;
+                break;
+            }
+        }
+        // short-circuit if quotes not needed
+        if (!needsQuotes) {
+            return arg;
+        }
+        // the following quoting rules are very similar to the rules that by libuv applies.
+        //
+        // 1) wrap the string in quotes
+        //
+        // 2) double-up quotes - i.e. " => ""
+        //
+        //    this is different from the libuv quoting rules. libuv replaces " with \", which unfortunately
+        //    doesn't work well with a cmd.exe command line.
+        //
+        //    note, replacing " with "" also works well if the arg is passed to a downstream .NET console app.
+        //    for example, the command line:
+        //          foo.exe "myarg:""my val"""
+        //    is parsed by a .NET console app into an arg array:
+        //          [ "myarg:\"my val\"" ]
+        //    which is the same end result when applying libuv quoting rules. although the actual
+        //    command line from libuv quoting rules would look like:
+        //          foo.exe "myarg:\"my val\""
+        //
+        // 3) double-up slashes that precede a quote,
+        //    e.g.  hello \world    => "hello \world"
+        //          hello\"world    => "hello\\""world"
+        //          hello\\"world   => "hello\\\\""world"
+        //          hello world\    => "hello world\\"
+        //
+        //    technically this is not required for a cmd.exe command line, or the batch argument parser.
+        //    the reasons for including this as a .cmd quoting rule are:
+        //
+        //    a) this is optimized for the scenario where the argument is passed from the .cmd file to an
+        //       external program. many programs (e.g. .NET console apps) rely on the slash-doubling rule.
+        //
+        //    b) it's what we've been doing previously (by deferring to node default behavior) and we
+        //       haven't heard any complaints about that aspect.
+        //
+        // note, a weakness of the quoting rules chosen here, is that % is not escaped. in fact, % cannot be
+        // escaped when used on the command line directly - even though within a .cmd file % can be escaped
+        // by using %%.
+        //
+        // the saving grace is, on the command line, %var% is left as-is if var is not defined. this contrasts
+        // the line parsing rules within a .cmd file, where if var is not defined it is replaced with nothing.
+        //
+        // one option that was explored was replacing % with ^% - i.e. %var% => ^%var^%. this hack would
+        // often work, since it is unlikely that var^ would exist, and the ^ character is removed when the
+        // variable is used. the problem, however, is that ^ is not removed when %* is used to pass the args
+        // to an external program.
+        //
+        // an unexplored potential solution for the % escaping problem, is to create a wrapper .cmd file.
+        // % can be escaped within a .cmd file.
+        let reverse = '"';
+        let quoteHit = true;
+        for (let i = arg.length; i > 0; i--) {
+            // walk the string in reverse
+            reverse += arg[i - 1];
+            if (quoteHit && arg[i - 1] === '\\') {
+                reverse += '\\'; // double the slash
+            }
+            else if (arg[i - 1] === '"') {
+                quoteHit = true;
+                reverse += '"'; // double the quote
+            }
+            else {
+                quoteHit = false;
+            }
+        }
+        reverse += '"';
+        return reverse.split('').reverse().join('');
+    }
+    _uvQuoteCmdArg(arg) {
+        // Tool runner wraps child_process.spawn() and needs to apply the same quoting as
+        // Node in certain cases where the undocumented spawn option windowsVerbatimArguments
+        // is used.
+        //
+        // Since this function is a port of quote_cmd_arg from Node 4.x (technically, lib UV,
+        // see https://github.com/nodejs/node/blob/v4.x/deps/uv/src/win/process.c for details),
+        // pasting copyright notice from Node within this function:
+        //
+        //      Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        //
+        //      Permission is hereby granted, free of charge, to any person obtaining a copy
+        //      of this software and associated documentation files (the "Software"), to
+        //      deal in the Software without restriction, including without limitation the
+        //      rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        //      sell copies of the Software, and to permit persons to whom the Software is
+        //      furnished to do so, subject to the following conditions:
+        //
+        //      The above copyright notice and this permission notice shall be included in
+        //      all copies or substantial portions of the Software.
+        //
+        //      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        //      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        //      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        //      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        //      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        //      FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        //      IN THE SOFTWARE.
+        if (!arg) {
+            // Need double quotation for empty argument
+            return '""';
+        }
+        if (!arg.includes(' ') && !arg.includes('\t') && !arg.includes('"')) {
+            // No quotation needed
+            return arg;
+        }
+        if (!arg.includes('"') && !arg.includes('\\')) {
+            // No embedded double quotes or backslashes, so I can just wrap
+            // quote marks around the whole thing.
+            return `"${arg}"`;
+        }
+        // Expected input/output:
+        //   input : hello"world
+        //   output: "hello\"world"
+        //   input : hello""world
+        //   output: "hello\"\"world"
+        //   input : hello\world
+        //   output: hello\world
+        //   input : hello\\world
+        //   output: hello\\world
+        //   input : hello\"world
+        //   output: "hello\\\"world"
+        //   input : hello\\"world
+        //   output: "hello\\\\\"world"
+        //   input : hello world\
+        //   output: "hello world\\" - note the comment in libuv actually reads "hello world\"
+        //                             but it appears the comment is wrong, it should be "hello world\\"
+        let reverse = '"';
+        let quoteHit = true;
+        for (let i = arg.length; i > 0; i--) {
+            // walk the string in reverse
+            reverse += arg[i - 1];
+            if (quoteHit && arg[i - 1] === '\\') {
+                reverse += '\\';
+            }
+            else if (arg[i - 1] === '"') {
+                quoteHit = true;
+                reverse += '\\';
+            }
+            else {
+                quoteHit = false;
+            }
+        }
+        reverse += '"';
+        return reverse.split('').reverse().join('');
+    }
+    _cloneExecOptions(options) {
+        options = options || {};
+        const result = {
+            cwd: options.cwd || process.cwd(),
+            env: options.env || process.env,
+            silent: options.silent || false,
+            windowsVerbatimArguments: options.windowsVerbatimArguments || false,
+            failOnStdErr: options.failOnStdErr || false,
+            ignoreReturnCode: options.ignoreReturnCode || false,
+            delay: options.delay || 10000
+        };
+        result.outStream = options.outStream || process.stdout;
+        result.errStream = options.errStream || process.stderr;
+        return result;
+    }
+    _getSpawnOptions(options, toolPath) {
+        options = options || {};
+        const result = {};
+        result.cwd = options.cwd;
+        result.env = options.env;
+        result['windowsVerbatimArguments'] =
+            options.windowsVerbatimArguments || this._isCmdFile();
+        if (options.windowsVerbatimArguments) {
+            result.argv0 = `"${toolPath}"`;
+        }
+        return result;
+    }
+    /**
+     * Exec a tool.
+     * Output will be streamed to the live console.
+     * Returns promise with return code
+     *
+     * @param     tool     path to tool to exec
+     * @param     options  optional exec options.  See ExecOptions
+     * @returns   number
+     */
+    exec() {
+        return toolrunner_awaiter(this, void 0, void 0, function* () {
+            // root the tool path if it is unrooted and contains relative pathing
+            if (!isRooted(this.toolPath) &&
+                (this.toolPath.includes('/') ||
+                    (toolrunner_IS_WINDOWS && this.toolPath.includes('\\')))) {
+                // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
+                this.toolPath = external_path_.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
+            }
+            // if the tool is only a file name, then resolve it from the PATH
+            // otherwise verify it exists (add extension on Windows if necessary)
+            this.toolPath = yield which(this.toolPath, true);
+            return new Promise((resolve, reject) => toolrunner_awaiter(this, void 0, void 0, function* () {
+                this._debug(`exec tool: ${this.toolPath}`);
+                this._debug('arguments:');
+                for (const arg of this.args) {
+                    this._debug(`   ${arg}`);
+                }
+                const optionsNonNull = this._cloneExecOptions(this.options);
+                if (!optionsNonNull.silent && optionsNonNull.outStream) {
+                    optionsNonNull.outStream.write(this._getCommandString(optionsNonNull) + external_os_.EOL);
+                }
+                const state = new ExecState(optionsNonNull, this.toolPath);
+                state.on('debug', (message) => {
+                    this._debug(message);
+                });
+                if (this.options.cwd && !(yield exists(this.options.cwd))) {
+                    return reject(new Error(`The cwd: ${this.options.cwd} does not exist!`));
+                }
+                const fileName = this._getSpawnFileName();
+                const cp = external_child_process_.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
+                let stdbuffer = '';
+                if (cp.stdout) {
+                    cp.stdout.on('data', (data) => {
+                        if (this.options.listeners && this.options.listeners.stdout) {
+                            this.options.listeners.stdout(data);
+                        }
+                        if (!optionsNonNull.silent && optionsNonNull.outStream) {
+                            optionsNonNull.outStream.write(data);
+                        }
+                        stdbuffer = this._processLineBuffer(data, stdbuffer, (line) => {
+                            if (this.options.listeners && this.options.listeners.stdline) {
+                                this.options.listeners.stdline(line);
+                            }
+                        });
+                    });
+                }
+                let errbuffer = '';
+                if (cp.stderr) {
+                    cp.stderr.on('data', (data) => {
+                        state.processStderr = true;
+                        if (this.options.listeners && this.options.listeners.stderr) {
+                            this.options.listeners.stderr(data);
+                        }
+                        if (!optionsNonNull.silent &&
+                            optionsNonNull.errStream &&
+                            optionsNonNull.outStream) {
+                            const s = optionsNonNull.failOnStdErr
+                                ? optionsNonNull.errStream
+                                : optionsNonNull.outStream;
+                            s.write(data);
+                        }
+                        errbuffer = this._processLineBuffer(data, errbuffer, (line) => {
+                            if (this.options.listeners && this.options.listeners.errline) {
+                                this.options.listeners.errline(line);
+                            }
+                        });
+                    });
+                }
+                cp.on('error', (err) => {
+                    state.processError = err.message;
+                    state.processExited = true;
+                    state.processClosed = true;
+                    state.CheckComplete();
+                });
+                cp.on('exit', (code) => {
+                    state.processExitCode = code;
+                    state.processExited = true;
+                    this._debug(`Exit code ${code} received from tool '${this.toolPath}'`);
+                    state.CheckComplete();
+                });
+                cp.on('close', (code) => {
+                    state.processExitCode = code;
+                    state.processExited = true;
+                    state.processClosed = true;
+                    this._debug(`STDIO streams have closed for tool '${this.toolPath}'`);
+                    state.CheckComplete();
+                });
+                state.on('done', (error, exitCode) => {
+                    if (stdbuffer.length > 0) {
+                        this.emit('stdline', stdbuffer);
+                    }
+                    if (errbuffer.length > 0) {
+                        this.emit('errline', errbuffer);
+                    }
+                    cp.removeAllListeners();
+                    if (error) {
+                        reject(error);
+                    }
+                    else {
+                        resolve(exitCode);
+                    }
+                });
+                if (this.options.input) {
+                    if (!cp.stdin) {
+                        throw new Error('child process missing stdin');
+                    }
+                    cp.stdin.end(this.options.input);
+                }
+            }));
+        });
+    }
+}
+/**
+ * Convert an arg string to an array of args. Handles escaping
+ *
+ * @param    argString   string of arguments
+ * @returns  string[]    array of arguments
+ */
+function argStringToArray(argString) {
+    const args = [];
+    let inQuotes = false;
+    let escaped = false;
+    let arg = '';
+    function append(c) {
+        // we only escape double quotes.
+        if (escaped && c !== '"') {
+            arg += '\\';
+        }
+        arg += c;
+        escaped = false;
+    }
+    for (let i = 0; i < argString.length; i++) {
+        const c = argString.charAt(i);
+        if (c === '"') {
+            if (!escaped) {
+                inQuotes = !inQuotes;
+            }
+            else {
+                append(c);
+            }
+            continue;
+        }
+        if (c === '\\' && escaped) {
+            append(c);
+            continue;
+        }
+        if (c === '\\' && inQuotes) {
+            escaped = true;
+            continue;
+        }
+        if (c === ' ' && !inQuotes) {
+            if (arg.length > 0) {
+                args.push(arg);
+                arg = '';
+            }
+            continue;
+        }
+        append(c);
+    }
+    if (arg.length > 0) {
+        args.push(arg.trim());
+    }
+    return args;
+}
+class ExecState extends external_events_.EventEmitter {
+    constructor(options, toolPath) {
+        super();
+        this.processClosed = false; // tracks whether the process has exited and stdio is closed
+        this.processError = '';
+        this.processExitCode = 0;
+        this.processExited = false; // tracks whether the process has exited
+        this.processStderr = false; // tracks whether stderr was written to
+        this.delay = 10000; // 10 seconds
+        this.done = false;
+        this.timeout = null;
+        if (!toolPath) {
+            throw new Error('toolPath must not be empty');
+        }
+        this.options = options;
+        this.toolPath = toolPath;
+        if (options.delay) {
+            this.delay = options.delay;
+        }
+    }
+    CheckComplete() {
+        if (this.done) {
+            return;
+        }
+        if (this.processClosed) {
+            this._setResult();
+        }
+        else if (this.processExited) {
+            this.timeout = (0,external_timers_.setTimeout)(ExecState.HandleTimeout, this.delay, this);
+        }
+    }
+    _debug(message) {
+        this.emit('debug', message);
+    }
+    _setResult() {
+        // determine whether there is an error
+        let error;
+        if (this.processExited) {
+            if (this.processError) {
+                error = new Error(`There was an error when attempting to execute the process '${this.toolPath}'. This may indicate the process failed to start. Error: ${this.processError}`);
+            }
+            else if (this.processExitCode !== 0 && !this.options.ignoreReturnCode) {
+                error = new Error(`The process '${this.toolPath}' failed with exit code ${this.processExitCode}`);
+            }
+            else if (this.processStderr && this.options.failOnStdErr) {
+                error = new Error(`The process '${this.toolPath}' failed because one or more lines were written to the STDERR stream`);
+            }
+        }
+        // clear the timeout
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+        this.done = true;
+        this.emit('done', error, this.processExitCode);
+    }
+    static HandleTimeout(state) {
+        if (state.done) {
+            return;
+        }
+        if (!state.processClosed && state.processExited) {
+            const message = `The STDIO streams did not close within ${state.delay / 1000} seconds of the exit event from process '${state.toolPath}'. This may indicate a child process inherited the STDIO streams and has not yet exited.`;
+            state._debug(message);
+        }
+        state._setResult();
+    }
+}
+//# sourceMappingURL=toolrunner.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/exec/lib/exec.js
+var exec_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+/**
+ * Exec a command.
+ * Output will be streamed to the live console.
+ * Returns promise with return code
+ *
+ * @param     commandLine        command to execute (can include additional args). Must be correctly escaped.
+ * @param     args               optional arguments for tool. Escaping is handled by the lib.
+ * @param     options            optional exec options.  See ExecOptions
+ * @returns   Promise<number>    exit code
+ */
+function exec_exec(commandLine, args, options) {
+    return exec_awaiter(this, void 0, void 0, function* () {
+        const commandArgs = tr.argStringToArray(commandLine);
+        if (commandArgs.length === 0) {
+            throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
+        }
+        // Path to tool to execute should be first arg
+        const toolPath = commandArgs[0];
+        args = commandArgs.slice(1).concat(args || []);
+        const runner = new tr.ToolRunner(toolPath, args, options);
+        return runner.exec();
+    });
+}
+/**
+ * Exec a command and get the output.
+ * Output will be streamed to the live console.
+ * Returns promise with the exit code and collected stdout and stderr
+ *
+ * @param     commandLine           command to execute (can include additional args). Must be correctly escaped.
+ * @param     args                  optional arguments for tool. Escaping is handled by the lib.
+ * @param     options               optional exec options.  See ExecOptions
+ * @returns   Promise<ExecOutput>   exit code, stdout, and stderr
+ */
+function getExecOutput(commandLine, args, options) {
+    return exec_awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
+        let stdout = '';
+        let stderr = '';
+        //Using string decoder covers the case where a mult-byte character is split
+        const stdoutDecoder = new StringDecoder('utf8');
+        const stderrDecoder = new StringDecoder('utf8');
+        const originalStdoutListener = (_a = options === null || options === void 0 ? void 0 : options.listeners) === null || _a === void 0 ? void 0 : _a.stdout;
+        const originalStdErrListener = (_b = options === null || options === void 0 ? void 0 : options.listeners) === null || _b === void 0 ? void 0 : _b.stderr;
+        const stdErrListener = (data) => {
+            stderr += stderrDecoder.write(data);
+            if (originalStdErrListener) {
+                originalStdErrListener(data);
+            }
+        };
+        const stdOutListener = (data) => {
+            stdout += stdoutDecoder.write(data);
+            if (originalStdoutListener) {
+                originalStdoutListener(data);
+            }
+        };
+        const listeners = Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.listeners), { stdout: stdOutListener, stderr: stdErrListener });
+        const exitCode = yield exec_exec(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
+        //flush any remaining characters
+        stdout += stdoutDecoder.end();
+        stderr += stderrDecoder.end();
+        return {
+            exitCode,
+            stdout,
+            stderr
+        };
+    });
+}
+//# sourceMappingURL=exec.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/platform.js
+var platform_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+const getWindowsInfo = () => platform_awaiter(void 0, void 0, void 0, function* () {
+    const { stdout: version } = yield exec.getExecOutput('powershell -command "(Get-CimInstance -ClassName Win32_OperatingSystem).Version"', undefined, {
+        silent: true
+    });
+    const { stdout: name } = yield exec.getExecOutput('powershell -command "(Get-CimInstance -ClassName Win32_OperatingSystem).Caption"', undefined, {
+        silent: true
+    });
+    return {
+        name: name.trim(),
+        version: version.trim()
+    };
+});
+const getMacOsInfo = () => platform_awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d;
+    const { stdout } = yield exec.getExecOutput('sw_vers', undefined, {
+        silent: true
+    });
+    const version = (_b = (_a = stdout.match(/ProductVersion:\s*(.+)/)) === null || _a === void 0 ? void 0 : _a[1]) !== null && _b !== void 0 ? _b : '';
+    const name = (_d = (_c = stdout.match(/ProductName:\s*(.+)/)) === null || _c === void 0 ? void 0 : _c[1]) !== null && _d !== void 0 ? _d : '';
+    return {
+        name,
+        version
+    };
+});
+const getLinuxInfo = () => platform_awaiter(void 0, void 0, void 0, function* () {
+    const { stdout } = yield exec.getExecOutput('lsb_release', ['-i', '-r', '-s'], {
+        silent: true
+    });
+    const [name, version] = stdout.trim().split('\n');
+    return {
+        name,
+        version
+    };
+});
+const platform = external_os_.platform();
+const arch = external_os_.arch();
+const isWindows = platform === 'win32';
+const isMacOS = platform === 'darwin';
+const isLinux = platform === 'linux';
+function getDetails() {
+    return platform_awaiter(this, void 0, void 0, function* () {
+        return Object.assign(Object.assign({}, (yield (isWindows
+            ? getWindowsInfo()
+            : isMacOS
+                ? getMacOsInfo()
+                : getLinuxInfo()))), { platform,
+            arch,
+            isWindows,
+            isMacOS,
+            isLinux });
+    });
+}
+//# sourceMappingURL=platform.js.map
+;// CONCATENATED MODULE: ./node_modules/@amezin/js-actions-octokit/node_modules/@actions/core/lib/core.js
+var core_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+
+/**
+ * The code to exit an action
+ */
+var ExitCode;
+(function (ExitCode) {
+    /**
+     * A code indicating that the action was successful
+     */
+    ExitCode[ExitCode["Success"] = 0] = "Success";
+    /**
+     * A code indicating that the action was a failure
+     */
+    ExitCode[ExitCode["Failure"] = 1] = "Failure";
+})(ExitCode || (ExitCode = {}));
+//-----------------------------------------------------------------------
+// Variables
+//-----------------------------------------------------------------------
+/**
+ * Sets env variable for this action and future actions in the job
+ * @param name the name of the variable to set
+ * @param val the value of the variable. Non-string values will be converted to a string via JSON.stringify
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function exportVariable(name, val) {
+    const convertedVal = toCommandValue(val);
+    process.env[name] = convertedVal;
+    const filePath = process.env['GITHUB_ENV'] || '';
+    if (filePath) {
+        return issueFileCommand('ENV', prepareKeyValueMessage(name, val));
+    }
+    issueCommand('set-env', { name }, convertedVal);
+}
+/**
+ * Registers a secret which will get masked from logs
+ *
+ * @param secret - Value of the secret to be masked
+ * @remarks
+ * This function instructs the Actions runner to mask the specified value in any
+ * logs produced during the workflow run. Once registered, the secret value will
+ * be replaced with asterisks (***) whenever it appears in console output, logs,
+ * or error messages.
+ *
+ * This is useful for protecting sensitive information such as:
+ * - API keys
+ * - Access tokens
+ * - Authentication credentials
+ * - URL parameters containing signatures (SAS tokens)
+ *
+ * Note that masking only affects future logs; any previous appearances of the
+ * secret in logs before calling this function will remain unmasked.
+ *
+ * @example
+ * ```typescript
+ * // Register an API token as a secret
+ * const apiToken = "abc123xyz456";
+ * setSecret(apiToken);
+ *
+ * // Now any logs containing this value will show *** instead
+ * console.log(`Using token: ${apiToken}`); // Outputs: "Using token: ***"
+ * ```
+ */
+function core_setSecret(secret) {
+    issueCommand('add-mask', {}, secret);
+}
+/**
+ * Prepends inputPath to the PATH (for this action and future actions)
+ * @param inputPath
+ */
+function addPath(inputPath) {
+    const filePath = process.env['GITHUB_PATH'] || '';
+    if (filePath) {
+        issueFileCommand('PATH', inputPath);
+    }
+    else {
+        issueCommand('add-path', {}, inputPath);
+    }
+    process.env['PATH'] = `${inputPath}${path.delimiter}${process.env['PATH']}`;
+}
+/**
+ * Gets the value of an input.
+ * Unless trimWhitespace is set to false in InputOptions, the value is also trimmed.
+ * Returns an empty string if the value is not defined.
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   string
+ */
+function getInput(name, options) {
+    const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`] || '';
+    if (options && options.required && !val) {
+        throw new Error(`Input required and not supplied: ${name}`);
+    }
+    if (options && options.trimWhitespace === false) {
+        return val;
+    }
+    return val.trim();
+}
+/**
+ * Gets the values of an multiline input.  Each value is also trimmed.
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   string[]
+ *
+ */
+function getMultilineInput(name, options) {
+    const inputs = getInput(name, options)
+        .split('\n')
+        .filter(x => x !== '');
+    if (options && options.trimWhitespace === false) {
+        return inputs;
+    }
+    return inputs.map(input => input.trim());
+}
+/**
+ * Gets the input value of the boolean type in the YAML 1.2 "core schema" specification.
+ * Support boolean input list: `true | True | TRUE | false | False | FALSE` .
+ * The return value is also in boolean type.
+ * ref: https://yaml.org/spec/1.2/spec.html#id2804923
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   boolean
+ */
+function getBooleanInput(name, options) {
+    const trueValue = ['true', 'True', 'TRUE'];
+    const falseValue = ['false', 'False', 'FALSE'];
+    const val = getInput(name, options);
+    if (trueValue.includes(val))
+        return true;
+    if (falseValue.includes(val))
+        return false;
+    throw new TypeError(`Input does not meet YAML 1.2 "Core Schema" specification: ${name}\n` +
+        `Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
+}
+/**
+ * Sets the value of an output.
+ *
+ * @param     name     name of the output to set
+ * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function setOutput(name, value) {
+    const filePath = process.env['GITHUB_OUTPUT'] || '';
+    if (filePath) {
+        return issueFileCommand('OUTPUT', prepareKeyValueMessage(name, value));
+    }
+    process.stdout.write(os.EOL);
+    issueCommand('set-output', { name }, toCommandValue(value));
+}
+/**
+ * Enables or disables the echoing of commands into stdout for the rest of the step.
+ * Echoing is disabled by default if ACTIONS_STEP_DEBUG is not set.
+ *
+ */
+function setCommandEcho(enabled) {
+    issue('echo', enabled ? 'on' : 'off');
+}
+//-----------------------------------------------------------------------
+// Results
+//-----------------------------------------------------------------------
+/**
+ * Sets the action status to failed.
+ * When the action exits it will be with an exit code of 1
+ * @param message add error issue message
+ */
+function setFailed(message) {
+    process.exitCode = ExitCode.Failure;
+    core_error(message);
+}
+//-----------------------------------------------------------------------
+// Logging Commands
+//-----------------------------------------------------------------------
+/**
+ * Gets whether Actions Step Debug is on or not
+ */
+function isDebug() {
+    return process.env['RUNNER_DEBUG'] === '1';
+}
+/**
+ * Writes debug message to user log
+ * @param message debug message
+ */
+function core_debug(message) {
+    command_issueCommand('debug', {}, message);
+}
+/**
+ * Adds an error issue
+ * @param message error issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function core_error(message, properties = {}) {
+    command_issueCommand('error', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+/**
+ * Adds a warning issue
+ * @param message warning issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function warning(message, properties = {}) {
+    command_issueCommand('warning', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+/**
+ * Adds a notice issue
+ * @param message notice issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function notice(message, properties = {}) {
+    issueCommand('notice', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+/**
+ * Writes info to log with console.log.
+ * @param message info message
+ */
+function info(message) {
+    process.stdout.write(message + external_os_.EOL);
+}
+/**
+ * Begin an output group.
+ *
+ * Output until the next `groupEnd` will be foldable in this group
+ *
+ * @param name The name of the output group
+ */
+function startGroup(name) {
+    command_issue('group', name);
+}
+/**
+ * End an output group.
+ */
+function endGroup() {
+    command_issue('endgroup');
+}
+/**
+ * Wrap an asynchronous function call in a group.
+ *
+ * Returns the same type as the function itself.
+ *
+ * @param name The name of the group
+ * @param fn The function to wrap in the group
+ */
+function group(name, fn) {
+    return core_awaiter(this, void 0, void 0, function* () {
+        startGroup(name);
+        let result;
+        try {
+            result = yield fn();
+        }
+        finally {
+            endGroup();
+        }
+        return result;
+    });
+}
+//-----------------------------------------------------------------------
+// Wrapper action state
+//-----------------------------------------------------------------------
+/**
+ * Saves state for current action, the state can only be retrieved by this action's post job execution.
+ *
+ * @param     name     name of the state to store
+ * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function saveState(name, value) {
+    const filePath = process.env['GITHUB_STATE'] || '';
+    if (filePath) {
+        return issueFileCommand('STATE', prepareKeyValueMessage(name, value));
+    }
+    issueCommand('save-state', { name }, toCommandValue(value));
+}
+/**
+ * Gets the value of an state set by this action's main execution.
+ *
+ * @param     name     name of the state to get
+ * @returns   string
+ */
+function getState(name) {
+    return process.env[`STATE_${name}`] || '';
+}
+function getIDToken(aud) {
+    return core_awaiter(this, void 0, void 0, function* () {
+        return yield OidcClient.getIDToken(aud);
+    });
+}
+/**
+ * Summary exports
+ */
+
+/**
+ * @deprecated use core.summary
+ */
+
+/**
+ * Path exports
+ */
+
+/**
+ * Platform utilities exports
+ */
+
+//# sourceMappingURL=core.js.map
 ;// CONCATENATED MODULE: ./node_modules/@actions/github/lib/context.js
 
 
@@ -33079,10 +36020,8 @@ class Context {
 //# sourceMappingURL=context.js.map
 // EXTERNAL MODULE: ./node_modules/@actions/http-client/lib/index.js
 var lib = __nccwpck_require__(4844);
-// EXTERNAL MODULE: ./node_modules/undici/index.js
-var undici = __nccwpck_require__(6752);
 ;// CONCATENATED MODULE: ./node_modules/@actions/github/lib/internal/utils.js
-var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var utils_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -33112,7 +36051,7 @@ function getProxyAgentDispatcher(destinationUrl) {
 }
 function getProxyFetch(destinationUrl) {
     const httpDispatcher = getProxyAgentDispatcher(destinationUrl);
-    const proxyFetch = (url, opts) => __awaiter(this, void 0, void 0, function* () {
+    const proxyFetch = (url, opts) => utils_awaiter(this, void 0, void 0, function* () {
         return (0,undici.fetch)(url, Object.assign(Object.assign({}, opts), { dispatcher: httpDispatcher }));
     });
     return proxyFetch;
@@ -33303,7 +36242,7 @@ var DEFAULTS = {
 };
 
 // pkg/dist-src/util/lowercase-keys.js
-function lowercaseKeys(object) {
+function dist_bundle_lowercaseKeys(object) {
   if (!object) {
     return {};
   }
@@ -33355,7 +36294,7 @@ function merge(defaults, route, options) {
   } else {
     options = Object.assign({}, route);
   }
-  options.headers = lowercaseKeys(options.headers);
+  options.headers = dist_bundle_lowercaseKeys(options.headers);
   removeUndefinedProperties(options);
   removeUndefinedProperties(options.headers);
   const mergedOptions = mergeDeep(defaults || {}, options);
@@ -37426,16 +40365,16 @@ const defaultHeaders = {
 };
 const log = {
     debug: (...args) => {
-        core.debug(external_node_util_.format(...args));
+        core_debug(external_node_util_.format(...args));
     },
     info: (...args) => {
-        core.info(external_node_util_.format(...args));
+        info(external_node_util_.format(...args));
     },
     warn: (...args) => {
-        core.warning(external_node_util_.format(...args));
+        warning(external_node_util_.format(...args));
     },
     error: (...args) => {
-        core.error(external_node_util_.format(...args));
+        core_error(external_node_util_.format(...args));
     },
 };
 function requestDescription(octokit, options) {
@@ -37452,29 +40391,29 @@ function responseDescription(octokit, options, response, start) {
 }
 function requestLog(octokit) {
     octokit.hook.wrap('request', (request, options) => {
-        if (core.isDebug()) {
-            core.startGroup(requestDescription(octokit, options));
-            core.info(external_node_util_.inspect(options));
-            core.endGroup();
+        if (isDebug()) {
+            startGroup(requestDescription(octokit, options));
+            info(external_node_util_.inspect(options));
+            endGroup();
         }
         const start = Date.now();
         return request(options)
             .then(response => {
-            core.startGroup(responseDescription(octokit, options, response, start));
-            core.info(external_node_util_.inspect({ request: options, response }));
-            core.endGroup();
+            startGroup(responseDescription(octokit, options, response, start));
+            info(external_node_util_.inspect({ request: options, response }));
+            endGroup();
             return response;
         })
             .catch((error) => {
             if (error instanceof RequestError) {
                 const { response } = error;
-                core.error(responseDescription(octokit, options, response, start));
-                core.startGroup('Details');
-                core.info(external_node_util_.inspect({
+                core_error(responseDescription(octokit, options, response, start));
+                startGroup('Details');
+                info(external_node_util_.inspect({
                     request: options,
                     response,
                 }));
-                core.endGroup();
+                endGroup();
             }
             throw error;
         });
@@ -38641,12 +41580,12 @@ const defaultPlatform = (typeof process === 'object' && process
         process.env.__MINIMATCH_TESTING_PLATFORM__) ||
         process.platform
     : 'posix');
-const path = {
+const esm_path = {
     win32: { sep: '\\' },
     posix: { sep: '/' },
 };
 /* c8 ignore stop */
-const esm_sep = defaultPlatform === 'win32' ? path.win32.sep : path.posix.sep;
+const esm_sep = defaultPlatform === 'win32' ? esm_path.win32.sep : esm_path.posix.sep;
 minimatch.sep = esm_sep;
 const GLOBSTAR = Symbol('globstar **');
 minimatch.GLOBSTAR = GLOBSTAR;
@@ -39589,7 +42528,7 @@ minimatch.unescape = unescape_unescape;
 // EXTERNAL MODULE: ./node_modules/jsbi/dist/jsbi-cjs.js
 var jsbi_cjs = __nccwpck_require__(4742);
 ;// CONCATENATED MODULE: ./node_modules/@js-temporal/polyfill/dist/index.esm.js
-const t=jsbi_cjs.BigInt(0),n=jsbi_cjs.BigInt(1),r=jsbi_cjs.BigInt(2),o=jsbi_cjs.BigInt(10),i=jsbi_cjs.BigInt(24),a=jsbi_cjs.BigInt(60),s=jsbi_cjs.BigInt(1e3),c=jsbi_cjs.BigInt(1e6),d=jsbi_cjs.BigInt(1e9),h=jsbi_cjs.multiply(jsbi_cjs.BigInt(3600),d),u=jsbi_cjs.multiply(a,d),l=jsbi_cjs.multiply(h,i);function m(t){return"bigint"==typeof t?jsbi_cjs.BigInt(t.toString(10)):t}function f(n){return jsbi_cjs.equal(jsbi_cjs.remainder(n,r),t)}function y(n){return jsbi_cjs.lessThan(n,t)?jsbi_cjs.unaryMinus(n):n}function p(t,n){return jsbi_cjs.lessThan(t,n)?-1:jsbi_cjs.greaterThan(t,n)?1:0}function g(t,n){return{quotient:jsbi_cjs.divide(t,n),remainder:jsbi_cjs.remainder(t,n)}}var w,v;const b="slot-epochNanoSeconds",D="slot-iso-date",T="slot-iso-date-time",M="slot-time",E="slot-calendar",I="slot-date-brand",C="slot-year-month-brand",O="slot-month-day-brand",$="slot-time-zone",Y="slot-years",R="slot-months",S="slot-weeks",j="slot-days",k="slot-hours",N="slot-minutes",x="slot-seconds",L="slot-milliseconds",P="slot-microseconds",U="slot-nanoseconds",B="date",Z="ym",F="md",H="time",z="datetime",A="instant",q="original",W="timezone-canonical",_="timezone-original",J="calendar-id",G="locale",K="options",V=new WeakMap,X=Symbol.for("@@Temporal__GetSlots");(w=globalThis)[X]||(w[X]=function(e){return V.get(e)});const Q=globalThis[X],ee=Symbol.for("@@Temporal__CreateSlots");(v=globalThis)[ee]||(v[ee]=function(e){V.set(e,Object.create(null))});const te=globalThis[ee];function ne(e,...t){if(!e||"object"!=typeof e)return!1;const n=Q(e);return!!n&&t.every((e=>e in n))}function re(e,t){const n=Q(e)?.[t];if(void 0===n)throw new TypeError(`Missing internal slot ${t}`);return n}function oe(e,t,n){const r=Q(e);if(void 0===r)throw new TypeError("Missing slots for the given container");if(r[t])throw new TypeError(`${t} already has set`);r[t]=n}const ie={};function ae(e,t){Object.defineProperty(e.prototype,Symbol.toStringTag,{value:t,writable:!1,enumerable:!1,configurable:!0});const n=Object.getOwnPropertyNames(e);for(let t=0;t<n.length;t++){const r=n[t],o=Object.getOwnPropertyDescriptor(e,r);o.configurable&&o.enumerable&&(o.enumerable=!1,Object.defineProperty(e,r,o))}const r=Object.getOwnPropertyNames(e.prototype);for(let t=0;t<r.length;t++){const n=r[t],o=Object.getOwnPropertyDescriptor(e.prototype,n);o.configurable&&o.enumerable&&(o.enumerable=!1,Object.defineProperty(e.prototype,n,o))}se(t,e),se(`${t}.prototype`,e.prototype)}function se(e,t){const n=`%${e}%`;if(void 0!==ie[n])throw new Error(`intrinsic ${e} already exists`);ie[n]=t}function ce(e){return ie[e]}function de(e,t){let n=e;if(0===n)return{div:n,mod:n};const r=Math.sign(n);n=Math.abs(n);const o=Math.trunc(1+Math.log10(n));if(t>=o)return{div:0*r,mod:r*n};if(0===t)return{div:r*n,mod:0*r};const i=n.toPrecision(o);return{div:r*Number.parseInt(i.slice(0,o-t),10),mod:r*Number.parseInt(i.slice(o-t),10)}}function he(e,t,n){let r=e,o=n;if(0===r)return o;const i=Math.sign(r)||Math.sign(o);r=Math.abs(r),o=Math.abs(o);const a=r.toPrecision(Math.trunc(1+Math.log10(r)));if(0===o)return i*Number.parseInt(a+"0".repeat(t),10);const s=a+o.toPrecision(Math.trunc(1+Math.log10(o))).padStart(t,"0");return i*Number.parseInt(s,10)}function ue(e,t){const n="negative"===t;switch(e){case"ceil":return n?"zero":"infinity";case"floor":return n?"infinity":"zero";case"expand":return"infinity";case"trunc":return"zero";case"halfCeil":return n?"half-zero":"half-infinity";case"halfFloor":return n?"half-infinity":"half-zero";case"halfExpand":return"half-infinity";case"halfTrunc":return"half-zero";case"halfEven":return"half-even"}}function le(e,t,n,r,o){return"zero"===o?e:"infinity"===o?t:n<0?e:n>0?t:"half-zero"===o?e:"half-infinity"===o?t:r?e:t}class TimeDuration{constructor(t){this.totalNs=m(t),this.sec=jsbi_cjs.toNumber(jsbi_cjs.divide(this.totalNs,d)),this.subsec=jsbi_cjs.toNumber(jsbi_cjs.remainder(this.totalNs,d))}static validateNew(t,n){if(jsbi_cjs.greaterThan(y(t),TimeDuration.MAX))throw new RangeError(`${n} of duration time units cannot exceed ${TimeDuration.MAX} s`);return new TimeDuration(t)}static fromEpochNsDiff(t,n){const r=jsbi_cjs.subtract(m(t),m(n));return new TimeDuration(r)}static fromComponents(t,n,r,o,i,a){const l=jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.BigInt(a),jsbi_cjs.multiply(jsbi_cjs.BigInt(i),s)),jsbi_cjs.multiply(jsbi_cjs.BigInt(o),c)),jsbi_cjs.multiply(jsbi_cjs.BigInt(r),d)),jsbi_cjs.multiply(jsbi_cjs.BigInt(n),u)),jsbi_cjs.multiply(jsbi_cjs.BigInt(t),h));return TimeDuration.validateNew(l,"total")}abs(){return new TimeDuration(y(this.totalNs))}add(t){return TimeDuration.validateNew(jsbi_cjs.add(this.totalNs,t.totalNs),"sum")}add24HourDays(t){return TimeDuration.validateNew(jsbi_cjs.add(this.totalNs,jsbi_cjs.multiply(jsbi_cjs.BigInt(t),l)),"sum")}addToEpochNs(t){return jsbi_cjs.add(m(t),this.totalNs)}cmp(e){return p(this.totalNs,e.totalNs)}divmod(t){const{quotient:n,remainder:r}=g(this.totalNs,jsbi_cjs.BigInt(t));return{quotient:jsbi_cjs.toNumber(n),remainder:new TimeDuration(r)}}fdiv(n){const r=m(n),i=jsbi_cjs.BigInt(r);let{quotient:a,remainder:s}=g(this.totalNs,i);const c=[];let d;const h=(jsbi_cjs.lessThan(this.totalNs,t)?-1:1)*Math.sign(jsbi_cjs.toNumber(r));for(;!jsbi_cjs.equal(s,t)&&c.length<50;)s=jsbi_cjs.multiply(s,o),({quotient:d,remainder:s}=g(s,i)),c.push(Math.abs(jsbi_cjs.toNumber(d)));return h*Number(y(a).toString()+"."+c.join(""))}isZero(){return jsbi_cjs.equal(this.totalNs,t)}round(o,i){const a=m(o);if(jsbi_cjs.equal(a,n))return this;const{quotient:s,remainder:c}=g(this.totalNs,a),d=jsbi_cjs.lessThan(this.totalNs,t)?"negative":"positive",h=jsbi_cjs.multiply(y(s),a),u=jsbi_cjs.add(h,a),l=p(y(jsbi_cjs.multiply(c,r)),a),w=ue(i,d),v=jsbi_cjs.equal(y(this.totalNs),h)?h:le(h,u,l,f(s),w),b="positive"===d?v:jsbi_cjs.unaryMinus(v);return TimeDuration.validateNew(b,"rounding")}sign(){return this.cmp(new TimeDuration(t))}subtract(t){return TimeDuration.validateNew(jsbi_cjs.subtract(this.totalNs,t.totalNs),"difference")}}TimeDuration.MAX=jsbi_cjs.BigInt("9007199254740991999999999"),TimeDuration.ZERO=new TimeDuration(t);const me=/[A-Za-z._][A-Za-z._0-9+-]*/,fe=new RegExp(`(?:${/(?:[+-](?:[01][0-9]|2[0-3])(?::?[0-5][0-9])?)/.source}|(?:${me.source})(?:\\/(?:${me.source}))*)`),ye=/(?:[+-]\d{6}|\d{4})/,pe=/(?:0[1-9]|1[0-2])/,ge=/(?:0[1-9]|[12]\d|3[01])/,we=new RegExp(`(${ye.source})(?:-(${pe.source})-(${ge.source})|(${pe.source})(${ge.source}))`),ve=/(\d{2})(?::(\d{2})(?::(\d{2})(?:[.,](\d{1,9}))?)?|(\d{2})(?:(\d{2})(?:[.,](\d{1,9}))?)?)?/,be=/((?:[+-])(?:[01][0-9]|2[0-3])(?::?(?:[0-5][0-9])(?::?(?:[0-5][0-9])(?:[.,](?:\d{1,9}))?)?)?)/,De=new RegExp(`([zZ])|${be.source}?`),Te=/\[(!)?([a-z_][a-z0-9_-]*)=([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\]/g,Me=new RegExp([`^${we.source}`,`(?:(?:[tT]|\\s+)${ve.source}(?:${De.source})?)?`,`(?:\\[!?(${fe.source})\\])?`,`((?:${Te.source})*)$`].join("")),Ee=new RegExp([`^[tT]?${ve.source}`,`(?:${De.source})?`,`(?:\\[!?${fe.source}\\])?`,`((?:${Te.source})*)$`].join("")),Ie=new RegExp(`^(${ye.source})-?(${pe.source})(?:\\[!?${fe.source}\\])?((?:${Te.source})*)$`),Ce=new RegExp(`^(?:--)?(${pe.source})-?(${ge.source})(?:\\[!?${fe.source}\\])?((?:${Te.source})*)$`),Oe=/(\d+)(?:[.,](\d{1,9}))?/,$e=new RegExp(`(?:${Oe.source}H)?(?:${Oe.source}M)?(?:${Oe.source}S)?`),Ye=new RegExp(`^([+-])?P${/(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?/.source}(?:T(?!$)${$e.source})?$`,"i"),Re=864e5,Se=1e6*Re,je=6e10,ke=1e8*Re,Ne=xo(ke),xe=jsbi_cjs.unaryMinus(Ne),Le=jsbi_cjs.add(jsbi_cjs.subtract(xe,l),n),Pe=jsbi_cjs.subtract(jsbi_cjs.add(Ne,l),n),Ue=146097*Re,Be=-271821,Ze=275760,Fe=Date.UTC(1847,0,1),He=["iso8601","hebrew","islamic","islamic-umalqura","islamic-tbla","islamic-civil","islamic-rgsa","islamicc","persian","ethiopic","ethioaa","ethiopic-amete-alem","coptic","chinese","dangi","roc","indian","buddhist","japanese","gregory"],ze=new Set(["ACT","AET","AGT","ART","AST","BET","BST","CAT","CNT","CST","CTT","EAT","ECT","IET","IST","JST","MIT","NET","NST","PLT","PNT","PRT","PST","SST","VST"]);function Ae(e){return"object"==typeof e&&null!==e||"function"==typeof e}function qe(e){if("bigint"==typeof e)throw new TypeError("Cannot convert BigInt to number");return Number(e)}function We(e){if("symbol"==typeof e)throw new TypeError("Cannot convert a Symbol value to a String");return String(e)}function _e(e){const t=qe(e);if(0===t)return 0;if(Number.isNaN(t)||t===1/0||t===-1/0)throw new RangeError("invalid number value");const n=Math.trunc(t);return 0===n?0:n}function Je(e,t){const n=_e(e);if(n<=0){if(void 0!==t)throw new RangeError(`property '${t}' cannot be a a number less than one`);throw new RangeError("Cannot convert a number less than one to a positive integer")}return n}function Ge(e){const t=qe(e);if(Number.isNaN(t))throw new RangeError("not a number");if(t===1/0||t===-1/0)throw new RangeError("infinity is out of range");if(!function(e){if("number"!=typeof e||Number.isNaN(e)||e===1/0||e===-1/0)return!1;const t=Math.abs(e);return Math.floor(t)===t}(t))throw new RangeError(`unsupported fractional value ${e}`);return 0===t?0:t}function Ke(e,t){return String(e).padStart(t,"0")}function Ve(e){if("string"!=typeof e)throw new TypeError(`expected a string, not ${String(e)}`);return e}function Xe(e,t){if(Ae(e)){const t=e?.toString();if("string"==typeof t||"number"==typeof t)return t;throw new TypeError("Cannot convert object to primitive value")}return e}const Qe=["era","eraYear","year","month","monthCode","day","hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],et={era:We,eraYear:_e,year:_e,month:Je,monthCode:function(e){const t=Ve(Xe(e));if(t.length<3||t.length>4||"M"!==t[0]||-1==="0123456789".indexOf(t[1])||-1==="0123456789".indexOf(t[2])||t[1]+t[2]==="00"&&"L"!==t[3]||"L"!==t[3]&&void 0!==t[3])throw new RangeError(`bad month code ${t}; must match M01-M99 or M00L-M99L`);return t},day:Je,hour:_e,minute:_e,second:_e,millisecond:_e,microsecond:_e,nanosecond:_e,offset:function(e){const t=Ve(Xe(e));return sr(t),t},timeZone:Bn},tt={hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},nt=[["years","year","date"],["months","month","date"],["weeks","week","date"],["days","day","date"],["hours","hour","time"],["minutes","minute","time"],["seconds","second","time"],["milliseconds","millisecond","time"],["microseconds","microsecond","time"],["nanoseconds","nanosecond","time"]],rt=Object.fromEntries(nt.map((e=>[e[0],e[1]]))),ot=Object.fromEntries(nt.map((([e,t])=>[t,e]))),it=nt.map((([,e])=>e)),at={day:Se,hour:36e11,minute:6e10,second:1e9,millisecond:1e6,microsecond:1e3,nanosecond:1},st=["days","hours","microseconds","milliseconds","minutes","months","nanoseconds","seconds","weeks","years"],ct=Intl.DateTimeFormat,dt=new Map;function ht(e){const t=Ao(e);let n=dt.get(t);return void 0===n&&(n=new ct("en-us",{timeZone:t,hour12:!1,era:"short",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"}),dt.set(t,n)),n}function ut(e){return ne(e,b)&&!ne(e,$,E)}function lt(e){return ne(e,Y,R,j,k,N,x,L,P,U)}function mt(e){return ne(e,I)}function ft(e){return ne(e,M)}function yt(e){return ne(e,T)}function pt(e){return ne(e,C)}function gt(e){return ne(e,O)}function wt(e){return ne(e,b,$,E)}function vt(e,t){if(!t(e))throw new TypeError("invalid receiver: method called with the wrong type of this-object")}function bt(e){if(ne(e,E)||ne(e,$))throw new TypeError("with() does not support a calendar or timeZone property");if(ft(e))throw new TypeError("with() does not accept Temporal.PlainTime, use withPlainTime() instead");if(void 0!==e.calendar)throw new TypeError("with() does not support a calendar property");if(void 0!==e.timeZone)throw new TypeError("with() does not support a timeZone property")}function Dt(e,t){return"never"===t||"auto"===t&&"iso8601"===e?"":`[${"critical"===t?"!":""}u-ca=${e}]`}function Tt(e){let t,n,r=!1;for(Te.lastIndex=0;n=Te.exec(e);){const{1:o,2:i,3:a}=n;if("u-ca"===i){if(void 0===t)t=a,r="!"===o;else if("!"===o||r)throw new RangeError(`Invalid annotations in ${e}: more than one u-ca present with critical flag`)}else if("!"===o)throw new RangeError(`Unrecognized annotation: !${i}=${a}`)}return t}function Mt(e){const t=Me.exec(e);if(!t)throw new RangeError(`invalid RFC 9557 string: ${e}`);const n=Tt(t[16]);let r=t[1];if("-000000"===r)throw new RangeError(`invalid RFC 9557 string: ${e}`);const o=+r,i=+(t[2]??t[4]??1),a=+(t[3]??t[5]??1),s=void 0!==t[6],c=+(t[6]??0),d=+(t[7]??t[10]??0);let h=+(t[8]??t[11]??0);60===h&&(h=59);const u=(t[9]??t[12]??"")+"000000000",l=+u.slice(0,3),m=+u.slice(3,6),f=+u.slice(6,9);let y,p=!1;t[13]?(y=void 0,p=!0):t[14]&&(y=t[14]);const g=t[15];return Ur(o,i,a,c,d,h,l,m,f),{year:o,month:i,day:a,time:s?{hour:c,minute:d,second:h,millisecond:l,microsecond:m,nanosecond:f}:"start-of-day",tzAnnotation:g,offset:y,z:p,calendar:n}}function Et(e){const t=Ee.exec(e);let n,r,o,i,a,s,c;if(t){c=Tt(t[10]),n=+(t[1]??0),r=+(t[2]??t[5]??0),o=+(t[3]??t[6]??0),60===o&&(o=59);const e=(t[4]??t[7]??"")+"000000000";if(i=+e.slice(0,3),a=+e.slice(3,6),s=+e.slice(6,9),t[8])throw new RangeError("Z designator not supported for PlainTime")}else{let t,d;if(({time:t,z:d,calendar:c}=Mt(e)),"start-of-day"===t)throw new RangeError(`time is missing in string: ${e}`);if(d)throw new RangeError("Z designator not supported for PlainTime");({hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s}=t)}if(Pr(n,r,o,i,a,s),/[tT ][0-9][0-9]/.test(e))return{hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s,calendar:c};try{const{month:t,day:n}=Ct(e);xr(1972,t,n)}catch{try{const{year:t,month:n}=It(e);xr(t,n,1)}catch{return{hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s,calendar:c}}}throw new RangeError(`invalid RFC 9557 time-only string ${e}; may need a T prefix`)}function It(e){const t=Ie.exec(e);let n,r,o,i;if(t){o=Tt(t[3]);let a=t[1];if("-000000"===a)throw new RangeError(`invalid RFC 9557 string: ${e}`);if(n=+a,r=+t[2],i=1,void 0!==o&&"iso8601"!==o)throw new RangeError("YYYY-MM format is only valid with iso8601 calendar")}else{let t;if(({year:n,month:r,calendar:o,day:i,z:t}=Mt(e)),t)throw new RangeError("Z designator not supported for PlainYearMonth")}return{year:n,month:r,calendar:o,referenceISODay:i}}function Ct(e){const t=Ce.exec(e);let n,r,o,i;if(t){if(o=Tt(t[3]),n=+t[1],r=+t[2],void 0!==o&&"iso8601"!==o)throw new RangeError("MM-DD format is only valid with iso8601 calendar")}else{let t;if(({month:n,day:r,calendar:o,year:i,z:t}=Mt(e)),t)throw new RangeError("Z designator not supported for PlainMonthDay")}return{month:n,day:r,calendar:o,referenceISOYear:i}}const Ot=new RegExp(`^${fe.source}$`,"i"),$t=new RegExp(`^${/([+-])([01][0-9]|2[0-3])(?::?([0-5][0-9])?)?/.source}$`);function Yt(e){const t=Wo.test(e)?"Seconds not allowed in offset time zone":"Invalid time zone";throw new RangeError(`${t}: ${e}`)}function Rt(e){return Ot.test(e)||Yt(e),$t.test(e)?{offsetMinutes:sr(e)/6e10}:{tzName:e}}function St(e,t,n,r){let o=e,i=t,a=n;switch(r){case"reject":xr(o,i,a);break;case"constrain":({year:o,month:i,day:a}=kr(o,i,a))}return{year:o,month:i,day:a}}function jt(e,t,n,r,o,i,a){let s=e,c=t,d=n,h=r,u=o,l=i;switch(a){case"reject":Pr(s,c,d,h,u,l);break;case"constrain":s=jr(s,0,23),c=jr(c,0,59),d=jr(d,0,59),h=jr(h,0,999),u=jr(u,0,999),l=jr(l,0,999)}return{hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}function kt(e){if(!Ae(e))throw new TypeError("invalid duration-like");const t={years:void 0,months:void 0,weeks:void 0,days:void 0,hours:void 0,minutes:void 0,seconds:void 0,milliseconds:void 0,microseconds:void 0,nanoseconds:void 0};let n=!1;for(let r=0;r<st.length;r++){const o=st[r],i=e[o];void 0!==i&&(n=!0,t[o]=Ge(i))}if(!n)throw new TypeError("invalid duration-like");return t}function Nt({years:e,months:t,weeks:n,days:r},o,i,a){return{years:e,months:a??t,weeks:i??n,days:o??r}}function xt(e,t){return{isoDate:e,time:t}}function Lt(e){return Ho(e,"overflow",["constrain","reject"],"constrain")}function Pt(e){return Ho(e,"disambiguation",["compatible","earlier","later","reject"],"compatible")}function Ut(e,t){return Ho(e,"roundingMode",["ceil","floor","expand","trunc","halfCeil","halfFloor","halfExpand","halfTrunc","halfEven"],t)}function Bt(e,t){return Ho(e,"offset",["prefer","use","ignore","reject"],t)}function Zt(e){return Ho(e,"calendarName",["auto","always","never","critical"],"auto")}function Ft(e){let t=e.roundingIncrement;if(void 0===t)return 1;const n=_e(t);if(n<1||n>1e9)throw new RangeError(`roundingIncrement must be at least 1 and at most 1e9, not ${t}`);return n}function Ht(e,t,n){const r=n?t:t-1;if(e>r)throw new RangeError(`roundingIncrement must be at least 1 and less than ${r}, not ${e}`);if(t%e!=0)throw new RangeError(`Rounding increment must divide evenly into ${t}`)}function zt(e){const t=e.fractionalSecondDigits;if(void 0===t)return"auto";if("number"!=typeof t){if("auto"!==We(t))throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`);return"auto"}const n=Math.floor(t);if(!Number.isFinite(n)||n<0||n>9)throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`);return n}function At(e,t){switch(e){case"minute":return{precision:"minute",unit:"minute",increment:1};case"second":return{precision:0,unit:"second",increment:1};case"millisecond":return{precision:3,unit:"millisecond",increment:1};case"microsecond":return{precision:6,unit:"microsecond",increment:1};case"nanosecond":return{precision:9,unit:"nanosecond",increment:1}}switch(t){case"auto":return{precision:t,unit:"nanosecond",increment:1};case 0:return{precision:t,unit:"second",increment:1};case 1:case 2:case 3:return{precision:t,unit:"millisecond",increment:10**(3-t)};case 4:case 5:case 6:return{precision:t,unit:"microsecond",increment:10**(6-t)};case 7:case 8:case 9:return{precision:t,unit:"nanosecond",increment:10**(9-t)};default:throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`)}}const qt=Symbol("~required~");function Wt(e,t,n,r,o=[]){let i=[];for(let e=0;e<nt.length;e++){const t=nt[e],r=t[1],o=t[2];"datetime"!==n&&n!==o||i.push(r)}i=i.concat(o);let a=r;a===qt?a=void 0:void 0!==a&&i.push(a);let s=[];s=s.concat(i);for(let e=0;e<i.length;e++){const t=i[e],n=ot[t];void 0!==n&&s.push(n)}let c=Ho(e,t,s,a);if(void 0===c&&r===qt)throw new RangeError(`${t} is required`);return c&&c in rt?rt[c]:c}function _t(e){const t=e.relativeTo;if(void 0===t)return{};let n,r,o,i,a,s="option",c=!1;if(Ae(t)){if(wt(t))return{zonedRelativeTo:t};if(mt(t))return{plainRelativeTo:t};if(yt(t))return{plainRelativeTo:pn(re(t,T).isoDate,re(t,E))};o=Nn(t);const e=tn(o,t,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],[]);({isoDate:n,time:r}=on(o,e,"constrain")),({offset:a,timeZone:i}=e),void 0===a&&(s="wall")}else{let e,d,h,u,l;if(({year:h,month:u,day:l,time:r,calendar:o,tzAnnotation:e,offset:a,z:d}=Mt(Ve(t))),e)i=Bn(e),d?s="exact":a||(s="wall"),c=!0;else if(d)throw new RangeError("Z designator not supported for PlainDate relativeTo; either remove the Z or add a bracketed time zone");o||(o="iso8601"),o=zo(o),n={year:h,month:u,day:l}}return void 0===i?{plainRelativeTo:pn(n,o)}:{zonedRelativeTo:$n(mn(n,r,s,"option"===s?sr(a):0,i,"compatible","reject",c),i,o)}}function Jt(e){return 0!==re(e,Y)?"year":0!==re(e,R)?"month":0!==re(e,S)?"week":0!==re(e,j)?"day":0!==re(e,k)?"hour":0!==re(e,N)?"minute":0!==re(e,x)?"second":0!==re(e,L)?"millisecond":0!==re(e,P)?"microsecond":"nanosecond"}function Gt(e,t){return it.indexOf(e)>it.indexOf(t)?t:e}function Kt(e){return"year"===e||"month"===e||"week"===e}function Vt(e){return Kt(e)||"day"===e?"date":"time"}function Xt(e){return ce("%calendarImpl%")(e)}function Qt(e){return ce("%calendarImpl%")(re(e,E))}function en(e,t,n="date"){const r=Object.create(null),o=Xt(e).isoToDate(t,{year:!0,monthCode:!0,day:!0});return r.monthCode=o.monthCode,"month-day"!==n&&"date"!==n||(r.day=o.day),"year-month"!==n&&"date"!==n||(r.year=o.year),r}function tn(e,t,n,r,o){const i=Xt(e).extraFields(n),a=n.concat(r,i),s=Object.create(null);let c=!1;a.sort();for(let e=0;e<a.length;e++){const n=a[e],r=t[n];if(void 0!==r)c=!0,s[n]=(0,et[n])(r);else if("partial"!==o){if(o.includes(n))throw new TypeError(`required property '${n}' missing or undefined`);s[n]=tt[n]}}if("partial"===o&&!c)throw new TypeError("no supported properties found");return s}function nn(e,t="complete"){const n=["hour","microsecond","millisecond","minute","nanosecond","second"];let r=!1;const o=Object.create(null);for(let i=0;i<n.length;i++){const a=n[i],s=e[a];void 0!==s?(o[a]=_e(s),r=!0):"complete"===t&&(o[a]=0)}if(!r)throw new TypeError("invalid time-like");return o}function rn(e,t){if(Ae(e)){if(mt(e))return Lt(Zo(t)),pn(re(e,D),re(e,E));if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),pn(n.isoDate,re(e,E))}if(yt(e))return Lt(Zo(t)),pn(re(e,T).isoDate,re(e,E));const n=Nn(e);return pn(Ln(n,tn(n,e,["year","month","monthCode","day"],[],[]),Lt(Zo(t))),n)}let{year:n,month:r,day:o,calendar:i,z:a}=Mt(Ve(e));if(a)throw new RangeError("Z designator not supported for PlainDate");return i||(i="iso8601"),i=zo(i),Lt(Zo(t)),pn({year:n,month:r,day:o},i)}function on(e,t,n){return xt(Ln(e,t,n),jt(t.hour,t.minute,t.second,t.millisecond,t.microsecond,t.nanosecond,n))}function an(e,t){let n,r,o;if(Ae(e)){if(yt(e))return Lt(Zo(t)),wn(re(e,T),re(e,E));if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),wn(n,re(e,E))}if(mt(e))return Lt(Zo(t)),wn(xt(re(e,D),{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),re(e,E));o=Nn(e);const i=tn(o,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond"],[]),a=Lt(Zo(t));({isoDate:n,time:r}=on(o,i,a))}else{let i,a,s,c;if(({year:a,month:s,day:c,time:r,calendar:o,z:i}=Mt(Ve(e))),i)throw new RangeError("Z designator not supported for PlainDateTime");"start-of-day"===r&&(r={deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),Ur(a,s,c,r.hour,r.minute,r.second,r.millisecond,r.microsecond,r.nanosecond),o||(o="iso8601"),o=zo(o),Lt(Zo(t)),n={year:a,month:s,day:c}}return wn(xt(n,r),o)}function sn(e){const t=ce("%Temporal.Duration%");if(lt(e))return new t(re(e,Y),re(e,R),re(e,S),re(e,j),re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U));if(!Ae(e))return function(e){const{years:t,months:n,weeks:r,days:o,hours:i,minutes:a,seconds:s,milliseconds:c,microseconds:d,nanoseconds:h}=function(e){const t=Ye.exec(e);if(!t)throw new RangeError(`invalid duration: ${e}`);if(t.every(((e,t)=>t<2||void 0===e)))throw new RangeError(`invalid duration: ${e}`);const n="-"===t[1]?-1:1,r=void 0===t[2]?0:_e(t[2])*n,o=void 0===t[3]?0:_e(t[3])*n,i=void 0===t[4]?0:_e(t[4])*n,a=void 0===t[5]?0:_e(t[5])*n,s=void 0===t[6]?0:_e(t[6])*n,c=t[7],d=t[8],h=t[9],u=t[10],l=t[11];let m=0,f=0,y=0;if(void 0!==c){if(d??h??u??l)throw new RangeError("only the smallest unit can be fractional");y=3600*_e((c+"000000000").slice(0,9))*n}else if(m=void 0===d?0:_e(d)*n,void 0!==h){if(u??l)throw new RangeError("only the smallest unit can be fractional");y=60*_e((h+"000000000").slice(0,9))*n}else f=void 0===u?0:_e(u)*n,void 0!==l&&(y=_e((l+"000000000").slice(0,9))*n);const p=y%1e3,g=Math.trunc(y/1e3)%1e3,w=Math.trunc(y/1e6)%1e3;return f+=Math.trunc(y/1e9)%60,m+=Math.trunc(y/6e10),zr(r,o,i,a,s,m,f,w,g,p),{years:r,months:o,weeks:i,days:a,hours:s,minutes:m,seconds:f,milliseconds:w,microseconds:g,nanoseconds:p}}(e);return new(ce("%Temporal.Duration%"))(t,n,r,o,i,a,s,c,d,h)}(Ve(e));const n={years:0,months:0,weeks:0,days:0,hours:0,minutes:0,seconds:0,milliseconds:0,microseconds:0,nanoseconds:0};let r=kt(e);for(let e=0;e<st.length;e++){const t=st[e],o=r[t];void 0!==o&&(n[t]=o)}return new t(n.years,n.months,n.weeks,n.days,n.hours,n.minutes,n.seconds,n.milliseconds,n.microseconds,n.nanoseconds)}function cn(e){let t;if(Ae(e)){if(ut(e)||wt(e))return Cn(re(e,b));t=Xe(e)}else t=e;const{year:n,month:r,day:o,time:i,offset:a,z:s}=function(e){const t=Mt(e);if(!t.z&&!t.offset)throw new RangeError("Temporal.Instant requires a time zone offset");return t}(Ve(t)),{hour:c=0,minute:d=0,second:h=0,millisecond:u=0,microsecond:l=0,nanosecond:m=0}="start-of-day"===i?{}:i,f=$r(n,r,o,c,d,h,u,l,m-(s?0:sr(a)));return Kr(f.isoDate),Cn(pr(f))}function dn(e,t){if(Ae(e)){if(gt(e))return Lt(Zo(t)),bn(re(e,D),re(e,E));let n;return ne(e,E)?n=re(e,E):(n=e.calendar,void 0===n&&(n="iso8601"),n=kn(n)),bn(Un(n,tn(n,e,["year","month","monthCode","day"],[],[]),Lt(Zo(t))),n)}let{month:n,day:r,referenceISOYear:o,calendar:i}=Ct(Ve(e));if(void 0===i&&(i="iso8601"),i=zo(i),Lt(Zo(t)),"iso8601"===i)return bn({year:1972,month:n,day:r},i);let a={year:o,month:n,day:r};return Lr(a),a=Un(i,en(i,a,"month-day"),"constrain"),bn(a,i)}function hn(e,t){let n;if(Ae(e)){if(ft(e))return Lt(Zo(t)),Tn(re(e,M));if(yt(e))return Lt(Zo(t)),Tn(re(e,T).time);if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),Tn(n.time)}const{hour:r,minute:o,second:i,millisecond:a,microsecond:s,nanosecond:c}=nn(e);n=jt(r,o,i,a,s,c,Lt(Zo(t)))}else n=Et(Ve(e)),Lt(Zo(t));return Tn(n)}function un(e){return void 0===e?{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}:re(hn(e),M)}function ln(e,t){if(Ae(e)){if(pt(e))return Lt(Zo(t)),En(re(e,D),re(e,E));const n=Nn(e);return En(Pn(n,tn(n,e,["year","month","monthCode"],[],[]),Lt(Zo(t))),n)}let{year:n,month:r,referenceISODay:o,calendar:i}=It(Ve(e));void 0===i&&(i="iso8601"),i=zo(i),Lt(Zo(t));let a={year:n,month:r,day:o};return Hr(a),a=Pn(i,en(i,a,"year-month"),"constrain"),En(a,i)}function mn(t,n,r,o,i,a,s,c){if("start-of-day"===n)return _n(i,t);const d=xt(t,n);if("wall"===r||"ignore"===s)return An(i,d,a);if("exact"===r||"use"===s){const e=$r(t.year,t.month,t.day,n.hour,n.minute,n.second,n.millisecond,n.microsecond,n.nanosecond-o);Kr(e.isoDate);const r=pr(e);return Fr(r),r}Kr(t);const h=pr(d),u=Wn(i,d);for(let t=0;t<u.length;t++){const n=u[t],r=jsbi_cjs.toNumber(jsbi_cjs.subtract(h,n)),i=Eo(r,6e10,"halfExpand");if(r===o||c&&i===o)return n}if("reject"===s){const e=Hn(o),t=nr(d,"iso8601","auto");throw new RangeError(`Offset ${e} is invalid for ${t} in ${i}`)}return qn(u,i,d,a)}function fn(e,t){let n,r,o,i,a,s,c,d=!1,h="option";if(Ae(e)){if(wt(e)){const n=Zo(t);return Pt(n),Bt(n,"reject"),Lt(n),$n(re(e,b),re(e,$),re(e,E))}a=Nn(e);const d=tn(a,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],["timeZone"]);({offset:i,timeZone:o}=d),void 0===i&&(h="wall");const u=Zo(t);s=Pt(u),c=Bt(u,"reject");const l=Lt(u);({isoDate:n,time:r}=on(a,d,l))}else{let u,l,m,f,y;({year:m,month:f,day:y,time:r,tzAnnotation:u,offset:i,z:l,calendar:a}=function(e){const t=Mt(e);if(!t.tzAnnotation)throw new RangeError("Temporal.ZonedDateTime requires a time zone ID in brackets");return t}(Ve(e))),o=Bn(u),l?h="exact":i||(h="wall"),a||(a="iso8601"),a=zo(a),d=!0;const p=Zo(t);s=Pt(p),c=Bt(p,"reject"),Lt(p),n={year:m,month:f,day:y}}let u=0;return"option"===h&&(u=sr(i)),$n(mn(n,r,h,u,o,s,c,d),o,a)}function yn(e,t,n){Lr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,I,!0)}function pn(e,t){const n=ce("%Temporal.PlainDate%"),r=Object.create(n.prototype);return yn(r,e,t),r}function gn(e,t,n){Br(t),te(e),oe(e,T,t),oe(e,E,n)}function wn(e,t){const n=ce("%Temporal.PlainDateTime%"),r=Object.create(n.prototype);return gn(r,e,t),r}function vn(e,t,n){Lr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,O,!0)}function bn(e,t){const n=ce("%Temporal.PlainMonthDay%"),r=Object.create(n.prototype);return vn(r,e,t),r}function Dn(e,t){te(e),oe(e,M,t)}function Tn(e){const t=ce("%Temporal.PlainTime%"),n=Object.create(t.prototype);return Dn(n,e),n}function Mn(e,t,n){Hr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,C,!0)}function En(e,t){const n=ce("%Temporal.PlainYearMonth%"),r=Object.create(n.prototype);return Mn(r,e,t),r}function In(e,t){Fr(t),te(e),oe(e,b,t)}function Cn(e){const t=ce("%Temporal.Instant%"),n=Object.create(t.prototype);return In(n,e),n}function On(e,t,n,r){Fr(t),te(e),oe(e,b,t),oe(e,$,n),oe(e,E,r)}function $n(e,t,n="iso8601"){const r=ce("%Temporal.ZonedDateTime%"),o=Object.create(r.prototype);return On(o,e,t,n),o}function Yn(e){return Qe.filter((t=>void 0!==e[t]))}function Rn(e,t,n){const r=Yn(n),o=Xt(e).fieldKeysToIgnore(r),i=Object.create(null),a=Yn(t);for(let e=0;e<Qe.length;e++){let s;const c=Qe[e];a.includes(c)&&!o.includes(c)&&(s=t[c]),r.includes(c)&&(s=n[c]),void 0!==s&&(i[c]=s)}return i}function Sn(e,t,n,r){const o=Xt(e).dateAdd(t,n,r);return Lr(o),o}function jn(e,t,n,r){return Xt(e).dateUntil(t,n,r)}function kn(e){if(Ae(e)&&ne(e,E))return re(e,E);const t=Ve(e);try{return zo(t)}catch{}let n;try{({calendar:n}=Mt(t))}catch{try{({calendar:n}=Et(t))}catch{try{({calendar:n}=It(t))}catch{({calendar:n}=Ct(t))}}}return n||(n="iso8601"),zo(n)}function Nn(e){if(ne(e,E))return re(e,E);const{calendar:t}=e;return void 0===t?"iso8601":kn(t)}function xn(e,t){return zo(e)===zo(t)}function Ln(e,t,n){const r=Xt(e);r.resolveFields(t,"date");const o=r.dateToISO(t,n);return Lr(o),o}function Pn(e,t,n){const r=Xt(e);r.resolveFields(t,"year-month"),t.day=1;const o=r.dateToISO(t,n);return Hr(o),o}function Un(e,t,n){const r=Xt(e);r.resolveFields(t,"month-day");const o=r.monthDayToISOReferenceDate(t,n);return Lr(o),o}function Bn(e){if(Ae(e)&&wt(e))return re(e,$);const t=Ve(e);if("UTC"===t)return"UTC";const{tzName:n,offsetMinutes:r}=function(e){const{tzAnnotation:t,offset:n,z:r}=function(e){if(Ot.test(e))return{tzAnnotation:e,offset:void 0,z:!1};try{const{tzAnnotation:t,offset:n,z:r}=Mt(e);if(r||t||n)return{tzAnnotation:t,offset:n,z:r}}catch{}Yt(e)}(e);return t?Rt(t):r?Rt("UTC"):n?Rt(n):void 0}(t);if(void 0!==r)return mr(r);const o=hr(n);if(!o)throw new RangeError(`Unrecognized time zone ${n}`);return o.identifier}function Zn(e,t){if(e===t)return!0;const n=Rt(e).offsetMinutes,r=Rt(t).offsetMinutes;if(void 0===n&&void 0===r){const n=hr(t);if(!n)return!1;const r=hr(e);return!!r&&r.primaryIdentifier===n.primaryIdentifier}return n===r}function Fn(e,t){const n=Rt(e).offsetMinutes;return void 0!==n?6e10*n:lr(e,t)}function Hn(e){const t=e<0?"-":"+",n=Math.abs(e),r=Math.floor(n/36e11),o=Math.floor(n/6e10)%60,i=Math.floor(n/1e9)%60,a=n%1e9;return`${t}${Vn(r,o,i,a,0===i&&0===a?"minute":"auto")}`}function zn(e,t){const n=Fn(e,t);let{isoDate:{year:r,month:o,day:i},time:{hour:a,minute:s,second:c,millisecond:d,microsecond:h,nanosecond:u}}=gr(t);return $r(r,o,i,a,s,c,d,h,u+n)}function An(e,t,n){return qn(Wn(e,t),e,t,n)}function qn(t,n,r,o){const i=t.length;if(1===i)return t[0];if(i)switch(o){case"compatible":case"earlier":return t[0];case"later":return t[i-1];case"reject":throw new RangeError("multiple instants found")}if("reject"===o)throw new RangeError("multiple instants found");const a=pr(r),s=jsbi_cjs.subtract(a,l);Fr(s);const c=Fn(n,s),d=jsbi_cjs.add(a,l);Fr(d);const h=Fn(n,d)-c;switch(o){case"earlier":{const e=TimeDuration.fromComponents(0,0,0,0,0,-h),t=fo(r.time,e);return Wn(n,xt(Or(r.isoDate.year,r.isoDate.month,r.isoDate.day+t.deltaDays),t))[0]}case"compatible":case"later":{const e=TimeDuration.fromComponents(0,0,0,0,0,h),t=fo(r.time,e),o=Wn(n,xt(Or(r.isoDate.year,r.isoDate.month,r.isoDate.day+t.deltaDays),t));return o[o.length-1]}}}function Wn(t,n){if("UTC"===t)return Kr(n.isoDate),[pr(n)];const r=Rt(t).offsetMinutes;if(void 0!==r){const e=$r(n.isoDate.year,n.isoDate.month,n.isoDate.day,n.time.hour,n.time.minute-r,n.time.second,n.time.millisecond,n.time.microsecond,n.time.nanosecond);Kr(e.isoDate);const t=pr(e);return Fr(t),[t]}return Kr(n.isoDate),function(t,n){let r=pr(n),o=jsbi_cjs.subtract(r,l);jsbi_cjs.lessThan(o,xe)&&(o=r);let i=jsbi_cjs.add(r,l);jsbi_cjs.greaterThan(i,Ne)&&(i=r);const a=lr(t,o),s=lr(t,i),c=(a===s?[a]:[a,s]).map((o=>{const i=jsbi_cjs.subtract(r,jsbi_cjs.BigInt(o)),a=function(e,t){const{epochMilliseconds:n,time:{millisecond:r,microsecond:o,nanosecond:i}}=gr(t),{year:a,month:s,day:c,hour:d,minute:h,second:u}=br(e,n);return $r(a,s,c,d,h,u,r,o,i)}(t,i);if(0===jo(n,a))return Fr(i),i}));return c.filter((e=>void 0!==e))}(t,n)}function _n(t,n){const r=xt(n,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),o=Wn(t,r);if(o.length)return o[0];const i=pr(r),a=jsbi_cjs.subtract(i,l);return Fr(a),wr(t,a)}function Jn(e){let t;return t=e<0||e>9999?(e<0?"-":"+")+Ke(Math.abs(e),6):Ke(e,4),t}function Gn(e){return Ke(e,2)}function Kn(e,t){let n;if("auto"===t){if(0===e)return"";n=Ke(e,9).replace(/0+$/,"")}else{if(0===t)return"";n=Ke(e,9).slice(0,t)}return`.${n}`}function Vn(e,t,n,r,o){let i=`${Gn(e)}:${Gn(t)}`;return"minute"===o||(i+=`:${Gn(n)}`,i+=Kn(r,o)),i}function Xn(e,t,n){let r=t;void 0===r&&(r="UTC");const o=re(e,b),i=nr(zn(r,o),"iso8601",n,"never");let a="Z";return void 0!==t&&(a=fr(Fn(r,o))),`${i}${a}`}function Qn(e,t){const n=re(e,Y),r=re(e,R),o=re(e,S),i=re(e,j),a=re(e,k),s=re(e,N),c=Mr(e);let d="";0!==n&&(d+=`${Math.abs(n)}Y`),0!==r&&(d+=`${Math.abs(r)}M`),0!==o&&(d+=`${Math.abs(o)}W`),0!==i&&(d+=`${Math.abs(i)}D`);let h="";0!==a&&(h+=`${Math.abs(a)}H`),0!==s&&(h+=`${Math.abs(s)}M`);const u=TimeDuration.fromComponents(0,0,re(e,x),re(e,L),re(e,P),re(e,U));u.isZero()&&!["second","millisecond","microsecond","nanosecond"].includes(Jt(e))&&"auto"===t||(h+=`${Math.abs(u.sec)}${Kn(Math.abs(u.subsec),t)}S`);let l=`${c<0?"-":""}P${d}`;return h&&(l=`${l}T${h}`),l}function er(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);return`${Jn(n)}-${Gn(r)}-${Gn(o)}${Dt(re(e,E),t)}`}function tr({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a){return Vn(e,t,n,1e6*r+1e3*o+i,a)}function nr(e,t,n,r="auto"){const{isoDate:{year:o,month:i,day:a},time:{hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}=e;return`${Jn(o)}-${Gn(i)}-${Gn(a)}T${Vn(s,c,d,1e6*h+1e3*u+l,n)}${Dt(t,r)}`}function rr(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);let i=`${Gn(r)}-${Gn(o)}`;const a=re(e,E);"always"!==t&&"critical"!==t&&"iso8601"===a||(i=`${Jn(n)}-${i}`);const s=Dt(a,t);return s&&(i+=s),i}function or(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);let i=`${Jn(n)}-${Gn(r)}`;const a=re(e,E);"always"!==t&&"critical"!==t&&"iso8601"===a||(i+=`-${Gn(o)}`);const s=Dt(a,t);return s&&(i+=s),i}function ir(e,t,n="auto",r="auto",o="auto",i=void 0){let a=re(e,b);if(i){const{unit:e,increment:t,roundingMode:n}=i;a=Io(a,t,e,n)}const s=re(e,$),c=Fn(s,a);let d=nr(zn(s,a),"iso8601",t,"never");return"never"!==o&&(d+=fr(c)),"never"!==r&&(d+=`[${"critical"===r?"!":""}${s}]`),d+=Dt(re(e,E),n),d}function ar(e){return $t.test(e)}function sr(e){const t=_o.exec(e);if(!t)throw new RangeError(`invalid time zone offset: ${e}; must match ±HH:MM[:SS.SSSSSSSSS]`);return("-"===t[1]?-1:1)*(1e9*(60*(60*+t[2]+ +(t[3]||0))+ +(t[4]||0))+ +((t[5]||0)+"000000000").slice(0,9))}let cr;const dr=Object.assign(Object.create(null),{"/":!0,"-":!0,_:!0});function hr(e){if(void 0===cr){const e=Intl.supportedValuesOf?.("timeZone");if(e){cr=new Map;for(let t=0;t<e.length;t++){const n=e[t];cr.set(Ao(n),n)}}else cr=null}const t=Ao(e);let n=cr?.get(t);if(n)return{identifier:n,primaryIdentifier:n};try{n=ht(e).resolvedOptions().timeZone}catch{return}if("antarctica/south_pole"===t&&(n="Antarctica/McMurdo"),ze.has(e))throw new RangeError(`${e} is a legacy time zone identifier from ICU. Use ${n} instead`);const r=[...t].map(((e,n)=>0===n||dr[t[n-1]]?e.toUpperCase():e)).join("").split("/");if(1===r.length)return"gb-eire"===t?{identifier:"GB-Eire",primaryIdentifier:n}:{identifier:t.length<=3||/[-0-9]/.test(t)?t.toUpperCase():r[0],primaryIdentifier:n};if("Etc"===r[0])return{identifier:`Etc/${["Zulu","Greenwich","Universal"].includes(r[1])?r[1]:r[1].toUpperCase()}`,primaryIdentifier:n};if("Us"===r[0])return{identifier:`US/${r[1]}`,primaryIdentifier:n};const o=new Map([["Act","ACT"],["Lhi","LHI"],["Nsw","NSW"],["Dar_Es_Salaam","Dar_es_Salaam"],["Port_Of_Spain","Port_of_Spain"],["Port-Au-Prince","Port-au-Prince"],["Isle_Of_Man","Isle_of_Man"],["Comodrivadavia","ComodRivadavia"],["Knox_In","Knox_IN"],["Dumontdurville","DumontDUrville"],["Mcmurdo","McMurdo"],["Denoronha","DeNoronha"],["Easterisland","EasterIsland"],["Bajanorte","BajaNorte"],["Bajasur","BajaSur"]]);return r[1]=o.get(r[1])??r[1],r.length>2&&(r[2]=o.get(r[2])??r[2]),{identifier:r.join("/"),primaryIdentifier:n}}function ur(e,t){const{year:n,month:r,day:o,hour:i,minute:a,second:s}=br(e,t);let c=t%1e3;return c<0&&(c+=1e3),1e6*(yr({isoDate:{year:n,month:r,day:o},time:{hour:i,minute:a,second:s,millisecond:c}})-t)}function lr(e,t){return ur(e,No(t,"floor"))}function mr(e){const t=e<0?"-":"+",n=Math.abs(e);return`${t}${Vn(Math.floor(n/60),n%60,0,0,"minute")}`}function fr(e){return mr(Eo(e,je,"halfExpand")/6e10)}function yr({isoDate:{year:e,month:t,day:n},time:{hour:r,minute:o,second:i,millisecond:a}}){const s=e%400,c=(e-s)/400,d=new Date;return d.setUTCHours(r,o,i,a),d.setUTCFullYear(s,t-1,n),d.getTime()+Ue*c}function pr(t){const n=yr(t),r=1e3*t.time.microsecond+t.time.nanosecond;return jsbi_cjs.add(xo(n),jsbi_cjs.BigInt(r))}function gr(t){let n=No(t,"trunc"),r=jsbi_cjs.toNumber(jsbi_cjs.remainder(t,c));r<0&&(r+=1e6,n-=1);const o=Math.floor(r/1e3)%1e3,i=r%1e3,a=new Date(n);return{epochMilliseconds:n,isoDate:{year:a.getUTCFullYear(),month:a.getUTCMonth()+1,day:a.getUTCDate()},time:{hour:a.getUTCHours(),minute:a.getUTCMinutes(),second:a.getUTCSeconds(),millisecond:a.getUTCMilliseconds(),microsecond:o,nanosecond:i}}}function wr(e,t){if("UTC"===e)return null;const n=No(t,"floor");if(n<Fe)return wr(e,xo(Fe));const r=Date.now(),o=Math.max(n,r)+366*Re*3;let i=n,a=ur(e,i),s=i,c=a;for(;a===c&&i<o;){if(s=i+2*Re*7,s>ke)return null;c=ur(e,s),a===c&&(i=s)}return a===c?null:xo(Jo((t=>ur(e,t)),i,s,a,c))}function vr(t,n){if("UTC"===t)return null;const r=No(n,"ceil"),o=Date.now(),i=o+366*Re*3;if(r>i){const n=vr(t,xo(i));if(null===n||jsbi_cjs.lessThan(n,xo(o)))return n}if("Africa/Casablanca"===t||"Africa/El_Aaiun"===t){const e=Date.UTC(2088,0,1);if(e<r)return vr(t,xo(e))}let a=r-1;if(a<Fe)return null;let s=ur(t,a),c=a,d=s;for(;s===d&&a>Fe;){if(c=a-2*Re*7,c<Fe)return null;d=ur(t,c),s===d&&(a=c)}return s===d?null:xo(Jo((e=>ur(t,e)),c,a,d,s))}function br(e,t){return function(e){const t=e.split(/[^\w]+/);if(7!==t.length)throw new RangeError(`expected 7 parts in "${e}`);const n=+t[0],r=+t[1];let o=+t[2];const i=t[3];if("b"===i[0]||"B"===i[0])o=1-o;else if("a"!==i[0]&&"A"!==i[0])throw new RangeError(`Unknown era ${i} in "${e}`);const a="24"===t[4]?0:+t[4],s=+t[5],c=+t[6];if(!(Number.isFinite(o)&&Number.isFinite(n)&&Number.isFinite(r)&&Number.isFinite(a)&&Number.isFinite(s)&&Number.isFinite(c)))throw new RangeError(`Invalid number in "${e}`);return{year:o,month:n,day:r,hour:a,minute:s,second:c}}(ht(e).format(t))}function Dr(e){return void 0!==e&&!(e%4!=0||e%100==0&&e%400!=0)}function Tr(e,t){return{standard:[31,28,31,30,31,30,31,31,30,31,30,31],leapyear:[31,29,31,30,31,30,31,31,30,31,30,31]}[Dr(e)?"leapyear":"standard"][t-1]}function Mr(e){const t=[re(e,Y),re(e,R),re(e,S),re(e,j),re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U)];for(let e=0;e<t.length;e++){const n=t[e];if(0!==n)return n<0?-1:1}return 0}function Er(e){const t=["years","months","weeks","days"];for(let n=0;n<t.length;n++){const r=e[t[n]];if(0!==r)return r<0?-1:1}return 0}function Ir(e){const t=Er(e.date);return 0!==t?t:e.time.sign()}function Cr(e,t){let n=e,r=t;if(!Number.isFinite(n)||!Number.isFinite(r))throw new RangeError("infinity is out of range");return r-=1,n+=Math.floor(r/12),r%=12,r<0&&(r+=12),r+=1,{year:n,month:r}}function Or(e,t,n){let r=e,o=t,i=n;if(!Number.isFinite(i))throw new RangeError("infinity is out of range");({year:r,month:o}=Cr(r,o));const a=146097;if(Math.abs(i)>a){const e=Math.trunc(i/a);r+=400*e,i-=e*a}let s=0,c=o>2?r:r-1;for(;s=Dr(c)?366:365,i<-s;)r-=1,c-=1,i+=s;for(c+=1;s=Dr(c)?366:365,i>s;)r+=1,c+=1,i-=s;for(;i<1;)({year:r,month:o}=Cr(r,o-1)),i+=Tr(r,o);for(;i>Tr(r,o);)i-=Tr(r,o),({year:r,month:o}=Cr(r,o+1));return{year:r,month:o,day:i}}function $r(e,t,n,r,o,i,a,s,c){const d=Yr(r,o,i,a,s,c);return xt(Or(e,t,n+d.deltaDays),d)}function Yr(e,t,n,r,o,i){let a,s=e,c=t,d=n,h=r,u=o,l=i;({div:a,mod:l}=de(l,3)),u+=a,l<0&&(u-=1,l+=1e3),({div:a,mod:u}=de(u,3)),h+=a,u<0&&(h-=1,u+=1e3),d+=Math.trunc(h/1e3),h%=1e3,h<0&&(d-=1,h+=1e3),c+=Math.trunc(d/60),d%=60,d<0&&(c-=1,d+=60),s+=Math.trunc(c/60),c%=60,c<0&&(s-=1,c+=60);let m=Math.trunc(s/24);return s%=24,s<0&&(m-=1,s+=24),m+=0,s+=0,c+=0,d+=0,h+=0,u+=0,l+=0,{deltaDays:m,hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}function Rr(e,t){const n=Nt(e,0);if(0===Er(n))return e.days;const r=re(t,D),o=Sn(re(t,E),r,n,"constrain"),i=Gr(r.year,r.month-1,r.day),a=Gr(o.year,o.month-1,o.day)-i;return e.days+a}function Sr(e){return new(ce("%Temporal.Duration%"))(-re(e,Y),-re(e,R),-re(e,S),-re(e,j),-re(e,k),-re(e,N),-re(e,x),-re(e,L),-re(e,P),-re(e,U))}function jr(e,t,n){return Math.min(n,Math.max(t,e))}function kr(e,t,n){const r=jr(t,1,12);return{year:e,month:r,day:jr(n,1,Tr(e,r))}}function Nr(e,t,n){if(e<t||e>n)throw new RangeError(`value out of range: ${t} <= ${e} <= ${n}`)}function xr(e,t,n){Nr(t,1,12),Nr(n,1,Tr(e,t))}function Lr(e){Br(xt(e,{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}))}function Pr(e,t,n,r,o,i){Nr(e,0,23),Nr(t,0,59),Nr(n,0,59),Nr(r,0,999),Nr(o,0,999),Nr(i,0,999)}function Ur(e,t,n,r,o,i,a,s,c){xr(e,t,n),Pr(r,o,i,a,s,c)}function Br(t){const n=pr(t);(jsbi_cjs.lessThan(n,Le)||jsbi_cjs.greaterThan(n,Pe))&&Fr(n)}function Zr(e){pr(e)}function Fr(t){if(jsbi_cjs.lessThan(t,xe)||jsbi_cjs.greaterThan(t,Ne))throw new RangeError("date/time value is outside of supported range")}function Hr({year:e,month:t}){Nr(e,Be,Ze),e===Be?Nr(t,4,12):e===Ze&&Nr(t,1,9)}function zr(e,t,n,r,o,i,a,s,c,d){let h=0;const u=[e,t,n,r,o,i,a,s,c,d];for(let e=0;e<u.length;e++){const t=u[e];if(t===1/0||t===-1/0)throw new RangeError("infinite values not allowed as duration fields");if(0!==t){const e=t<0?-1:1;if(0!==h&&e!==h)throw new RangeError("mixed-sign values not allowed as duration fields");h=e}}if(Math.abs(e)>=2**32||Math.abs(t)>=2**32||Math.abs(n)>=2**32)throw new RangeError("years, months, and weeks must be < 2³²");const l=de(s,3),m=de(c,6),f=de(d,9),y=de(1e6*l.mod+1e3*m.mod+f.mod,9).div,p=86400*r+3600*o+60*i+a+l.div+m.div+f.div+y;if(!Number.isSafeInteger(p))throw new RangeError("total of duration time units cannot exceed 9007199254740991.999999999 s")}function Ar(e){return{date:{years:re(e,Y),months:re(e,R),weeks:re(e,S),days:re(e,j)},time:TimeDuration.fromComponents(re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U))}}function qr(e){const t=TimeDuration.fromComponents(re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U)).add24HourDays(re(e,j));return{date:{years:re(e,Y),months:re(e,R),weeks:re(e,S),days:0},time:t}}function Wr(e){const t=qr(e),n=Math.trunc(t.time.sec/86400);return zr(t.date.years,t.date.months,t.date.weeks,n,0,0,0,0,0,0),{...t.date,days:n}}function _r(e,t){const n=e.time.sign();let r=e.time.abs().subsec,o=0,i=0,a=e.time.abs().sec,s=0,c=0,d=0;switch(t){case"year":case"month":case"week":case"day":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60,c=Math.trunc(s/60),s%=60,d=Math.trunc(c/24),c%=24;break;case"hour":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60,c=Math.trunc(s/60),s%=60;break;case"minute":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60;break;case"second":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3;break;case"millisecond":o=Math.trunc(r/1e3),r%=1e3,i=he(a,3,Math.trunc(o/1e3)),o%=1e3,a=0;break;case"microsecond":o=he(a,6,Math.trunc(r/1e3)),r%=1e3,a=0;break;case"nanosecond":r=he(a,9,r),a=0}return new(ce("%Temporal.Duration%"))(e.date.years,e.date.months,e.date.weeks,e.date.days+n*d,n*c,n*s,n*a,n*i,n*o,n*r)}function Jr(e,t){return Er(e),t.sign(),{date:e,time:t}}function Gr(e,t,n){return yr({isoDate:{year:e,month:t+1,day:n},time:{hour:0,minute:0,second:0,millisecond:0}})/Re}function Kr({year:e,month:t,day:n}){if(Math.abs(Gr(e,t-1,n))>1e8)throw new RangeError("date/time value is outside the supported range")}function Vr(e,t){const n=t.hour-e.hour,r=t.minute-e.minute,o=t.second-e.second,i=t.millisecond-e.millisecond,a=t.microsecond-e.microsecond,s=t.nanosecond-e.nanosecond;return TimeDuration.fromComponents(n,r,o,i,a,s)}function Xr(e,t,n,r,o){let i=TimeDuration.fromEpochNsDiff(t,e);return i=$o(i,n,r,o),Jr({years:0,months:0,weeks:0,days:0},i)}function Qr(e,t,n,r){Zr(e),Zr(t);let o=Vr(e.time,t.time);const i=o.sign(),a=Ro(e.isoDate,t.isoDate);let s=t.isoDate;a===i&&(s=Or(s.year,s.month,s.day+i),o=o.add24HourDays(-i));const c=Gt("day",r),d=jn(n,e.isoDate,s,c);return r!==c&&(o=o.add24HourDays(d.days),d.days=0),Jr(d,o)}function eo(n,r,o,i,a){const s=jsbi_cjs.subtract(r,n);if(jsbi_cjs.equal(s,t))return{date:{years:0,months:0,weeks:0,days:0},time:TimeDuration.ZERO};const c=jsbi_cjs.lessThan(s,t)?-1:1,d=zn(o,n),h=zn(o,r);let u,l=0,m=1===c?2:1,f=Vr(d.time,h.time);for(f.sign()===-c&&l++;l<=m;l++){u=xt(Or(h.isoDate.year,h.isoDate.month,h.isoDate.day-l*c),d.time);const e=An(o,u,"compatible");if(f=TimeDuration.fromEpochNsDiff(r,e),f.sign()!==-c)break}const y=Gt("day",a);return Jr(jn(i,d.isoDate,u.isoDate,y),f)}function to(t,n,r,o,i,a,s,c,d){let h,u,l,m,f=n;switch(c){case"year":{const e=Eo(f.date.years,s,"trunc");h=e,u=e+s*t,l={years:h,months:0,weeks:0,days:0},m={...l,years:u};break}case"month":{const e=Eo(f.date.months,s,"trunc");h=e,u=e+s*t,l=Nt(f.date,0,0,h),m=Nt(f.date,0,0,u);break}case"week":{const e=Nt(f.date,0,0),n=Sn(a,o.isoDate,e,"constrain"),r=jn(a,n,Or(n.year,n.month,n.day+f.date.days),"week"),i=Eo(f.date.weeks+r.weeks,s,"trunc");h=i,u=i+s*t,l=Nt(f.date,0,h),m=Nt(f.date,0,u);break}case"day":{const e=Eo(f.date.days,s,"trunc");h=e,u=e+s*t,l=Nt(f.date,h),m=Nt(f.date,u);break}}const y=Sn(a,o.isoDate,l,"constrain"),p=Sn(a,o.isoDate,m,"constrain");let g,w;const v=xt(y,o.time),b=xt(p,o.time);i?(g=An(i,v,"compatible"),w=An(i,b,"compatible")):(g=pr(v),w=pr(b));const D=TimeDuration.fromEpochNsDiff(r,g),T=TimeDuration.fromEpochNsDiff(w,g),M=ue(d,t<0?"negative":"positive"),E=D.add(D).abs().subtract(T.abs()).sign(),I=Math.abs(h)/s%2==0,C=D.isZero()?Math.abs(h):D.cmp(T)?le(Math.abs(h),Math.abs(u),E,I,M):Math.abs(u),O=new TimeDuration(jsbi_cjs.add(jsbi_cjs.multiply(T.totalNs,jsbi_cjs.BigInt(h)),jsbi_cjs.multiply(D.totalNs,jsbi_cjs.BigInt(s*t)))).fdiv(T.totalNs),$=C===Math.abs(u);return f={date:$?m:l,time:TimeDuration.ZERO},{nudgeResult:{duration:f,nudgedEpochNs:$?w:g,didExpandCalendarUnit:$},total:O}}function no(t,n,r,o,i,a,s,c,d){let h=t;const u=Kt(c)||o&&"day"===c,l=Ir(h)<0?-1:1;let m;return u?({nudgeResult:m}=to(l,h,n,r,o,i,s,c,d)):m=o?function(t,n,r,o,i,a,s,c){let d=n;const h=Sn(i,r.isoDate,d.date,"constrain"),u=xt(h,r.time),l=xt(Or(h.year,h.month,h.day+t),r.time),m=An(o,u,"compatible"),f=An(o,l,"compatible"),y=TimeDuration.fromEpochNsDiff(f,m);if(y.sign()!==t)throw new RangeError("time zone returned inconsistent Instants");const p=jsbi_cjs.BigInt(at[s]*a);let g=d.time.round(p,c);const w=g.subtract(y),v=w.sign()!==-t;let b,D;return v?(b=t,g=w.round(p,c),D=g.addToEpochNs(f)):(b=0,D=g.addToEpochNs(m)),{duration:Jr(Nt(d.date,d.date.days+b),g),nudgedEpochNs:D,didExpandCalendarUnit:v}}(l,h,r,o,i,s,c,d):function(t,n,r,o,i,a){let s=t;const c=s.time.add24HourDays(s.date.days),d=c.round(jsbi_cjs.BigInt(o*at[i]),a),h=d.subtract(c),{quotient:u}=c.divmod(Se),{quotient:l}=d.divmod(Se),m=Math.sign(l-u)===c.sign(),f=h.addToEpochNs(n);let y=0,p=d;return"date"===Vt(r)&&(y=l,p=d.add(TimeDuration.fromComponents(24*-l,0,0,0,0,0))),{duration:{date:Nt(s.date,y),time:p},nudgedEpochNs:f,didExpandCalendarUnit:m}}(h,n,a,s,c,d),h=m.duration,m.didExpandCalendarUnit&&"week"!==c&&(h=function(e,t,n,r,o,i,a,s){let c=t;if(s===a)return c;const d=it.indexOf(a);for(let t=it.indexOf(s)-1;t>=d;t--){const s=it[t];if("week"===s&&"week"!==a)continue;let d;switch(s){case"year":d={years:c.date.years+e,months:0,weeks:0,days:0};break;case"month":{const t=c.date.months+e;d=Nt(c.date,0,0,t);break}case"week":{const t=c.date.weeks+e;d=Nt(c.date,0,t);break}}const h=xt(Sn(i,r.isoDate,d,"constrain"),r.time);let u;if(u=o?An(o,h,"compatible"):pr(h),p(n,u)===-e)break;c={date:d,time:TimeDuration.ZERO}}return c}(l,h,m.nudgedEpochNs,r,o,i,a,Gt(c,"day"))),h}function ro(e,t,n,r,o,i){return Kt(i)||r&&"day"===i?to(Ir(e)<0?-1:1,e,t,n,r,o,1,i,"trunc").total:Yo(e.time.add24HourDays(e.date.days),i)}function oo(e,t,n,r,o,i,a){if(0==jo(e,t))return{date:{years:0,months:0,weeks:0,days:0},time:TimeDuration.ZERO};Br(e),Br(t);const s=Qr(e,t,n,r);return"nanosecond"===i&&1===o?s:no(s,pr(t),e,null,n,r,o,i,a)}function io(e,t,n,r,o,i,a,s){if("time"===Vt(o))return Xr(e,t,i,a,s);const c=eo(e,t,n,r,o);return"nanosecond"===a&&1===i?c:no(c,t,zn(n,e),n,r,o,i,a,s)}function ao(e,t,n,r,o,i){const a=nt.reduce(((e,t)=>{const o=t[0],i=t[1],a=t[2];return"datetime"!==n&&a!==n||r.includes(i)||e.push(i,o),e}),[]);let s=Wt(t,"largestUnit",n,"auto");if(r.includes(s))throw new RangeError(`largestUnit must be one of ${a.join(", ")}, not ${s}`);const c=Ft(t);let d=Ut(t,"trunc");"since"===e&&(d=function(e){switch(e){case"ceil":return"floor";case"floor":return"ceil";case"halfCeil":return"halfFloor";case"halfFloor":return"halfCeil";default:return e}}(d));const h=Wt(t,"smallestUnit",n,o);if(r.includes(h))throw new RangeError(`smallestUnit must be one of ${a.join(", ")}, not ${h}`);const u=Gt(i,h);if("auto"===s&&(s=u),Gt(s,h)!==s)throw new RangeError(`largestUnit ${s} cannot be smaller than smallestUnit ${h}`);const l={hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[h];return void 0!==l&&Ht(c,l,!1),{largestUnit:s,roundingIncrement:c,roundingMode:d,smallestUnit:h}}function so(e,t,n,r){const o=cn(n),i=ao(e,Zo(r),"time",[],"nanosecond","second");let a=_r(Xr(re(t,b),re(o,b),i.roundingIncrement,i.smallestUnit,i.roundingMode),i.largestUnit);return"since"===e&&(a=Sr(a)),a}function co(e,t,n,r){const o=rn(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between dates of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"date",[],"day","day"),c=ce("%Temporal.Duration%"),d=re(t,D),h=re(o,D);if(0===Ro(d,h))return new c;let u={date:jn(i,d,h,s.largestUnit),time:TimeDuration.ZERO};if("day"!==s.smallestUnit||1!==s.roundingIncrement){const e=xt(d,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});u=no(u,pr(xt(h,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0})),e,null,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode)}let l=_r(u,"day");return"since"===e&&(l=Sr(l)),l}function ho(e,t,n,r){const o=an(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between dates of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"datetime",[],"nanosecond","day"),c=ce("%Temporal.Duration%"),d=re(t,T),h=re(o,T);if(0===jo(d,h))return new c;let u=_r(oo(d,h,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode),s.largestUnit);return"since"===e&&(u=Sr(u)),u}function uo(e,t,n,r){const o=hn(n),i=ao(e,Zo(r),"time",[],"nanosecond","hour");let a=Vr(re(t,M),re(o,M));a=$o(a,i.roundingIncrement,i.smallestUnit,i.roundingMode);let s=_r(Jr({years:0,months:0,weeks:0,days:0},a),i.largestUnit);return"since"===e&&(s=Sr(s)),s}function lo(e,t,n,r){const o=ln(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between months of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"date",["week","day"],"month","year"),c=ce("%Temporal.Duration%");if(0==Ro(re(t,D),re(o,D)))return new c;const d=en(i,re(t,D),"year-month");d.day=1;const h=Ln(i,d,"constrain"),u=en(i,re(o,D),"year-month");u.day=1;const l=Ln(i,u,"constrain");let m={date:Nt(jn(i,h,l,s.largestUnit),0,0),time:TimeDuration.ZERO};if("month"!==s.smallestUnit||1!==s.roundingIncrement){const e=xt(h,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});m=no(m,pr(xt(l,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0})),e,null,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode)}let f=_r(m,"day");return"since"===e&&(f=Sr(f)),f}function mo(t,n,r,o){const i=fn(r),a=re(n,E),s=re(i,E);if(!xn(a,s))throw new RangeError(`cannot compute difference between dates of ${a} and ${s} calendars`);const c=ao(t,Zo(o),"datetime",[],"nanosecond","hour"),d=re(n,b),h=re(i,b),u=ce("%Temporal.Duration%");let l;if("date"!==Vt(c.largestUnit))l=_r(Xr(d,h,c.roundingIncrement,c.smallestUnit,c.roundingMode),c.largestUnit);else{const t=re(n,$);if(!Zn(t,re(i,$)))throw new RangeError("When calculating difference between time zones, largestUnit must be 'hours' or smaller because day lengths can vary between time zones due to DST or time zone offset changes.");if(jsbi_cjs.equal(d,h))return new u;l=_r(io(d,h,t,a,c.largestUnit,c.roundingIncrement,c.smallestUnit,c.roundingMode),"hour")}return"since"===t&&(l=Sr(l)),l}function fo({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a){let s=n,c=i;return s+=a.sec,c+=a.subsec,Yr(e,t,s,r,o,c)}function yo(e,t){const n=t.addToEpochNs(e);return Fr(n),n}function po(e,t,n,r,o="constrain"){if(0===Er(r.date))return yo(e,r.time);const i=zn(t,e);return yo(An(t,xt(Sn(n,i.isoDate,r.date,o),i.time),"compatible"),r.time)}function go(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=Gt(Jt(t),Jt(r));if(Kt(o))throw new RangeError("For years, months, or weeks arithmetic, use date arithmetic relative to a starting point");const i=qr(t),a=qr(r);return _r(Jr({years:0,months:0,weeks:0,days:0},i.time.add(a.time)),o)}function wo(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=Jt(r);if("date"===Vt(o))throw new RangeError(`Duration field ${o} not supported by Temporal.Instant. Try Temporal.ZonedDateTime instead.`);const i=qr(r);return Cn(yo(re(t,b),i.time))}function vo(e,t,n,r){const o=re(t,E);let i=sn(n);"subtract"===e&&(i=Sr(i));const a=Wr(i),s=Lt(Zo(r));return pn(Sn(o,re(t,D),a,s),o)}function bo(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=re(t,E),s=qr(o),c=re(t,T),d=fo(c.time,s.time),h=Nt(s.date,d.deltaDays);return zr(h.years,h.months,h.weeks,h.days,0,0,0,0,0,0),wn(xt(Sn(a,c.isoDate,h,i),d),a)}function Do(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=qr(r),{hour:i,minute:a,second:s,millisecond:c,microsecond:d,nanosecond:h}=fo(re(t,M),o.time);return Tn(jt(i,a,s,c,d,h,"reject"))}function To(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=Mr(o),s=re(t,E),c=en(s,re(t,D),"year-month");c.day=1;let d=Ln(s,c,"constrain");if(a<0){const e=Sn(s,d,{months:1},"constrain");d=Or(e.year,e.month,e.day-1)}const h=Wr(o);return Lr(d),En(Pn(s,en(s,Sn(s,d,h,i),"year-month"),i),s)}function Mo(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=re(t,$),s=re(t,E),c=Ar(o);return $n(po(re(t,b),a,s,c,i),a,s)}function Eo(e,t,n){const r=Math.trunc(e/t),o=e%t,i=e<0?"negative":"positive",a=Math.abs(r),s=a+1,c=Bo(Math.abs(2*o)-t),d=a%2==0,h=ue(n,i),u=0===o?a:le(a,s,c,d,h);return t*("positive"===i?u:-u)}function Io(o,i,a,s){const c=at[a]*i;return function(o,i,a){const s=m(o),c=m(i),d=jsbi_cjs.divide(s,c),h=jsbi_cjs.remainder(s,c),u=ue(a,"positive");let l,g;jsbi_cjs.lessThan(s,t)?(l=jsbi_cjs.subtract(d,n),g=d):(l=d,g=jsbi_cjs.add(d,n));const w=p(y(jsbi_cjs.multiply(h,r)),c)*(jsbi_cjs.lessThan(s,t)?-1:1)+0,v=jsbi_cjs.equal(h,t)?d:le(l,g,w,f(l),u);return jsbi_cjs.multiply(v,c)}(o,jsbi_cjs.BigInt(c),s)}function Co(e,t,n,r){Zr(e);const{year:o,month:i,day:a}=e.isoDate,s=Oo(e.time,t,n,r);return xt(Or(o,i,a+s.deltaDays),s)}function Oo({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a,s,c){let d;switch(s){case"day":case"hour":d=1e3*(1e3*(1e3*(60*(60*e+t)+n)+r)+o)+i;break;case"minute":d=1e3*(1e3*(1e3*(60*t+n)+r)+o)+i;break;case"second":d=1e3*(1e3*(1e3*n+r)+o)+i;break;case"millisecond":d=1e3*(1e3*r+o)+i;break;case"microsecond":d=1e3*o+i;break;case"nanosecond":d=i}const h=at[s],u=Eo(d,h*a,c)/h;switch(s){case"day":return{deltaDays:u,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0};case"hour":return Yr(u,0,0,0,0,0);case"minute":return Yr(e,u,0,0,0,0);case"second":return Yr(e,t,u,0,0,0);case"millisecond":return Yr(e,t,n,u,0,0);case"microsecond":return Yr(e,t,n,r,u,0);case"nanosecond":return Yr(e,t,n,r,o,u);default:throw new Error(`Invalid unit ${s}`)}}function $o(t,n,r,o){const i=at[r];return t.round(jsbi_cjs.BigInt(i*n),o)}function Yo(t,n){const r=at[n];return t.fdiv(jsbi_cjs.BigInt(r))}function Ro(e,t){return e.year!==t.year?Bo(e.year-t.year):e.month!==t.month?Bo(e.month-t.month):e.day!==t.day?Bo(e.day-t.day):0}function So(e,t){return e.hour!==t.hour?Bo(e.hour-t.hour):e.minute!==t.minute?Bo(e.minute-t.minute):e.second!==t.second?Bo(e.second-t.second):e.millisecond!==t.millisecond?Bo(e.millisecond-t.millisecond):e.microsecond!==t.microsecond?Bo(e.microsecond-t.microsecond):e.nanosecond!==t.nanosecond?Bo(e.nanosecond-t.nanosecond):0}function jo(e,t){const n=Ro(e.isoDate,t.isoDate);return 0!==n?n:So(e.time,t.time)}function ko(e){const t=Lo(e);return void 0!==globalThis.BigInt?globalThis.BigInt(t.toString(10)):t}function No(t,n){const r=m(t),{quotient:o,remainder:i}=g(r,c);let a=jsbi_cjs.toNumber(o);return"floor"===n&&jsbi_cjs.toNumber(i)<0&&(a-=1),"ceil"===n&&jsbi_cjs.toNumber(i)>0&&(a+=1),a}function xo(t){if(!Number.isInteger(t))throw new RangeError("epoch milliseconds must be an integer");return jsbi_cjs.multiply(jsbi_cjs.BigInt(t),c)}function Lo(t){let n=t;if("object"==typeof t){const e=t[Symbol.toPrimitive];e&&"function"==typeof e&&(n=e.call(t,"number"))}if("number"==typeof n)throw new TypeError("cannot convert number to bigint");return"bigint"==typeof n?jsbi_cjs.BigInt(n.toString(10)):jsbi_cjs.BigInt(n)}const Po=(()=>{let t=jsbi_cjs.BigInt(Date.now()%1e6);return()=>{const n=Date.now(),r=jsbi_cjs.BigInt(n),o=jsbi_cjs.add(xo(n),t);return t=jsbi_cjs.remainder(r,c),jsbi_cjs.greaterThan(o,Ne)?Ne:jsbi_cjs.lessThan(o,xe)?xe:o}})();function Uo(){return(new Intl.DateTimeFormat).resolvedOptions().timeZone}function Bo(e){return e<0?-1:e>0?1:e}function Zo(e){if(void 0===e)return Object.create(null);if(Ae(e)&&null!==e)return e;throw new TypeError("Options parameter must be an object, not "+(null===e?"null":typeof e))}function Fo(e,t){const n=Object.create(null);return n[e]=t,n}function Ho(e,t,n,r){let o=e[t];if(void 0!==o){if(o=We(o),!n.includes(o))throw new RangeError(`${t} must be one of ${n.join(", ")}, not ${o}`);return o}if(r===qt)throw new RangeError(`${t} option is required`);return r}function zo(e){const t=Ao(e);if(!He.includes(Ao(t)))throw new RangeError(`invalid calendar identifier ${t}`);switch(t){case"ethiopic-amete-alem":return"ethioaa";case"islamicc":return"islamic-civil"}return t}function Ao(e){let t="";for(let n=0;n<e.length;n++){const r=e.charCodeAt(n);t+=r>=65&&r<=90?String.fromCharCode(r+32):String.fromCharCode(r)}return t}function qo(e){throw new TypeError(`Do not use built-in arithmetic operators with Temporal objects. When comparing, use ${"PlainMonthDay"===e?"Temporal.PlainDate.compare(obj1.toPlainDate(year), obj2.toPlainDate(year))":`Temporal.${e}.compare(obj1, obj2)`}, not obj1 > obj2. When coercing to strings, use \`\${obj}\` or String(obj), not '' + obj. When coercing to numbers, use properties or methods of the object, not \`+obj\`. When concatenating with strings, use \`\${str}\${obj}\` or str.concat(obj), not str + obj. In React, coerce to a string before rendering a Temporal object.`)}const Wo=new RegExp(`^${be.source}$`),_o=new RegExp(`^${/([+-])([01][0-9]|2[0-3])(?::?([0-5][0-9])(?::?([0-5][0-9])(?:[.,](\d{1,9}))?)?)?/.source}$`);function Jo(e,t,n,r=e(t),o=e(n)){let i=t,a=n,s=r,c=o;for(;a-i>1;){let t=Math.trunc((i+a)/2);const n=e(t);n===s?(i=t,s=n):n===c&&(a=t,c=n)}return a}function Go(e){return[...e]}function Ko(e,t){if("gregory"!==e&&"iso8601"!==e)return;const n=Xo[e];let r=t.year;const{dayOfWeek:o,dayOfYear:i,daysInYear:a}=n.isoToDate(t,{dayOfWeek:!0,dayOfYear:!0,daysInYear:!0}),s=n.getFirstDayOfWeek(),c=n.getMinimalDaysInFirstWeek();let d=(o+7-s)%7,h=(o-i+7001-s)%7,u=Math.floor((i-1+h)/7);if(7-h>=c&&++u,0==u)u=function(e,t,n,r){let o=(r-e-n+1)%7;o<0&&(o+=7);let i=Math.floor((n+o-1)/7);return 7-o>=t&&++i,i}(s,c,i+n.isoToDate(n.dateAdd(t,{years:-1},"constrain"),{daysInYear:!0}).daysInYear,o),r--;else if(i>=a-5){let e=(d+a-i)%7;e<0&&(e+=7),6-e>=c&&i+7-d>a&&(u=1,r++)}return{week:u,year:r}}function Vo(e,t,n,r,o){if(t!==o.year){if(e*(t-o.year)>0)return!0}else if(n!==o.month){if(e*(n-o.month)>0)return!0}else if(r!==o.day&&e*(r-o.day)>0)return!0;return!1}const Xo={};function Qo(e){if(!e.startsWith("M"))throw new RangeError(`Invalid month code: ${e}.  Month codes must start with M.`);const t=+e.slice(1);if(Number.isNaN(t))throw new RangeError(`Invalid month code: ${e}`);return t}function ei(e,t=!1){return`M${`${e}`.padStart(2,"0")}${t?"L":""}`}function ti(e,t=void 0,n=12){let{month:r,monthCode:o}=e;if(void 0===o){if(void 0===r)throw new TypeError("Either month or monthCode are required");"reject"===t&&Nr(r,1,n),"constrain"===t&&(r=jr(r,1,n)),o=ei(r)}else{const e=Qo(o);if(o!==ei(e))throw new RangeError(`Invalid month code: ${o}`);if(void 0!==r&&r!==e)throw new RangeError(`monthCode ${o} and month ${r} must match if both are present`);if(r=e,r<1||r>n)throw new RangeError(`Invalid monthCode: ${o}`)}return{...e,month:r,monthCode:o}}Xo.iso8601={resolveFields(e,t){if(("date"===t||"year-month"===t)&&void 0===e.year)throw new TypeError("year is required");if(("date"===t||"month-day"===t)&&void 0===e.day)throw new TypeError("day is required");Object.assign(e,ti(e))},dateToISO:(e,t)=>St(e.year,e.month,e.day,t),monthDayToISOReferenceDate(e,t){const{month:n,day:r}=St(e.year??1972,e.month,e.day,t);return{month:n,day:r,year:1972}},extraFields:()=>[],fieldKeysToIgnore(e){const t=new Set;for(let n=0;n<e.length;n++){const r=e[n];t.add(r),"month"===r?t.add("monthCode"):"monthCode"===r&&t.add("month")}return Go(t)},dateAdd(e,{years:t=0,months:n=0,weeks:r=0,days:o=0},i){let{year:a,month:s,day:c}=e;return a+=t,s+=n,({year:a,month:s}=Cr(a,s)),({year:a,month:s,day:c}=St(a,s,c,i)),c+=o+7*r,Or(a,s,c)},dateUntil(e,t,n){const r=-Ro(e,t);if(0===r)return{years:0,months:0,weeks:0,days:0};let o,i=0,a=0;if("year"===n||"month"===n){let s=t.year-e.year;for(0!==s&&(s-=r);!Vo(r,e.year+s,e.month,e.day,t);)i=s,s+=r;let c=r;for(o=Cr(e.year+i,e.month+c);!Vo(r,o.year,o.month,e.day,t);)a=c,c+=r,o=Cr(o.year,o.month+r);"month"===n&&(a+=12*i,i=0)}o=Cr(e.year+i,e.month+a);const s=kr(o.year,o.month,e.day);let c=0,d=Gr(t.year,t.month-1,t.day)-Gr(s.year,s.month-1,s.day);return"week"===n&&(c=Math.trunc(d/7),d%=7),{years:i,months:a,weeks:c,days:d}},isoToDate({year:e,month:t,day:n},r){const o={era:void 0,eraYear:void 0,year:e,month:t,day:n,daysInWeek:7,monthsInYear:12};if(r.monthCode&&(o.monthCode=ei(t)),r.dayOfWeek){const r=t+(t<3?10:-2),i=e-(t<3?1:0),a=Math.floor(i/100),s=i-100*a,c=(n+Math.floor(2.6*r-.2)+(s+Math.floor(s/4))+(Math.floor(a/4)-2*a))%7;o.dayOfWeek=c+(c<=0?7:0)}if(r.dayOfYear){let r=n;for(let n=t-1;n>0;n--)r+=Tr(e,n);o.dayOfYear=r}return r.weekOfYear&&(o.weekOfYear=Ko("iso8601",{year:e,month:t,day:n})),r.daysInMonth&&(o.daysInMonth=Tr(e,t)),(r.daysInYear||r.inLeapYear)&&(o.inLeapYear=Dr(e),o.daysInYear=o.inLeapYear?366:365),o},getFirstDayOfWeek:()=>1,getMinimalDaysInFirstWeek:()=>4};class OneObjectCache{constructor(e){if(this.map=new Map,this.calls=0,this.hits=0,this.misses=0,void 0!==e){let t=0;for(const n of e.map.entries()){if(++t>OneObjectCache.MAX_CACHE_ENTRIES)break;this.map.set(...n)}}}get(e){const t=this.map.get(e);return t&&(this.hits++,this.report()),this.calls++,t}set(e,t){this.map.set(e,t),this.misses++,this.report()}report(){}setObject(e){if(OneObjectCache.objectMap.get(e))throw new RangeError("object already cached");OneObjectCache.objectMap.set(e,this),this.report()}static getCacheForObject(e){let t=OneObjectCache.objectMap.get(e);return t||(t=new OneObjectCache,OneObjectCache.objectMap.set(e,t)),t}}function ni({isoYear:e,isoMonth:t,isoDay:n}){return`${Jn(e)}-${Gn(t)}-${Gn(n)}T00:00Z`}function ri(e,t){return{years:e.year-t.year,months:e.month-t.month,days:e.day-t.day}}OneObjectCache.objectMap=new WeakMap,OneObjectCache.MAX_CACHE_ENTRIES=1e3;class HelperBase{constructor(){this.eras=[],this.hasEra=!1,this.erasBeginMidYear=!1}getFormatter(){return void 0===this.formatter&&(this.formatter=new Intl.DateTimeFormat(`en-US-u-ca-${this.id}`,{day:"numeric",month:"numeric",year:"numeric",era:"short",timeZone:"UTC"})),this.formatter}getCalendarParts(e){let t=this.getFormatter(),n=new Date(e);if("-271821-04-19T00:00Z"===e){const e=t.resolvedOptions();t=new Intl.DateTimeFormat(e.locale,{...e,timeZone:"Etc/GMT+1"}),n=new Date("-271821-04-20T00:00Z")}try{return t.formatToParts(n)}catch(t){throw new RangeError(`Invalid ISO date: ${e}`)}}isoToCalendarDate(e,t){const{year:n,month:r,day:o}=e,i=JSON.stringify({func:"isoToCalendarDate",isoYear:n,isoMonth:r,isoDay:o,id:this.id}),a=t.get(i);if(a)return a;const s=ni({isoYear:n,isoMonth:r,isoDay:o}),c=this.getCalendarParts(s),d={};for(let e=0;e<c.length;e++){const{type:t,value:n}=c[e];if("year"!==t&&"relatedYear"!==t||(this.hasEra?d.eraYear=+n:d.year=+n),"month"===t){const e=/^([0-9]*)(.*?)$/.exec(n);if(!e||3!=e.length||!e[1]&&!e[2])throw new RangeError(`Unexpected month: ${n}`);if(d.month=e[1]?+e[1]:1,d.month<1)throw new RangeError(`Invalid month ${n} from ${s}[u-ca-${this.id}] (probably due to https://bugs.chromium.org/p/v8/issues/detail?id=10527)`);if(d.month>13)throw new RangeError(`Invalid month ${n} from ${s}[u-ca-${this.id}] (probably due to https://bugs.chromium.org/p/v8/issues/detail?id=10529)`);e[2]&&(d.monthExtra=e[2])}"day"===t&&(d.day=+n),this.hasEra&&"era"===t&&null!=n&&""!==n&&(d.era=n.split(" (")[0].normalize("NFD").replace(/[^-0-9 \p{L}]/gu,"").replace(/ /g,"-").toLowerCase())}if(this.hasEra&&void 0===d.eraYear)throw new RangeError(`Intl.DateTimeFormat.formatToParts lacks relatedYear in ${this.id} calendar. Try Node 14+ or modern browsers.`);if(this.hasEra){const e=this.eras.find((e=>d.era===e.genericName));e&&(d.era=e.code)}if(this.reviseIntlEra){const{era:t,eraYear:n}=this.reviseIntlEra(d,e);d.era=t,d.eraYear=n}this.checkIcuBugs&&this.checkIcuBugs(e);const h=this.adjustCalendarDate(d,t,"constrain",!0);if(void 0===h.year)throw new RangeError(`Missing year converting ${JSON.stringify(e)}`);if(void 0===h.month)throw new RangeError(`Missing month converting ${JSON.stringify(e)}`);if(void 0===h.day)throw new RangeError(`Missing day converting ${JSON.stringify(e)}`);return t.set(i,h),["constrain","reject"].forEach((n=>{const r=JSON.stringify({func:"calendarToIsoDate",year:h.year,month:h.month,day:h.day,overflow:n,id:this.id});t.set(r,e)})),h}validateCalendarDate(e){const{month:t,year:n,day:r,eraYear:o,monthCode:i,monthExtra:a}=e;if(void 0!==a)throw new RangeError("Unexpected `monthExtra` value");if(void 0===n&&void 0===o)throw new TypeError("year or eraYear is required");if(void 0===t&&void 0===i)throw new TypeError("month or monthCode is required");if(void 0===r)throw new RangeError("Missing day");if(void 0!==i){if("string"!=typeof i)throw new RangeError("monthCode must be a string, not "+typeof i);if(!/^M([01]?\d)(L?)$/.test(i))throw new RangeError(`Invalid monthCode: ${i}`)}if(this.hasEra&&void 0===e.era!=(void 0===e.eraYear))throw new TypeError("properties era and eraYear must be provided together")}adjustCalendarDate(e,t=void 0,n="constrain",r=!1){if("lunisolar"===this.calendarType)throw new RangeError("Override required for lunisolar calendars");let o=e;this.validateCalendarDate(o);const i=this.monthsInYear(o,t);let{month:a,monthCode:s}=o;return({month:a,monthCode:s}=ti(o,n,i)),{...o,month:a,monthCode:s}}regulateMonthDayNaive(e,t,n){const r=this.monthsInYear(e,n);let{month:o,day:i}=e;return"reject"===t?(Nr(o,1,r),Nr(i,1,this.maximumMonthLength(e))):(o=jr(o,1,r),i=jr(i,1,this.maximumMonthLength({...e,month:o}))),{...e,month:o,day:i}}calendarToIsoDate(e,t="constrain",n){const r=e;let o=this.adjustCalendarDate(e,n,t,!1);o=this.regulateMonthDayNaive(o,t,n);const{year:i,month:a,day:s}=o,c=JSON.stringify({func:"calendarToIsoDate",year:i,month:a,day:s,overflow:t,id:this.id});let d,h=n.get(c);if(h)return h;if(void 0!==r.year&&void 0!==r.month&&void 0!==r.day&&(r.year!==o.year||r.month!==o.month||r.day!==o.day)&&(d=JSON.stringify({func:"calendarToIsoDate",year:r.year,month:r.month,day:r.day,overflow:t,id:this.id}),h=n.get(d),h))return h;let u=this.estimateIsoDate({year:i,month:a,day:s});const l=e=>{let r=this.addDaysIso(u,e);if(o.day>this.minimumMonthLength(o)){let e=this.isoToCalendarDate(r,n);for(;e.month!==a||e.year!==i;){if("reject"===t)throw new RangeError(`day ${s} does not exist in month ${a} of year ${i}`);r=this.addDaysIso(r,-1),e=this.isoToCalendarDate(r,n)}}return r};let m=0,f=this.isoToCalendarDate(u,n),y=ri(o,f);if(0!==y.years||0!==y.months||0!==y.days){const e=365*y.years+30*y.months+y.days;u=this.addDaysIso(u,e),f=this.isoToCalendarDate(u,n),y=ri(o,f),0===y.years&&0===y.months?u=l(y.days):m=this.compareCalendarDates(o,f)}let p=8;for(;m;){u=this.addDaysIso(u,m*p);const e=f;f=this.isoToCalendarDate(u,n);const i=m;if(m=this.compareCalendarDates(o,f),m)if(y=ri(o,f),0===y.years&&0===y.months)u=l(y.days),m=0;else if(i&&m!==i)if(p>1)p/=2;else{if("reject"===t)throw new RangeError(`Can't find ISO date from calendar date: ${JSON.stringify({...r})}`);this.compareCalendarDates(f,e)>0&&(u=this.addDaysIso(u,-1)),m=0}}if(n.set(c,u),d&&n.set(d,u),void 0===o.year||void 0===o.month||void 0===o.day||void 0===o.monthCode||this.hasEra&&(void 0===o.era||void 0===o.eraYear))throw new RangeError("Unexpected missing property");return u}compareCalendarDates(e,t){return e.year!==t.year?Bo(e.year-t.year):e.month!==t.month?Bo(e.month-t.month):e.day!==t.day?Bo(e.day-t.day):0}regulateDate(e,t="constrain",n){const r=this.calendarToIsoDate(e,t,n);return this.isoToCalendarDate(r,n)}addDaysIso(e,t){return Or(e.year,e.month,e.day+t)}addDaysCalendar(e,t,n){const r=this.calendarToIsoDate(e,"constrain",n),o=this.addDaysIso(r,t);return this.isoToCalendarDate(o,n)}addMonthsCalendar(e,t,n,r){let o=e;const{day:i}=o;for(let e=0,n=Math.abs(t);e<n;e++){const{month:e}=o,n=o,a=t<0?-Math.max(i,this.daysInPreviousMonth(o,r)):this.daysInMonth(o,r),s=this.calendarToIsoDate(o,"constrain",r);let c=this.addDaysIso(s,a);if(o=this.isoToCalendarDate(c,r),t>0){const t=this.monthsInYear(n,r);for(;o.month-1!=e%t;)c=this.addDaysIso(c,-1),o=this.isoToCalendarDate(c,r)}o.day!==i&&(o=this.regulateDate({...o,day:i},"constrain",r))}if("reject"===n&&o.day!==i)throw new RangeError(`Day ${i} does not exist in resulting calendar month`);return o}addCalendar(e,{years:t=0,months:n=0,weeks:r=0,days:o=0},i,a){const{year:s,day:c,monthCode:d}=e,h=this.adjustCalendarDate({year:s+t,monthCode:d,day:c},a),u=this.addMonthsCalendar(h,n,i,a),l=o+7*r;return this.addDaysCalendar(u,l,a)}untilCalendar(e,t,n,r){let o=0,i=0,a=0,s=0;switch(n){case"day":o=this.calendarDaysUntil(e,t,r);break;case"week":{const n=this.calendarDaysUntil(e,t,r);o=n%7,i=(n-o)/7;break}case"month":case"year":{const i=this.compareCalendarDates(t,e);if(!i)return{years:0,months:0,weeks:0,days:0};const c=t.year-e.year,d=t.day-e.day;if("year"===n&&c){let n=0;t.monthCode>e.monthCode&&(n=1),t.monthCode<e.monthCode&&(n=-1),n||(n=Math.sign(d)),s=n*i<0?c-i:c}let h,u=s?this.addCalendar(e,{years:s},"constrain",r):e;do{a+=i,h=u,u=this.addMonthsCalendar(h,i,"constrain",r),u.day!==e.day&&(u=this.regulateDate({...u,day:e.day},"constrain",r))}while(this.compareCalendarDates(t,u)*i>=0);a-=i,o=this.calendarDaysUntil(h,t,r);break}}return{years:s,months:a,weeks:i,days:o}}daysInMonth(e,t){const{day:n}=e,r=this.maximumMonthLength(e),o=this.minimumMonthLength(e);if(o===r)return o;const i=n<=r-o?r:o,a=this.calendarToIsoDate(e,"constrain",t),s=this.addDaysIso(a,i),c=this.isoToCalendarDate(s,t),d=this.addDaysIso(s,-c.day);return this.isoToCalendarDate(d,t).day}daysInPreviousMonth(e,t){const{day:n,month:r,year:o}=e;let i={year:r>1?o:o-1,month:r,day:1};const a=r>1?r-1:this.monthsInYear(i,t);i={...i,month:a};const s=this.minimumMonthLength(i),c=this.maximumMonthLength(i);if(s===c)return c;const d=this.calendarToIsoDate(e,"constrain",t),h=this.addDaysIso(d,-n);return this.isoToCalendarDate(h,t).day}startOfCalendarYear(e){return{year:e.year,month:1,monthCode:"M01",day:1}}startOfCalendarMonth(e){return{year:e.year,month:e.month,day:1}}calendarDaysUntil(e,t,n){const r=this.calendarToIsoDate(e,"constrain",n),o=this.calendarToIsoDate(t,"constrain",n);return Gr(o.year,o.month-1,o.day)-Gr(r.year,r.month-1,r.day)}monthDaySearchStartYear(e,t){return 1972}monthDayFromFields(e,t,n){let r,o,i,a,s,{era:c,eraYear:d,year:h,month:u,monthCode:l,day:m}=e;if(void 0!==u&&void 0===h&&(!this.hasEra||void 0===c||void 0===d))throw new TypeError("when month is present, year (or era and eraYear) are required");(void 0===l||void 0!==h||this.hasEra&&void 0!==d)&&({monthCode:l,day:m}=this.isoToCalendarDate(this.calendarToIsoDate(e,t,n),n));const f={year:this.monthDaySearchStartYear(l,m),month:12,day:31},y=this.isoToCalendarDate(f,n),p=y.monthCode>l||y.monthCode===l&&y.day>=m?y.year:y.year-1;for(let e=0;e<20;e++){const c=this.adjustCalendarDate({day:m,monthCode:l,year:p-e},n),d=this.calendarToIsoDate(c,"constrain",n),h=this.isoToCalendarDate(d,n);if(({year:r,month:o,day:i}=d),h.monthCode===l&&h.day===m)return{month:o,day:i,year:r};if("constrain"===t){const e=this.maxLengthOfMonthCodeInAnyYear(h.monthCode);if(h.monthCode===l&&h.day===e&&m>e)return{month:o,day:i,year:r};(void 0===a||h.monthCode===a.monthCode&&h.day>a.day)&&(a=h,s=d)}}if("constrain"===t&&void 0!==s)return s;throw new RangeError(`No recent ${this.id} year with monthCode ${l} and day ${m}`)}getFirstDayOfWeek(){}getMinimalDaysInFirstWeek(){}}class HebrewHelper extends HelperBase{constructor(){super(...arguments),this.id="hebrew",this.calendarType="lunisolar",this.months={Tishri:{leap:1,regular:1,monthCode:"M01",days:30},Heshvan:{leap:2,regular:2,monthCode:"M02",days:{min:29,max:30}},Kislev:{leap:3,regular:3,monthCode:"M03",days:{min:29,max:30}},Tevet:{leap:4,regular:4,monthCode:"M04",days:29},Shevat:{leap:5,regular:5,monthCode:"M05",days:30},Adar:{leap:void 0,regular:6,monthCode:"M06",days:29},"Adar I":{leap:6,regular:void 0,monthCode:"M05L",days:30},"Adar II":{leap:7,regular:void 0,monthCode:"M06",days:29},Nisan:{leap:8,regular:7,monthCode:"M07",days:30},Iyar:{leap:9,regular:8,monthCode:"M08",days:29},Sivan:{leap:10,regular:9,monthCode:"M09",days:30},Tamuz:{leap:11,regular:10,monthCode:"M10",days:29},Av:{leap:12,regular:11,monthCode:"M11",days:30},Elul:{leap:13,regular:12,monthCode:"M12",days:29}}}inLeapYear(e){const{year:t}=e;return(7*t+1)%19<7}monthsInYear(e){return this.inLeapYear(e)?13:12}minimumMonthLength(e){return this.minMaxMonthLength(e,"min")}maximumMonthLength(e){return this.minMaxMonthLength(e,"max")}minMaxMonthLength(e,t){const{month:n,year:r}=e,o=this.getMonthCode(r,n),i=Object.entries(this.months).find((e=>e[1].monthCode===o));if(void 0===i)throw new RangeError(`unmatched Hebrew month: ${n}`);const a=i[1].days;return"number"==typeof a?a:a[t]}maxLengthOfMonthCodeInAnyYear(e){return["M04","M06","M08","M10","M12"].includes(e)?29:30}estimateIsoDate(e){const{year:t}=e;return{year:t-3760,month:1,day:1}}getMonthCode(e,t){return this.inLeapYear({year:e})?6===t?ei(5,!0):ei(t<6?t:t-1):ei(t)}adjustCalendarDate(e,t,n="constrain",r=!1){let{year:o,month:i,monthCode:a,day:s,monthExtra:c}=e;if(void 0===o)throw new TypeError("Missing property: year");if(r){if(c){const e=this.months[c];if(!e)throw new RangeError(`Unrecognized month from formatToParts: ${c}`);i=this.inLeapYear({year:o})?e.leap:e.regular}return a=this.getMonthCode(o,i),{year:o,month:i,day:s,monthCode:a}}if(this.validateCalendarDate(e),void 0===i)if(a.endsWith("L")){if("M05L"!==a)throw new RangeError(`Hebrew leap month must have monthCode M05L, not ${a}`);if(i=6,!this.inLeapYear({year:o})){if("reject"===n)throw new RangeError(`Hebrew monthCode M05L is invalid in year ${o} which is not a leap year`);i=6,a="M06"}}else{i=Qo(a),this.inLeapYear({year:o})&&i>=6&&i++;const e=this.monthsInYear({year:o});if(i<1||i>e)throw new RangeError(`Invalid monthCode: ${a}`)}else if("reject"===n?(Nr(i,1,this.monthsInYear({year:o})),Nr(s,1,this.maximumMonthLength({year:o,month:i}))):(i=jr(i,1,this.monthsInYear({year:o})),s=jr(s,1,this.maximumMonthLength({year:o,month:i}))),void 0===a)a=this.getMonthCode(o,i);else if(this.getMonthCode(o,i)!==a)throw new RangeError(`monthCode ${a} doesn't correspond to month ${i} in Hebrew year ${o}`);return{...e,day:s,month:i,monthCode:a,year:o}}}class IslamicBaseHelper extends HelperBase{constructor(){super(...arguments),this.calendarType="lunar",this.DAYS_PER_ISLAMIC_YEAR=354+11/30,this.DAYS_PER_ISO_YEAR=365.2425}inLeapYear(e,t){const n={year:e.year,month:1,monthCode:"M01",day:1},r={year:e.year+1,month:1,monthCode:"M01",day:1};return 355===this.calendarDaysUntil(n,r,t)}monthsInYear(){return 12}minimumMonthLength(){return 29}maximumMonthLength(){return 30}maxLengthOfMonthCodeInAnyYear(){return 30}estimateIsoDate(e){const{year:t}=this.adjustCalendarDate(e);return{year:Math.floor(t*this.DAYS_PER_ISLAMIC_YEAR/this.DAYS_PER_ISO_YEAR)+622,month:1,day:1}}}class IslamicHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic"}}class IslamicUmalquraHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-umalqura"}}class IslamicTblaHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-tbla"}}class IslamicCivilHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-civil"}}class IslamicRgsaHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-rgsa"}}class IslamicCcHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamicc"}}class PersianHelper extends HelperBase{constructor(){super(...arguments),this.id="persian",this.calendarType="solar"}inLeapYear(e,t){return 30===this.daysInMonth({year:e.year,month:12,day:1},t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 12===t?29:t<=6?31:30}maximumMonthLength(e){const{month:t}=e;return 12===t?30:t<=6?31:30}maxLengthOfMonthCodeInAnyYear(e){return Qo(e)<=6?31:30}estimateIsoDate(e){const{year:t}=this.adjustCalendarDate(e);return{year:t+621,month:1,day:1}}}class IndianHelper extends HelperBase{constructor(){super(...arguments),this.id="indian",this.calendarType="solar",this.months={1:{length:30,month:3,day:22,leap:{length:31,month:3,day:21}},2:{length:31,month:4,day:21},3:{length:31,month:5,day:22},4:{length:31,month:6,day:22},5:{length:31,month:7,day:23},6:{length:31,month:8,day:23},7:{length:30,month:9,day:23},8:{length:30,month:10,day:23},9:{length:30,month:11,day:22},10:{length:30,month:12,day:22},11:{length:30,month:1,nextYear:!0,day:21},12:{length:30,month:2,nextYear:!0,day:20}},this.vulnerableToBceBug="10/11/-79 Saka"!==new Date("0000-01-01T00:00Z").toLocaleDateString("en-US-u-ca-indian",{timeZone:"UTC"})}inLeapYear(e){return oi(e.year+78)}monthsInYear(){return 12}minimumMonthLength(e){return this.getMonthInfo(e).length}maximumMonthLength(e){return this.getMonthInfo(e).length}maxLengthOfMonthCodeInAnyYear(e){const t=Qo(e);let n=this.months[t];return n=n.leap??n,n.length}getMonthInfo(e){const{month:t}=e;let n=this.months[t];if(void 0===n)throw new RangeError(`Invalid month: ${t}`);return this.inLeapYear(e)&&n.leap&&(n=n.leap),n}estimateIsoDate(e){const t=this.adjustCalendarDate(e),n=this.getMonthInfo(t);return Or(t.year+78+(n.nextYear?1:0),n.month,n.day+t.day-1)}checkIcuBugs(e){if(this.vulnerableToBceBug&&e.year<1)throw new RangeError(`calendar '${this.id}' is broken for ISO dates before 0001-01-01 (see https://bugs.chromium.org/p/v8/issues/detail?id=10529)`)}}function oi(e){return e%4==0&&(e%100!=0||e%400==0)}class GregorianBaseHelperFixedEpoch extends HelperBase{constructor(e,t){super(),this.calendarType="solar",this.id=e,this.isoEpoch=t}inLeapYear(e){const{year:t}=this.estimateIsoDate({month:1,day:1,year:e.year});return oi(t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 2===t?this.inLeapYear(e)?29:28:[4,6,9,11].indexOf(t)>=0?30:31}maximumMonthLength(e){return this.minimumMonthLength(e)}maxLengthOfMonthCodeInAnyYear(e){return[31,29,31,30,31,30,31,31,30,31,30,31][Qo(e)-1]}estimateIsoDate(e){const t=this.adjustCalendarDate(e);return St(t.year+this.isoEpoch.year,t.month+this.isoEpoch.month,t.day+this.isoEpoch.day,"constrain")}}class GregorianBaseHelper extends HelperBase{constructor(e,t){super(),this.hasEra=!0,this.calendarType="solar",this.id=e;const{eras:n,anchorEra:r}=function(e){let t,n=e;if(0===n.length)throw new RangeError("Invalid era data: eras are required");if(1===n.length&&n[0].reverseOf)throw new RangeError("Invalid era data: anchor era cannot count years backwards");if(1===n.length&&!n[0].code)throw new RangeError("Invalid era data: at least one named era is required");if(n.filter((e=>null!=e.reverseOf)).length>1)throw new RangeError("Invalid era data: only one era can count years backwards");n.forEach((e=>{if(e.isAnchor||!e.anchorEpoch&&!e.reverseOf){if(t)throw new RangeError("Invalid era data: cannot have multiple anchor eras");t=e,e.anchorEpoch={year:e.hasYearZero?0:1}}else if(!e.code)throw new RangeError("If era name is blank, it must be the anchor era")})),n=n.filter((e=>e.code)),n.forEach((e=>{const{reverseOf:t}=e;if(t){const r=n.find((e=>e.code===t));if(void 0===r)throw new RangeError(`Invalid era data: unmatched reverseOf era: ${t}`);e.reverseOf=r,e.anchorEpoch=r.anchorEpoch,e.isoEpoch=r.isoEpoch}void 0===e.anchorEpoch.month&&(e.anchorEpoch.month=1),void 0===e.anchorEpoch.day&&(e.anchorEpoch.day=1)})),n.sort(((e,t)=>{if(e.reverseOf)return 1;if(t.reverseOf)return-1;if(!e.isoEpoch||!t.isoEpoch)throw new RangeError("Invalid era data: missing ISO epoch");return t.isoEpoch.year-e.isoEpoch.year}));const r=n[n.length-1].reverseOf;if(r&&r!==n[n.length-2])throw new RangeError("Invalid era data: invalid reverse-sign era");return n.forEach(((e,t)=>{e.genericName="era"+(n.length-1-t)})),{eras:n,anchorEra:t||n[0]}}(t);this.anchorEra=r,this.eras=n}inLeapYear(e){const{year:t}=this.estimateIsoDate({month:1,day:1,year:e.year});return oi(t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 2===t?this.inLeapYear(e)?29:28:[4,6,9,11].indexOf(t)>=0?30:31}maximumMonthLength(e){return this.minimumMonthLength(e)}maxLengthOfMonthCodeInAnyYear(e){return[31,29,31,30,31,30,31,31,30,31,30,31][Qo(e)-1]}completeEraYear(e){const t=(t,n,r)=>{const o=e[t];if(null!=o&&o!=n&&!(r||[]).includes(o)){const e=r?.[0];throw new RangeError(`Input ${t} ${o} doesn't match calculated value ${e?`${n} (also called ${e})`:n}`)}},n=t=>{let n;const r={...e,year:t},o=this.eras.find(((e,o)=>{if(o===this.eras.length-1){if(e.reverseOf){if(t>0)throw new RangeError(`Signed year ${t} is invalid for era ${e.code}`);return n=e.anchorEpoch.year-t,!0}return n=t-e.anchorEpoch.year+(e.hasYearZero?0:1),!0}return this.compareCalendarDates(r,e.anchorEpoch)>=0&&(n=t-e.anchorEpoch.year+(e.hasYearZero?0:1),!0)}));if(!o)throw new RangeError(`Year ${t} was not matched by any era`);return{eraYear:n,era:o.code,eraNames:o.names}};let{year:r,eraYear:o,era:i}=e;if(null!=r){const e=n(r);({eraYear:o,era:i}=e),t("era",i,e?.eraNames),t("eraYear",o)}else{if(null==o)throw new RangeError("Either year or eraYear and era are required");{if(void 0===i)throw new RangeError("era and eraYear must be provided together");const e=this.eras.find((({code:e,names:t=[]})=>e===i||t.includes(i)));if(!e)throw new RangeError(`Era ${i} (ISO year ${o}) was not matched by any era`);r=e.reverseOf?e.anchorEpoch.year-o:o+e.anchorEpoch.year-(e.hasYearZero?0:1),t("year",r),({eraYear:o,era:i}=n(r))}}return{...e,year:r,eraYear:o,era:i}}adjustCalendarDate(e,t,n="constrain"){let r=e;const{month:o,monthCode:i}=r;return void 0===o&&(r={...r,month:Qo(i)}),this.validateCalendarDate(r),r=this.completeEraYear(r),super.adjustCalendarDate(r,t,n)}estimateIsoDate(e){const t=this.adjustCalendarDate(e),{year:n,month:r,day:o}=t,{anchorEra:i}=this;return St(n+i.isoEpoch.year-(i.hasYearZero?0:1),r,o,"constrain")}}class SameMonthDayAsGregorianBaseHelper extends GregorianBaseHelper{constructor(e,t){super(e,t)}isoToCalendarDate(e){const{year:t,month:n,day:r}=e,o=ei(n),i=t-this.anchorEra.isoEpoch.year+1;return this.completeEraYear({year:i,month:n,monthCode:o,day:r})}}const ii={inLeapYear(e){const{year:t}=e;return(t+1)%4==0},monthsInYear:()=>13,minimumMonthLength(e){const{month:t}=e;return 13===t?this.inLeapYear(e)?6:5:30},maximumMonthLength(e){return this.minimumMonthLength(e)},maxLengthOfMonthCodeInAnyYear:e=>"M13"===e?6:30};class OrthodoxBaseHelperFixedEpoch extends GregorianBaseHelperFixedEpoch{constructor(e,t){super(e,t),this.inLeapYear=ii.inLeapYear,this.monthsInYear=ii.monthsInYear,this.minimumMonthLength=ii.minimumMonthLength,this.maximumMonthLength=ii.maximumMonthLength,this.maxLengthOfMonthCodeInAnyYear=ii.maxLengthOfMonthCodeInAnyYear}}class OrthodoxBaseHelper extends GregorianBaseHelper{constructor(e,t){super(e,t),this.inLeapYear=ii.inLeapYear,this.monthsInYear=ii.monthsInYear,this.minimumMonthLength=ii.minimumMonthLength,this.maximumMonthLength=ii.maximumMonthLength,this.maxLengthOfMonthCodeInAnyYear=ii.maxLengthOfMonthCodeInAnyYear}}class EthioaaHelper extends OrthodoxBaseHelperFixedEpoch{constructor(){super("ethioaa",{year:-5492,month:7,day:17})}}class CopticHelper extends OrthodoxBaseHelper{constructor(){super("coptic",[{code:"coptic",isoEpoch:{year:284,month:8,day:29}},{code:"coptic-inverse",reverseOf:"coptic"}])}}class EthiopicHelper extends OrthodoxBaseHelper{constructor(){super("ethiopic",[{code:"ethioaa",names:["ethiopic-amete-alem","mundi"],isoEpoch:{year:-5492,month:7,day:17}},{code:"ethiopic",names:["incar"],isoEpoch:{year:8,month:8,day:27},anchorEpoch:{year:5501}}])}}class RocHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("roc",[{code:"roc",names:["minguo"],isoEpoch:{year:1912,month:1,day:1}},{code:"roc-inverse",names:["before-roc"],reverseOf:"roc"}])}}class BuddhistHelper extends GregorianBaseHelperFixedEpoch{constructor(){super("buddhist",{year:-543,month:1,day:1})}}class GregoryHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("gregory",[{code:"gregory",names:["ad","ce"],isoEpoch:{year:1,month:1,day:1}},{code:"gregory-inverse",names:["be","bce"],reverseOf:"gregory"}])}reviseIntlEra(e){let{era:t,eraYear:n}=e;return"b"===t&&(t="gregory-inverse"),"a"===t&&(t="gregory"),{era:t,eraYear:n}}getFirstDayOfWeek(){return 1}getMinimalDaysInFirstWeek(){return 1}}class JapaneseHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("japanese",[{code:"reiwa",isoEpoch:{year:2019,month:5,day:1},anchorEpoch:{year:2019,month:5,day:1}},{code:"heisei",isoEpoch:{year:1989,month:1,day:8},anchorEpoch:{year:1989,month:1,day:8}},{code:"showa",isoEpoch:{year:1926,month:12,day:25},anchorEpoch:{year:1926,month:12,day:25}},{code:"taisho",isoEpoch:{year:1912,month:7,day:30},anchorEpoch:{year:1912,month:7,day:30}},{code:"meiji",isoEpoch:{year:1868,month:9,day:8},anchorEpoch:{year:1868,month:9,day:8}},{code:"japanese",names:["japanese","gregory","ad","ce"],isoEpoch:{year:1,month:1,day:1}},{code:"japanese-inverse",names:["japanese-inverse","gregory-inverse","bc","bce"],reverseOf:"japanese"}]),this.erasBeginMidYear=!0}reviseIntlEra(e,t){const{era:n,eraYear:r}=e,{year:o}=t;return this.eras.find((e=>e.code===n))?{era:n,eraYear:r}:o<1?{era:"japanese-inverse",eraYear:1-o}:{era:"japanese",eraYear:o}}}class ChineseBaseHelper extends HelperBase{constructor(){super(...arguments),this.calendarType="lunisolar"}inLeapYear(e,t){const n=this.getMonthList(e.year,t);return 13===Object.entries(n).length}monthsInYear(e,t){return this.inLeapYear(e,t)?13:12}minimumMonthLength(){return 29}maximumMonthLength(){return 30}maxLengthOfMonthCodeInAnyYear(e){return["M01L","M09L","M10L","M11L","M12L"].includes(e)?29:30}monthDaySearchStartYear(e,t){const n={M01L:[1651,1651],M02L:[1947,1765],M03L:[1966,1955],M04L:[1963,1944],M05L:[1971,1952],M06L:[1960,1941],M07L:[1968,1938],M08L:[1957,1718],M09L:[1832,1832],M10L:[1870,1870],M11L:[1814,1814],M12L:[1890,1890]}[e]??[1972,1972];return t<30?n[0]:n[1]}getMonthList(e,t){if(void 0===e)throw new TypeError("Missing year");const n=JSON.stringify({func:"getMonthList",calendarYear:e,id:this.id}),r=t.get(n);if(r)return r;const o=this.getFormatter(),i=(e,t)=>{const n=ni({isoYear:e,isoMonth:2,isoDay:1}),r=new Date(n);r.setUTCDate(t+1);const i=o.formatToParts(r),a=i.find((e=>"month"===e.type)).value,s=+i.find((e=>"day"===e.type)).value,c=i.find((e=>"relatedYear"===e.type));let d;if(void 0===c)throw new RangeError(`Intl.DateTimeFormat.formatToParts lacks relatedYear in ${this.id} calendar. Try Node 14+ or modern browsers.`);return d=+c.value,{calendarMonthString:a,calendarDay:s,calendarYearToVerify:d}};let a=17,{calendarMonthString:s,calendarDay:c,calendarYearToVerify:d}=i(e,a);"1"!==s&&(a+=29,({calendarMonthString:s,calendarDay:c}=i(e,a))),a-=c-5;const h={};let u,l,m=1,f=!1;do{({calendarMonthString:s,calendarDay:c,calendarYearToVerify:d}=i(e,a)),u&&(h[l].daysInMonth=u+30-c),d!==e?f=!0:(h[s]={monthIndex:m++},a+=30),u=c,l=s}while(!f);return h[l].daysInMonth=u+30-c,t.set(n,h),h}estimateIsoDate(e){const{year:t,month:n}=e;return{year:t,month:n>=12?12:n+1,day:1}}adjustCalendarDate(e,t,n="constrain",r=!1){let{year:o,month:i,monthExtra:a,day:s,monthCode:c}=e;if(void 0===o)throw new TypeError("Missing property: year");if(r){if(a&&"bis"!==a)throw new RangeError(`Unexpected leap month suffix: ${a}`);const e=ei(i,void 0!==a),n=`${i}${a||""}`,r=this.getMonthList(o,t)[n];if(void 0===r)throw new RangeError(`Unmatched month ${n} in Chinese year ${o}`);return i=r.monthIndex,{year:o,month:i,day:s,monthCode:e}}if(this.validateCalendarDate(e),void 0===i){const e=this.getMonthList(o,t);let r=c.replace(/^M|L$/g,(e=>"L"===e?"bis":""));"0"===r[0]&&(r=r.slice(1));let a=e[r];if(i=a&&a.monthIndex,void 0===i&&c.endsWith("L")&&"M13L"!=c&&"constrain"===n){const t=+c.replace(/^M0?|L$/g,"");a=e[t],a&&(i=a.monthIndex,c=ei(t))}if(void 0===i)throw new RangeError(`Unmatched month ${c} in Chinese year ${o}`)}else if(void 0===c){const e=this.getMonthList(o,t),r=Object.entries(e),a=r.length;"reject"===n?(Nr(i,1,a),Nr(s,1,this.maximumMonthLength())):(i=jr(i,1,a),s=jr(s,1,this.maximumMonthLength()));const d=r.find((e=>e[1].monthIndex===i));if(void 0===d)throw new RangeError(`Invalid month ${i} in Chinese year ${o}`);c=ei(+d[0].replace("bis",""),-1!==d[0].indexOf("bis"))}else{const e=this.getMonthList(o,t);let n=c.replace(/^M|L$/g,(e=>"L"===e?"bis":""));"0"===n[0]&&(n=n.slice(1));const r=e[n];if(!r)throw new RangeError(`Unmatched monthCode ${c} in Chinese year ${o}`);if(i!==r.monthIndex)throw new RangeError(`monthCode ${c} doesn't correspond to month ${i} in Chinese year ${o}`)}return{...e,year:o,month:i,monthCode:c,day:s}}}class ChineseHelper extends ChineseBaseHelper{constructor(){super(...arguments),this.id="chinese"}}class DangiHelper extends ChineseBaseHelper{constructor(){super(...arguments),this.id="dangi"}}class NonIsoCalendar{constructor(e){this.helper=e}extraFields(e){return this.helper.hasEra&&e.includes("year")?["era","eraYear"]:[]}resolveFields(e){if("lunisolar"!==this.helper.calendarType){const t=new OneObjectCache;ti(e,void 0,this.helper.monthsInYear({year:e.year??1972},t))}}dateToISO(e,t){const n=new OneObjectCache,r=this.helper.calendarToIsoDate(e,t,n);return n.setObject(r),r}monthDayToISOReferenceDate(e,t){const n=new OneObjectCache,r=this.helper.monthDayFromFields(e,t,n);return n.setObject(r),r}fieldKeysToIgnore(e){const t=new Set;for(let n=0;n<e.length;n++){const r=e[n];switch(t.add(r),r){case"era":t.add("eraYear"),t.add("year");break;case"eraYear":t.add("era"),t.add("year");break;case"year":t.add("era"),t.add("eraYear");break;case"month":t.add("monthCode"),this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"));break;case"monthCode":t.add("month"),this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"));break;case"day":this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"))}}return Go(t)}dateAdd(e,{years:t,months:n,weeks:r,days:o},i){const a=OneObjectCache.getCacheForObject(e),s=this.helper.isoToCalendarDate(e,a),c=this.helper.addCalendar(s,{years:t,months:n,weeks:r,days:o},i,a),d=this.helper.calendarToIsoDate(c,"constrain",a);return OneObjectCache.getCacheForObject(d)||new OneObjectCache(a).setObject(d),d}dateUntil(e,t,n){const r=OneObjectCache.getCacheForObject(e),o=OneObjectCache.getCacheForObject(t),i=this.helper.isoToCalendarDate(e,r),a=this.helper.isoToCalendarDate(t,o);return this.helper.untilCalendar(i,a,n,r)}isoToDate(e,t){const n=OneObjectCache.getCacheForObject(e),r=this.helper.isoToCalendarDate(e,n);if(t.dayOfWeek&&(r.dayOfWeek=Xo.iso8601.isoToDate(e,{dayOfWeek:!0}).dayOfWeek),t.dayOfYear){const e=this.helper.startOfCalendarYear(r),t=this.helper.calendarDaysUntil(e,r,n);r.dayOfYear=t+1}if(t.weekOfYear&&(r.weekOfYear=Ko(this.helper.id,e)),r.daysInWeek=7,t.daysInMonth&&(r.daysInMonth=this.helper.daysInMonth(r,n)),t.daysInYear){const e=this.helper.startOfCalendarYear(r),t=this.helper.addCalendar(e,{years:1},"constrain",n);r.daysInYear=this.helper.calendarDaysUntil(e,t,n)}return t.monthsInYear&&(r.monthsInYear=this.helper.monthsInYear(r,n)),t.inLeapYear&&(r.inLeapYear=this.helper.inLeapYear(r,n)),r}getFirstDayOfWeek(){return this.helper.getFirstDayOfWeek()}getMinimalDaysInFirstWeek(){return this.helper.getMinimalDaysInFirstWeek()}}for(const e of[HebrewHelper,PersianHelper,EthiopicHelper,EthioaaHelper,CopticHelper,ChineseHelper,DangiHelper,RocHelper,IndianHelper,BuddhistHelper,GregoryHelper,JapaneseHelper,IslamicHelper,IslamicUmalquraHelper,IslamicTblaHelper,IslamicCivilHelper,IslamicRgsaHelper,IslamicCcHelper]){const t=new e;Xo[t.id]=new NonIsoCalendar(t)}se("calendarImpl",(function(e){return Xo[e]}));const ai=Intl.DateTimeFormat;function si(e,t){let n=re(e,t);return"function"==typeof n&&(n=new ai(re(e,G),n(re(e,K))),function(e,t,n){const r=Q(e);if(void 0===r)throw new TypeError("Missing slots for the given container");if(void 0===r[t])throw new TypeError(`tried to reset ${t} which was not set`);r[t]=n}(e,t,n)),n}function ci(e){return ne(e,q)}class DateTimeFormatImpl{constructor(e=void 0,t=void 0){!function(e,t,n){const r=void 0!==n;let o;if(r){const e=["localeMatcher","calendar","numberingSystem","hour12","hourCycle","timeZone","weekday","era","year","month","day","dayPeriod","hour","minute","second","fractionalSecondDigits","timeZoneName","formatMatcher","dateStyle","timeStyle"];o=function(e){if(null==e)throw new TypeError(`Expected object not ${e}`);return Object(e)}(n);const t=Object.create(null);for(let n=0;n<e.length;n++){const r=e[n];Object.prototype.hasOwnProperty.call(o,r)&&(t[r]=o[r])}o=t}else o=Object.create(null);const i=new ai(t,o),a=i.resolvedOptions();if(te(e),r){const t=Object.assign(Object.create(null),a);for(const e in t)Object.prototype.hasOwnProperty.call(o,e)||delete t[e];t.hour12=o.hour12,t.hourCycle=o.hourCycle,oe(e,K,t)}else oe(e,K,o);oe(e,G,a.locale),oe(e,q,i),oe(e,W,a.timeZone),oe(e,J,a.calendar),oe(e,B,vi),oe(e,Z,gi),oe(e,F,wi),oe(e,H,pi),oe(e,z,bi),oe(e,A,Di);const s=r?o.timeZone:void 0;if(void 0===s)oe(e,_,a.timeZone);else{const t=We(s);if(t.startsWith("−"))throw new RangeError("Unicode minus (U+2212) is not supported in time zone offsets");oe(e,_,Bn(t))}}(this,e,t)}get format(){vt(this,ci);const e=ui.bind(this);return Object.defineProperties(e,{length:{value:1,enumerable:!1,writable:!1,configurable:!0},name:{value:"",enumerable:!1,writable:!1,configurable:!0}}),e}formatRange(e,t){return vt(this,ci),mi.call(this,e,t)}formatToParts(e,...t){return vt(this,ci),li.call(this,e,...t)}formatRangeToParts(e,t){return vt(this,ci),fi.call(this,e,t)}resolvedOptions(){return vt(this,ci),hi.call(this)}}"formatToParts"in ai.prototype||delete DateTimeFormatImpl.prototype.formatToParts,"formatRangeToParts"in ai.prototype||delete DateTimeFormatImpl.prototype.formatRangeToParts;const di=function(e=void 0,t=void 0){return new DateTimeFormatImpl(e,t)};function hi(){const e=re(this,q).resolvedOptions();return e.timeZone=re(this,_),e}function ui(e,...t){let n,r,o=$i(e,this);return o.formatter?(n=o.formatter,r=[No(o.epochNs,"floor")]):(n=re(this,q),r=[e,...t]),n.format(...r)}function li(e,...t){let n,r,o=$i(e,this);return o.formatter?(n=o.formatter,r=[No(o.epochNs,"floor")]):(n=re(this,q),r=[e,...t]),n.formatToParts(...r)}function mi(e,t){if(void 0===e||void 0===t)throw new TypeError("Intl.DateTimeFormat.formatRange requires two values");const n=Ci(e),r=Ci(t);let o,i=[n,r];if(Ii(n)!==Ii(r))throw new TypeError("Intl.DateTimeFormat.formatRange accepts two values of the same type");if(Ii(n)){if(!Oi(n,r))throw new TypeError("Intl.DateTimeFormat.formatRange accepts two values of the same type");const{epochNs:e,formatter:t}=$i(n,this),{epochNs:a,formatter:s}=$i(r,this);t&&(o=t,i=[No(e,"floor"),No(a,"floor")])}return o||(o=re(this,q)),o.formatRange(...i)}function fi(e,t){if(void 0===e||void 0===t)throw new TypeError("Intl.DateTimeFormat.formatRange requires two values");const n=Ci(e),r=Ci(t);let o,i=[n,r];if(Ii(n)!==Ii(r))throw new TypeError("Intl.DateTimeFormat.formatRangeToParts accepts two values of the same type");if(Ii(n)){if(!Oi(n,r))throw new TypeError("Intl.DateTimeFormat.formatRangeToParts accepts two values of the same type");const{epochNs:e,formatter:t}=$i(n,this),{epochNs:a,formatter:s}=$i(r,this);t&&(o=t,i=[No(e,"floor"),No(a,"floor")])}return o||(o=re(this,q)),o.formatRangeToParts(...i)}function yi(e={},t={}){const n=Object.assign({},e),r=["year","month","day","hour","minute","second","weekday","dayPeriod","timeZoneName","dateStyle","timeStyle"];for(let e=0;e<r.length;e++){const o=r[e];n[o]=o in t?t[o]:n[o],!1!==n[o]&&void 0!==n[o]||delete n[o]}return n}function pi(e){const t=yi(e,{year:!1,month:!1,day:!1,weekday:!1,timeZoneName:!1,dateStyle:!1});if("long"!==t.timeStyle&&"full"!==t.timeStyle||(delete t.timeStyle,Object.assign(t,{hour:"numeric",minute:"2-digit",second:"2-digit"})),!Mi(t)){if(Ei(e))throw new TypeError(`cannot format Temporal.PlainTime with options [${Object.keys(e)}]`);Object.assign(t,{hour:"numeric",minute:"numeric",second:"numeric"})}return t}function gi(e){const t={short:{year:"2-digit",month:"numeric"},medium:{year:"numeric",month:"short"},long:{year:"numeric",month:"long"},full:{year:"numeric",month:"long"}},n=yi(e,{day:!1,hour:!1,minute:!1,second:!1,weekday:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if("dateStyle"in n&&n.dateStyle){const e=n.dateStyle;delete n.dateStyle,Object.assign(n,t[e])}if(!("year"in n||"month"in n||"era"in n)){if(Ei(e))throw new TypeError(`cannot format PlainYearMonth with options [${Object.keys(e)}]`);Object.assign(n,{year:"numeric",month:"numeric"})}return n}function wi(e){const t={short:{month:"numeric",day:"numeric"},medium:{month:"short",day:"numeric"},long:{month:"long",day:"numeric"},full:{month:"long",day:"numeric"}},n=yi(e,{year:!1,hour:!1,minute:!1,second:!1,weekday:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if("dateStyle"in n&&n.dateStyle){const e=n.dateStyle;delete n.dateStyle,Object.assign(n,t[e])}if(!("month"in n)&&!("day"in n)){if(Ei(e))throw new TypeError(`cannot format PlainMonthDay with options [${Object.keys(e)}]`);Object.assign(n,{month:"numeric",day:"numeric"})}return n}function vi(e){const t=yi(e,{hour:!1,minute:!1,second:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if(!Ti(t)){if(Ei(e))throw new TypeError(`cannot format PlainDate with options [${Object.keys(e)}]`);Object.assign(t,{year:"numeric",month:"numeric",day:"numeric"})}return t}function bi(e){const t=yi(e,{timeZoneName:!1});if(("long"===t.timeStyle||"full"===t.timeStyle)&&(delete t.timeStyle,Object.assign(t,{hour:"numeric",minute:"2-digit",second:"2-digit"}),t.dateStyle)){const e={short:{year:"numeric",month:"numeric",day:"numeric"},medium:{year:"numeric",month:"short",day:"numeric"},long:{year:"numeric",month:"long",day:"numeric"},full:{year:"numeric",month:"long",day:"numeric",weekday:"long"}};Object.assign(t,e[t.dateStyle]),delete t.dateStyle}if(!Mi(t)&&!Ti(t)){if(Ei(e))throw new TypeError(`cannot format PlainDateTime with options [${Object.keys(e)}]`);Object.assign(t,{year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"})}return t}function Di(e){let t=e;return Mi(t)||Ti(t)||(t=Object.assign({},t,{year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"})),t}function Ti(e){return"year"in e||"month"in e||"day"in e||"weekday"in e||"dateStyle"in e||"era"in e}function Mi(e){return"hour"in e||"minute"in e||"second"in e||"timeStyle"in e||"dayPeriod"in e||"fractionalSecondDigits"in e}function Ei(e){return Ti(e)||Mi(e)||"dateStyle"in e||"timeStyle"in e||"timeZoneName"in e}function Ii(e){return mt(e)||ft(e)||yt(e)||wt(e)||pt(e)||gt(e)||ut(e)}function Ci(e){return Ii(e)?e:qe(e)}function Oi(e,t){return!(!Ii(e)||!Ii(t)||ft(e)&&!ft(t)||mt(e)&&!mt(t)||yt(e)&&!yt(t)||wt(e)&&!wt(t)||pt(e)&&!pt(t)||gt(e)&&!gt(t)||ut(e)&&!ut(t))}function $i(e,t){if(ft(e)){const n={isoDate:{year:1970,month:1,day:1},time:re(e,M)};return{epochNs:An(re(t,W),n,"compatible"),formatter:si(t,H)}}if(pt(e)){const n=re(e,E),r=re(t,J);if(n!==r)throw new RangeError(`cannot format PlainYearMonth with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,Z)}}if(gt(e)){const n=re(e,E),r=re(t,J);if(n!==r)throw new RangeError(`cannot format PlainMonthDay with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,F)}}if(mt(e)){const n=re(e,E),r=re(t,J);if("iso8601"!==n&&n!==r)throw new RangeError(`cannot format PlainDate with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,B)}}if(yt(e)){const n=re(e,E),r=re(t,J);if("iso8601"!==n&&n!==r)throw new RangeError(`cannot format PlainDateTime with calendar ${n} in locale with calendar ${r}`);const o=re(e,T);return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,z)}}if(wt(e))throw new TypeError("Temporal.ZonedDateTime not supported in DateTimeFormat methods. Use toLocaleString() instead.");return ut(e)?{epochNs:re(e,b),formatter:si(t,A)}:{}}function Yi(e){const t=Object.create(null);return t.years=re(e,Y),t.months=re(e,R),t.weeks=re(e,S),t.days=re(e,j),t.hours=re(e,k),t.minutes=re(e,N),t.seconds=re(e,x),t.milliseconds=re(e,L),t.microseconds=re(e,P),t.nanoseconds=re(e,U),t}DateTimeFormatImpl.prototype.constructor=di,Object.defineProperty(di,"prototype",{value:DateTimeFormatImpl.prototype,writable:!1,enumerable:!1,configurable:!1}),di.supportedLocalesOf=ai.supportedLocalesOf,ae(di,"Intl.DateTimeFormat");const{format:Ri,formatToParts:Si}=Intl.DurationFormat?.prototype??Object.create(null);function ji(e){Intl.DurationFormat.prototype.resolvedOptions.call(this);const t=Yi(sn(e));return Ri.call(this,t)}Intl.DurationFormat?.prototype&&(Intl.DurationFormat.prototype.format=ji,Intl.DurationFormat.prototype.formatToParts=function(e){Intl.DurationFormat.prototype.resolvedOptions.call(this);const t=Yi(sn(e));return Si.call(this,t)});var ki=Object.freeze({__proto__:null,DateTimeFormat:di,ModifiedIntlDurationFormatPrototypeFormat:ji});class Instant{constructor(e){if(arguments.length<1)throw new TypeError("missing argument: epochNanoseconds is required");In(this,Lo(e))}get epochMilliseconds(){return vt(this,ut),No(re(this,b),"floor")}get epochNanoseconds(){return vt(this,ut),ko(jsbi_cjs.BigInt(re(this,b)))}add(e){return vt(this,ut),wo("add",this,e)}subtract(e){return vt(this,ut),wo("subtract",this,e)}until(e,t=void 0){return vt(this,ut),so("until",this,e,t)}since(e,t=void 0){return vt(this,ut),so("since",this,e,t)}round(e){if(vt(this,ut),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt);return Ht(n,{hour:24,minute:1440,second:86400,millisecond:864e5,microsecond:864e8,nanosecond:864e11}[o],!0),Cn(Io(re(this,b),n,o,r))}equals(t){vt(this,ut);const n=cn(t),r=re(this,b),o=re(n,b);return jsbi_cjs.equal(jsbi_cjs.BigInt(r),jsbi_cjs.BigInt(o))}toString(e=void 0){vt(this,ut);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o)throw new RangeError('smallestUnit must be a time unit other than "hour"');let i=t.timeZone;void 0!==i&&(i=Bn(i));const{precision:a,unit:s,increment:c}=At(o,n);return Xn(Cn(Io(re(this,b),c,s,r)),i,a)}toJSON(){return vt(this,ut),Xn(this,void 0,"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,ut),new di(e,t).format(this)}valueOf(){qo("Instant")}toZonedDateTimeISO(e){vt(this,ut);const t=Bn(e);return $n(re(this,b),t,"iso8601")}static fromEpochMilliseconds(e){return Cn(xo(qe(e)))}static fromEpochNanoseconds(e){return Cn(Lo(e))}static from(e){return cn(e)}static compare(t,n){const r=cn(t),o=cn(n),i=re(r,b),a=re(o,b);return jsbi_cjs.lessThan(i,a)?-1:jsbi_cjs.greaterThan(i,a)?1:0}}ae(Instant,"Temporal.Instant");class PlainDate{constructor(e,t,n,r="iso8601"){const o=_e(e),i=_e(t),a=_e(n),s=zo(void 0===r?"iso8601":Ve(r));xr(o,i,a),yn(this,{year:o,month:i,day:a},s)}get calendarId(){return vt(this,mt),re(this,E)}get era(){return Ni(this,"era")}get eraYear(){return Ni(this,"eraYear")}get year(){return Ni(this,"year")}get month(){return Ni(this,"month")}get monthCode(){return Ni(this,"monthCode")}get day(){return Ni(this,"day")}get dayOfWeek(){return Ni(this,"dayOfWeek")}get dayOfYear(){return Ni(this,"dayOfYear")}get weekOfYear(){return Ni(this,"weekOfYear")?.week}get yearOfWeek(){return Ni(this,"weekOfYear")?.year}get daysInWeek(){return Ni(this,"daysInWeek")}get daysInMonth(){return Ni(this,"daysInMonth")}get daysInYear(){return Ni(this,"daysInYear")}get monthsInYear(){return Ni(this,"monthsInYear")}get inLeapYear(){return Ni(this,"inLeapYear")}with(e,t=void 0){if(vt(this,mt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D));return r=Rn(n,r,tn(n,e,["year","month","monthCode","day"],[],"partial")),pn(Ln(n,r,Lt(Zo(t))),n)}withCalendar(e){vt(this,mt);const t=kn(e);return pn(re(this,D),t)}add(e,t=void 0){return vt(this,mt),vo("add",this,e,t)}subtract(e,t=void 0){return vt(this,mt),vo("subtract",this,e,t)}until(e,t=void 0){return vt(this,mt),co("until",this,e,t)}since(e,t=void 0){return vt(this,mt),co("since",this,e,t)}equals(e){vt(this,mt);const t=rn(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,mt),er(this,Zt(Zo(e)))}toJSON(){return vt(this,mt),er(this)}toLocaleString(e=void 0,t=void 0){return vt(this,mt),new di(e,t).format(this)}valueOf(){qo("PlainDate")}toPlainDateTime(e=void 0){vt(this,mt);const t=un(e);return wn(xt(re(this,D),t),re(this,E))}toZonedDateTime(e){let t,n;if(vt(this,mt),Ae(e)){const r=e.timeZone;void 0===r?t=Bn(e):(t=Bn(r),n=e.plainTime)}else t=Bn(e);const r=re(this,D);let o;return void 0===n?o=_n(t,r):(n=hn(n),o=An(t,xt(r,re(n,M)),"compatible")),$n(o,t,re(this,E))}toPlainYearMonth(){vt(this,mt);const e=re(this,E);return En(Pn(e,en(e,re(this,D)),"constrain"),e)}toPlainMonthDay(){vt(this,mt);const e=re(this,E);return bn(Un(e,en(e,re(this,D)),"constrain"),e)}static from(e,t=void 0){return rn(e,t)}static compare(e,t){const n=rn(e),r=rn(t);return Ro(re(n,D),re(r,D))}}function Ni(e,t){vt(e,mt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}ae(PlainDate,"Temporal.PlainDate");class PlainDateTime{constructor(e,t,n,r=0,o=0,i=0,a=0,s=0,c=0,d="iso8601"){const h=_e(e),u=_e(t),l=_e(n),m=void 0===r?0:_e(r),f=void 0===o?0:_e(o),y=void 0===i?0:_e(i),p=void 0===a?0:_e(a),g=void 0===s?0:_e(s),w=void 0===c?0:_e(c),v=zo(void 0===d?"iso8601":Ve(d));Ur(h,u,l,m,f,y,p,g,w),gn(this,{isoDate:{year:h,month:u,day:l},time:{hour:m,minute:f,second:y,millisecond:p,microsecond:g,nanosecond:w}},v)}get calendarId(){return vt(this,yt),re(this,E)}get year(){return xi(this,"year")}get month(){return xi(this,"month")}get monthCode(){return xi(this,"monthCode")}get day(){return xi(this,"day")}get hour(){return Li(this,"hour")}get minute(){return Li(this,"minute")}get second(){return Li(this,"second")}get millisecond(){return Li(this,"millisecond")}get microsecond(){return Li(this,"microsecond")}get nanosecond(){return Li(this,"nanosecond")}get era(){return xi(this,"era")}get eraYear(){return xi(this,"eraYear")}get dayOfWeek(){return xi(this,"dayOfWeek")}get dayOfYear(){return xi(this,"dayOfYear")}get weekOfYear(){return xi(this,"weekOfYear")?.week}get yearOfWeek(){return xi(this,"weekOfYear")?.year}get daysInWeek(){return xi(this,"daysInWeek")}get daysInYear(){return xi(this,"daysInYear")}get daysInMonth(){return xi(this,"daysInMonth")}get monthsInYear(){return xi(this,"monthsInYear")}get inLeapYear(){return xi(this,"inLeapYear")}with(e,t=void 0){if(vt(this,yt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E),r=re(this,T);let o={...en(n,r.isoDate),...r.time};return o=Rn(n,o,tn(n,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond"],"partial")),wn(on(n,o,Lt(Zo(t))),n)}withPlainTime(e=void 0){vt(this,yt);const t=un(e);return wn(xt(re(this,T).isoDate,t),re(this,E))}withCalendar(e){vt(this,yt);const t=kn(e);return wn(re(this,T),t)}add(e,t=void 0){return vt(this,yt),bo("add",this,e,t)}subtract(e,t=void 0){return vt(this,yt),bo("subtract",this,e,t)}until(e,t=void 0){return vt(this,yt),ho("until",this,e,t)}since(e,t=void 0){return vt(this,yt),ho("since",this,e,t)}round(e){if(vt(this,yt),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt,["day"]),i={day:1,hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[o];Ht(n,i,1===i);const a=re(this,T);return wn(1===n&&"nanosecond"===o?a:Co(a,n,o,r),re(this,E))}equals(e){vt(this,yt);const t=an(e);return 0===jo(re(this,T),re(t,T))&&xn(re(this,E),re(t,E))}toString(e=void 0){vt(this,yt);const t=Zo(e),n=Zt(t),r=zt(t),o=Ut(t,"trunc"),i=Wt(t,"smallestUnit","time",void 0);if("hour"===i)throw new RangeError('smallestUnit must be a time unit other than "hour"');const{precision:a,unit:s,increment:c}=At(i,r),d=Co(re(this,T),c,s,o);return Br(d),nr(d,re(this,E),a,n)}toJSON(){return vt(this,yt),nr(re(this,T),re(this,E),"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,yt),new di(e,t).format(this)}valueOf(){qo("PlainDateTime")}toZonedDateTime(e,t=void 0){vt(this,yt);const n=Bn(e),r=Pt(Zo(t));return $n(An(n,re(this,T),r),n,re(this,E))}toPlainDate(){return vt(this,yt),pn(re(this,T).isoDate,re(this,E))}toPlainTime(){return vt(this,yt),Tn(re(this,T).time)}static from(e,t=void 0){return an(e,t)}static compare(e,t){const n=an(e),r=an(t);return jo(re(n,T),re(r,T))}}function xi(e,t){vt(e,yt);const n=re(e,T).isoDate;return Qt(e).isoToDate(n,{[t]:!0})[t]}function Li(e,t){return vt(e,yt),re(e,T).time[t]}ae(PlainDateTime,"Temporal.PlainDateTime");class Duration{constructor(e=0,t=0,n=0,r=0,o=0,i=0,a=0,s=0,c=0,d=0){const h=void 0===e?0:Ge(e),u=void 0===t?0:Ge(t),l=void 0===n?0:Ge(n),m=void 0===r?0:Ge(r),f=void 0===o?0:Ge(o),y=void 0===i?0:Ge(i),p=void 0===a?0:Ge(a),g=void 0===s?0:Ge(s),w=void 0===c?0:Ge(c),v=void 0===d?0:Ge(d);zr(h,u,l,m,f,y,p,g,w,v),te(this),oe(this,Y,h),oe(this,R,u),oe(this,S,l),oe(this,j,m),oe(this,k,f),oe(this,N,y),oe(this,x,p),oe(this,L,g),oe(this,P,w),oe(this,U,v)}get years(){return vt(this,lt),re(this,Y)}get months(){return vt(this,lt),re(this,R)}get weeks(){return vt(this,lt),re(this,S)}get days(){return vt(this,lt),re(this,j)}get hours(){return vt(this,lt),re(this,k)}get minutes(){return vt(this,lt),re(this,N)}get seconds(){return vt(this,lt),re(this,x)}get milliseconds(){return vt(this,lt),re(this,L)}get microseconds(){return vt(this,lt),re(this,P)}get nanoseconds(){return vt(this,lt),re(this,U)}get sign(){return vt(this,lt),Mr(this)}get blank(){return vt(this,lt),0===Mr(this)}with(e){vt(this,lt);const t=kt(e),{years:n=re(this,Y),months:r=re(this,R),weeks:o=re(this,S),days:i=re(this,j),hours:a=re(this,k),minutes:s=re(this,N),seconds:c=re(this,x),milliseconds:d=re(this,L),microseconds:h=re(this,P),nanoseconds:u=re(this,U)}=t;return new Duration(n,r,o,i,a,s,c,d,h,u)}negated(){return vt(this,lt),Sr(this)}abs(){return vt(this,lt),new Duration(Math.abs(re(this,Y)),Math.abs(re(this,R)),Math.abs(re(this,S)),Math.abs(re(this,j)),Math.abs(re(this,k)),Math.abs(re(this,N)),Math.abs(re(this,x)),Math.abs(re(this,L)),Math.abs(re(this,P)),Math.abs(re(this,U)))}add(e){return vt(this,lt),go("add",this,e)}subtract(e){return vt(this,lt),go("subtract",this,e)}round(e){if(vt(this,lt),void 0===e)throw new TypeError("options parameter is required");const t=Jt(this),n="string"==typeof e?Fo("smallestUnit",e):Zo(e);let r=Wt(n,"largestUnit","datetime",void 0,["auto"]),{plainRelativeTo:o,zonedRelativeTo:i}=_t(n);const a=Ft(n),s=Ut(n,"halfExpand");let c=Wt(n,"smallestUnit","datetime",void 0),d=!0;c||(d=!1,c="nanosecond");const h=Gt(t,c);let u=!0;if(r||(u=!1,r=h),"auto"===r&&(r=h),!d&&!u)throw new RangeError("at least one of smallestUnit or largestUnit is required");if(Gt(r,c)!==r)throw new RangeError(`largestUnit ${r} cannot be smaller than smallestUnit ${c}`);const l={hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[c];if(void 0!==l&&Ht(a,l,!1),a>1&&"date"===Vt(c)&&r!==c)throw new RangeError("For calendar units with roundingIncrement > 1, use largestUnit = smallestUnit");if(i){let e=Ar(this);const t=re(i,$),n=re(i,E),o=re(i,b);return e=io(o,po(o,t,n,e),t,n,r,a,c,s),"date"===Vt(r)&&(r="hour"),_r(e,r)}if(o){let e=qr(this);const t=fo({deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},e.time),n=re(o,D),i=re(o,E),d=Sn(i,n,Nt(e.date,t.deltaDays),"constrain");return e=oo(xt(n,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),xt(d,t),i,r,a,c,s),_r(e,r)}if(Kt(t))throw new RangeError(`a starting point is required for ${t}s balancing`);if(Kt(r))throw new RangeError(`a starting point is required for ${r}s balancing`);let m=qr(this);if("day"===c){const{quotient:e,remainder:t}=m.time.divmod(Se);let n=m.date.days+e+Yo(t,"day");n=Eo(n,a,s),m=Jr({years:0,months:0,weeks:0,days:n},TimeDuration.ZERO)}else m=Jr({years:0,months:0,weeks:0,days:0},$o(m.time,a,c,s));return _r(m,r)}total(t){if(vt(this,lt),void 0===t)throw new TypeError("options argument is required");const n="string"==typeof t?Fo("unit",t):Zo(t);let{plainRelativeTo:r,zonedRelativeTo:o}=_t(n);const i=Wt(n,"unit","datetime",qt);if(o){const e=Ar(this),t=re(o,$),n=re(o,E),r=re(o,b);return function(e,t,n,r,o){return"time"===Vt(o)?Yo(TimeDuration.fromEpochNsDiff(t,e),o):ro(eo(e,t,n,r,o),t,zn(n,e),n,r,o)}(r,po(r,t,n,e),t,n,i)}if(r){const t=qr(this);let n=fo({deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},t.time);const o=re(r,D),a=re(r,E),s=Sn(a,o,Nt(t.date,n.deltaDays),"constrain");return function(t,n,r,o){if(0==jo(t,n))return 0;Br(t),Br(n);const i=Qr(t,n,r,o);return"nanosecond"===o?jsbi_cjs.toNumber(i.time.totalNs):ro(i,pr(n),t,null,r,o)}(xt(o,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),xt(s,n),a,i)}const a=Jt(this);if(Kt(a))throw new RangeError(`a starting point is required for ${a}s total`);if(Kt(i))throw new RangeError(`a starting point is required for ${i}s total`);return Yo(qr(this).time,i)}toString(e=void 0){vt(this,lt);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o||"minute"===o)throw new RangeError('smallestUnit must be a time unit other than "hours" or "minutes"');const{precision:i,unit:a,increment:s}=At(o,n);if("nanosecond"===a&&1===s)return Qn(this,i);const c=Jt(this);let d=Ar(this);const h=$o(d.time,s,a,r);return d=Jr(d.date,h),Qn(_r(d,Gt(c,"second")),i)}toJSON(){return vt(this,lt),Qn(this,"auto")}toLocaleString(e=void 0,t=void 0){if(vt(this,lt),"function"==typeof Intl.DurationFormat){const n=new Intl.DurationFormat(e,t);return ji.call(n,this)}return console.warn("Temporal.Duration.prototype.toLocaleString() requires Intl.DurationFormat."),Qn(this,"auto")}valueOf(){qo("Duration")}static from(e){return sn(e)}static compare(t,n,r=void 0){const o=sn(t),i=sn(n),a=Zo(r),{plainRelativeTo:s,zonedRelativeTo:c}=_t(a);if(re(o,Y)===re(i,Y)&&re(o,R)===re(i,R)&&re(o,S)===re(i,S)&&re(o,j)===re(i,j)&&re(o,k)===re(i,k)&&re(o,N)===re(i,N)&&re(o,x)===re(i,x)&&re(o,L)===re(i,L)&&re(o,P)===re(i,P)&&re(o,U)===re(i,U))return 0;const d=Jt(o),h=Jt(i),u=Ar(o),l=Ar(i);if(c&&("date"===Vt(d)||"date"===Vt(h))){const t=re(c,$),n=re(c,E),r=re(c,b),o=po(r,t,n,u),i=po(r,t,n,l);return Bo(jsbi_cjs.toNumber(jsbi_cjs.subtract(o,i)))}let m=u.date.days,f=l.date.days;if(Kt(d)||Kt(h)){if(!s)throw new RangeError("A starting point is required for years, months, or weeks comparison");m=Rr(u.date,s),f=Rr(l.date,s)}const y=u.time.add24HourDays(m),p=l.time.add24HourDays(f);return y.cmp(p)}}ae(Duration,"Temporal.Duration");class PlainMonthDay{constructor(e,t,n="iso8601",r=1972){const o=_e(e),i=_e(t),a=zo(void 0===n?"iso8601":Ve(n)),s=_e(r);xr(s,o,i),vn(this,{year:s,month:o,day:i},a)}get monthCode(){return Pi(this,"monthCode")}get day(){return Pi(this,"day")}get calendarId(){return vt(this,gt),re(this,E)}with(e,t=void 0){if(vt(this,gt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D),"month-day");return r=Rn(n,r,tn(n,e,["year","month","monthCode","day"],[],"partial")),bn(Un(n,r,Lt(Zo(t))),n)}equals(e){vt(this,gt);const t=dn(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,gt),rr(this,Zt(Zo(e)))}toJSON(){return vt(this,gt),rr(this)}toLocaleString(e=void 0,t=void 0){return vt(this,gt),new di(e,t).format(this)}valueOf(){qo("PlainMonthDay")}toPlainDate(e){if(vt(this,gt),!Ae(e))throw new TypeError("argument should be an object");const t=re(this,E);return pn(Ln(t,Rn(t,en(t,re(this,D),"month-day"),tn(t,e,["year"],[],[])),"constrain"),t)}static from(e,t=void 0){return dn(e,t)}}function Pi(e,t){vt(e,gt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}function Ui(e){return zn(e,Po())}ae(PlainMonthDay,"Temporal.PlainMonthDay");const Bi={instant:()=>Cn(Po()),plainDateTimeISO:(e=Uo())=>wn(Ui(Bn(e)),"iso8601"),plainDateISO:(e=Uo())=>pn(Ui(Bn(e)).isoDate,"iso8601"),plainTimeISO:(e=Uo())=>Tn(Ui(Bn(e)).time),timeZoneId:()=>Uo(),zonedDateTimeISO:(e=Uo())=>{const t=Bn(e);return $n(Po(),t,"iso8601")},[Symbol.toStringTag]:"Temporal.Now"};Object.defineProperty(Bi,Symbol.toStringTag,{value:"Temporal.Now",writable:!1,enumerable:!1,configurable:!0});class PlainTime{constructor(e=0,t=0,n=0,r=0,o=0,i=0){const a=void 0===e?0:_e(e),s=void 0===t?0:_e(t),c=void 0===n?0:_e(n),d=void 0===r?0:_e(r),h=void 0===o?0:_e(o),u=void 0===i?0:_e(i);Pr(a,s,c,d,h,u),Dn(this,{hour:a,minute:s,second:c,millisecond:d,microsecond:h,nanosecond:u})}get hour(){return vt(this,ft),re(this,M).hour}get minute(){return vt(this,ft),re(this,M).minute}get second(){return vt(this,ft),re(this,M).second}get millisecond(){return vt(this,ft),re(this,M).millisecond}get microsecond(){return vt(this,ft),re(this,M).microsecond}get nanosecond(){return vt(this,ft),re(this,M).nanosecond}with(e,t=void 0){if(vt(this,ft),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=nn(e,"partial"),r=nn(this);let{hour:o,minute:i,second:a,millisecond:s,microsecond:c,nanosecond:d}=Object.assign(r,n);const h=Lt(Zo(t));return({hour:o,minute:i,second:a,millisecond:s,microsecond:c,nanosecond:d}=jt(o,i,a,s,c,d,h)),new PlainTime(o,i,a,s,c,d)}add(e){return vt(this,ft),Do("add",this,e)}subtract(e){return vt(this,ft),Do("subtract",this,e)}until(e,t=void 0){return vt(this,ft),uo("until",this,e,t)}since(e,t=void 0){return vt(this,ft),uo("since",this,e,t)}round(e){if(vt(this,ft),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt);return Ht(n,{hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[o],!1),Tn(Oo(re(this,M),n,o,r))}equals(e){vt(this,ft);const t=hn(e);return 0===So(re(this,M),re(t,M))}toString(e=void 0){vt(this,ft);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o)throw new RangeError('smallestUnit must be a time unit other than "hour"');const{precision:i,unit:a,increment:s}=At(o,n);return tr(Oo(re(this,M),s,a,r),i)}toJSON(){return vt(this,ft),tr(re(this,M),"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,ft),new di(e,t).format(this)}valueOf(){qo("PlainTime")}static from(e,t=void 0){return hn(e,t)}static compare(e,t){const n=hn(e),r=hn(t);return So(re(n,M),re(r,M))}}ae(PlainTime,"Temporal.PlainTime");class PlainYearMonth{constructor(e,t,n="iso8601",r=1){const o=_e(e),i=_e(t),a=zo(void 0===n?"iso8601":Ve(n)),s=_e(r);xr(o,i,s),Mn(this,{year:o,month:i,day:s},a)}get year(){return Zi(this,"year")}get month(){return Zi(this,"month")}get monthCode(){return Zi(this,"monthCode")}get calendarId(){return vt(this,pt),re(this,E)}get era(){return Zi(this,"era")}get eraYear(){return Zi(this,"eraYear")}get daysInMonth(){return Zi(this,"daysInMonth")}get daysInYear(){return Zi(this,"daysInYear")}get monthsInYear(){return Zi(this,"monthsInYear")}get inLeapYear(){return Zi(this,"inLeapYear")}with(e,t=void 0){if(vt(this,pt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D),"year-month");return r=Rn(n,r,tn(n,e,["year","month","monthCode"],[],"partial")),En(Pn(n,r,Lt(Zo(t))),n)}add(e,t=void 0){return vt(this,pt),To("add",this,e,t)}subtract(e,t=void 0){return vt(this,pt),To("subtract",this,e,t)}until(e,t=void 0){return vt(this,pt),lo("until",this,e,t)}since(e,t=void 0){return vt(this,pt),lo("since",this,e,t)}equals(e){vt(this,pt);const t=ln(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,pt),or(this,Zt(Zo(e)))}toJSON(){return vt(this,pt),or(this)}toLocaleString(e=void 0,t=void 0){return vt(this,pt),new di(e,t).format(this)}valueOf(){qo("PlainYearMonth")}toPlainDate(e){if(vt(this,pt),!Ae(e))throw new TypeError("argument should be an object");const t=re(this,E);return pn(Ln(t,Rn(t,en(t,re(this,D),"year-month"),tn(t,e,["day"],[],[])),"constrain"),t)}static from(e,t=void 0){return ln(e,t)}static compare(e,t){const n=ln(e),r=ln(t);return Ro(re(n,D),re(r,D))}}function Zi(e,t){vt(e,pt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}ae(PlainYearMonth,"Temporal.PlainYearMonth");const Fi=di.prototype.resolvedOptions;class ZonedDateTime{constructor(e,t,n="iso8601"){if(arguments.length<1)throw new TypeError("missing argument: epochNanoseconds is required");const r=Lo(e);let o=Ve(t);const{tzName:i,offsetMinutes:a}=Rt(o);if(void 0===a){const e=hr(i);if(!e)throw new RangeError(`unknown time zone ${i}`);o=e.identifier}else o=mr(a);On(this,r,o,zo(void 0===n?"iso8601":Ve(n)))}get calendarId(){return vt(this,wt),re(this,E)}get timeZoneId(){return vt(this,wt),re(this,$)}get year(){return zi(this,"year")}get month(){return zi(this,"month")}get monthCode(){return zi(this,"monthCode")}get day(){return zi(this,"day")}get hour(){return Ai(this,"hour")}get minute(){return Ai(this,"minute")}get second(){return Ai(this,"second")}get millisecond(){return Ai(this,"millisecond")}get microsecond(){return Ai(this,"microsecond")}get nanosecond(){return Ai(this,"nanosecond")}get era(){return zi(this,"era")}get eraYear(){return zi(this,"eraYear")}get epochMilliseconds(){return vt(this,wt),No(re(this,b),"floor")}get epochNanoseconds(){return vt(this,wt),ko(re(this,b))}get dayOfWeek(){return zi(this,"dayOfWeek")}get dayOfYear(){return zi(this,"dayOfYear")}get weekOfYear(){return zi(this,"weekOfYear")?.week}get yearOfWeek(){return zi(this,"weekOfYear")?.year}get hoursInDay(){vt(this,wt);const e=re(this,$),t=Hi(this).isoDate,n=Or(t.year,t.month,t.day+1),r=_n(e,t),o=_n(e,n);return Yo(TimeDuration.fromEpochNsDiff(o,r),"hour")}get daysInWeek(){return zi(this,"daysInWeek")}get daysInMonth(){return zi(this,"daysInMonth")}get daysInYear(){return zi(this,"daysInYear")}get monthsInYear(){return zi(this,"monthsInYear")}get inLeapYear(){return zi(this,"inLeapYear")}get offset(){return vt(this,wt),Hn(Fn(re(this,$),re(this,b)))}get offsetNanoseconds(){return vt(this,wt),Fn(re(this,$),re(this,b))}with(e,t=void 0){if(vt(this,wt),!Ae(e))throw new TypeError("invalid zoned-date-time-like");bt(e);const n=re(this,E),r=re(this,$),o=Fn(r,re(this,b)),i=Hi(this);let a={...en(n,i.isoDate),...i.time,offset:Hn(o)};a=Rn(n,a,tn(n,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset"],"partial"));const s=Zo(t),c=Pt(s),d=Bt(s,"prefer"),h=on(n,a,Lt(s)),u=sr(a.offset);return $n(mn(h.isoDate,h.time,"option",u,r,c,d,!1),r,n)}withPlainTime(e=void 0){vt(this,wt);const t=re(this,$),n=re(this,E),r=Hi(this).isoDate;let o;return o=void 0===e?_n(t,r):An(t,xt(r,re(hn(e),M)),"compatible"),$n(o,t,n)}withTimeZone(e){vt(this,wt);const t=Bn(e);return $n(re(this,b),t,re(this,E))}withCalendar(e){vt(this,wt);const t=kn(e);return $n(re(this,b),re(this,$),t)}add(e,t=void 0){return vt(this,wt),Mo("add",this,e,t)}subtract(e,t=void 0){return vt(this,wt),Mo("subtract",this,e,t)}until(e,t=void 0){return vt(this,wt),mo("until",this,e,t)}since(e,t=void 0){return vt(this,wt),mo("since",this,e,t)}round(t){if(vt(this,wt),void 0===t)throw new TypeError("options parameter is required");const n="string"==typeof t?Fo("smallestUnit",t):Zo(t),r=Ft(n),o=Ut(n,"halfExpand"),i=Wt(n,"smallestUnit","time",qt,["day"]),a={day:1,hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[i];if(Ht(r,a,1===a),"nanosecond"===i&&1===r)return $n(re(this,b),re(this,$),re(this,E));const s=re(this,$),c=re(this,b),d=Hi(this);let h;if("day"===i){const t=d.isoDate,n=Or(t.year,t.month,t.day+1),r=_n(s,t),i=_n(s,n),a=jsbi_cjs.subtract(i,r);h=TimeDuration.fromEpochNsDiff(c,r).round(a,o).addToEpochNs(r)}else{const e=Co(d,r,i,o),t=Fn(s,c);h=mn(e.isoDate,e.time,"option",t,s,"compatible","prefer",!1)}return $n(h,s,re(this,E))}equals(t){vt(this,wt);const n=fn(t),r=re(this,b),o=re(n,b);return!!jsbi_cjs.equal(jsbi_cjs.BigInt(r),jsbi_cjs.BigInt(o))&&!!Zn(re(this,$),re(n,$))&&xn(re(this,E),re(n,E))}toString(e=void 0){vt(this,wt);const t=Zo(e),n=Zt(t),r=zt(t),o=function(e){return Ho(e,"offset",["auto","never"],"auto")}(t),i=Ut(t,"trunc"),a=Wt(t,"smallestUnit","time",void 0);if("hour"===a)throw new RangeError('smallestUnit must be a time unit other than "hour"');const s=function(e){return Ho(e,"timeZoneName",["auto","never","critical"],"auto")}(t),{precision:c,unit:d,increment:h}=At(a,r);return ir(this,c,n,s,o,{unit:d,increment:h,roundingMode:i})}toLocaleString(e=void 0,t=void 0){vt(this,wt);const n=Zo(t),r=Object.create(null);if(function(e,t,n,r){if(null==t)return;const o=Reflect.ownKeys(t);for(let i=0;i<o.length;i++){const a=o[i];if(!n.some((e=>Object.is(e,a)))&&Object.prototype.propertyIsEnumerable.call(t,a)){const n=t[a];r,e[a]=n}}}(r,n,["timeZone"]),void 0!==n.timeZone)throw new TypeError("ZonedDateTime toLocaleString does not accept a timeZone option");if(void 0===r.year&&void 0===r.month&&void 0===r.day&&void 0===r.era&&void 0===r.weekday&&void 0===r.dateStyle&&void 0===r.hour&&void 0===r.minute&&void 0===r.second&&void 0===r.fractionalSecondDigits&&void 0===r.timeStyle&&void 0===r.dayPeriod&&void 0===r.timeZoneName&&(r.timeZoneName="short"),r.timeZone=re(this,$),ar(r.timeZone))throw new RangeError("toLocaleString does not currently support offset time zones");const o=new di(e,r),i=Fi.call(o).calendar,a=re(this,E);if("iso8601"!==a&&"iso8601"!==i&&!xn(i,a))throw new RangeError(`cannot format ZonedDateTime with calendar ${a} in locale with calendar ${i}`);return o.format(Cn(re(this,b)))}toJSON(){return vt(this,wt),ir(this,"auto")}valueOf(){qo("ZonedDateTime")}startOfDay(){vt(this,wt);const e=re(this,$);return $n(_n(e,Hi(this).isoDate),e,re(this,E))}getTimeZoneTransition(e){vt(this,wt);const t=re(this,$);if(void 0===e)throw new TypeError("options parameter is required");const n=Ho("string"==typeof e?Fo("direction",e):Zo(e),"direction",["next","previous"],qt);if(void 0===n)throw new TypeError("direction option is required");if(ar(t)||"UTC"===t)return null;const r=re(this,b),o="next"===n?wr(t,r):vr(t,r);return null===o?null:$n(o,t,re(this,E))}toInstant(){return vt(this,wt),Cn(re(this,b))}toPlainDate(){return vt(this,wt),pn(Hi(this).isoDate,re(this,E))}toPlainTime(){return vt(this,wt),Tn(Hi(this).time)}toPlainDateTime(){return vt(this,wt),wn(Hi(this),re(this,E))}static from(e,t=void 0){return fn(e,t)}static compare(t,n){const r=fn(t),o=fn(n),i=re(r,b),a=re(o,b);return jsbi_cjs.lessThan(jsbi_cjs.BigInt(i),jsbi_cjs.BigInt(a))?-1:jsbi_cjs.greaterThan(jsbi_cjs.BigInt(i),jsbi_cjs.BigInt(a))?1:0}}function Hi(e){return zn(re(e,$),re(e,b))}function zi(e,t){vt(e,wt);const n=Hi(e).isoDate;return Qt(e).isoToDate(n,{[t]:!0})[t]}function Ai(e,t){return vt(e,wt),Hi(e).time[t]}ae(ZonedDateTime,"Temporal.ZonedDateTime");var qi=Object.freeze({__proto__:null,Duration,Instant,Now:Bi,PlainDate,PlainDateTime,PlainMonthDay,PlainTime,PlainYearMonth,ZonedDateTime});const Wi=class LegacyDateImpl{toTemporalInstant(){return Cn(xo(Date.prototype.valueOf.call(this)))}}.prototype.toTemporalInstant,_i=[Instant,PlainDate,PlainDateTime,Duration,PlainMonthDay,PlainTime,PlainYearMonth,ZonedDateTime];for(const e of _i){const t=Object.getOwnPropertyDescriptor(e,"prototype");(t.configurable||t.enumerable||t.writable)&&(t.configurable=!1,t.enumerable=!1,t.writable=!1,Object.defineProperty(e,"prototype",t))}
+const t=jsbi_cjs.BigInt(0),n=jsbi_cjs.BigInt(1),r=jsbi_cjs.BigInt(2),o=jsbi_cjs.BigInt(10),i=jsbi_cjs.BigInt(24),a=jsbi_cjs.BigInt(60),s=jsbi_cjs.BigInt(1e3),c=jsbi_cjs.BigInt(1e6),d=jsbi_cjs.BigInt(1e9),h=jsbi_cjs.multiply(jsbi_cjs.BigInt(3600),d),u=jsbi_cjs.multiply(a,d),l=jsbi_cjs.multiply(h,i);function m(t){return"bigint"==typeof t?jsbi_cjs.BigInt(t.toString(10)):t}function f(n){return jsbi_cjs.equal(jsbi_cjs.remainder(n,r),t)}function y(n){return jsbi_cjs.lessThan(n,t)?jsbi_cjs.unaryMinus(n):n}function p(t,n){return jsbi_cjs.lessThan(t,n)?-1:jsbi_cjs.greaterThan(t,n)?1:0}function g(t,n){return{quotient:jsbi_cjs.divide(t,n),remainder:jsbi_cjs.remainder(t,n)}}var w,v;const b="slot-epochNanoSeconds",D="slot-iso-date",T="slot-iso-date-time",M="slot-time",E="slot-calendar",I="slot-date-brand",C="slot-year-month-brand",O="slot-month-day-brand",$="slot-time-zone",Y="slot-years",R="slot-months",S="slot-weeks",j="slot-days",k="slot-hours",N="slot-minutes",x="slot-seconds",L="slot-milliseconds",P="slot-microseconds",U="slot-nanoseconds",B="date",Z="ym",F="md",H="time",z="datetime",A="instant",q="original",W="timezone-canonical",_="timezone-original",J="calendar-id",G="locale",K="options",V=new WeakMap,X=Symbol.for("@@Temporal__GetSlots");(w=globalThis)[X]||(w[X]=function(e){return V.get(e)});const Q=globalThis[X],ee=Symbol.for("@@Temporal__CreateSlots");(v=globalThis)[ee]||(v[ee]=function(e){V.set(e,Object.create(null))});const te=globalThis[ee];function ne(e,...t){if(!e||"object"!=typeof e)return!1;const n=Q(e);return!!n&&t.every((e=>e in n))}function re(e,t){const n=Q(e)?.[t];if(void 0===n)throw new TypeError(`Missing internal slot ${t}`);return n}function oe(e,t,n){const r=Q(e);if(void 0===r)throw new TypeError("Missing slots for the given container");if(r[t])throw new TypeError(`${t} already has set`);r[t]=n}const ie={};function ae(e,t){Object.defineProperty(e.prototype,Symbol.toStringTag,{value:t,writable:!1,enumerable:!1,configurable:!0});const n=Object.getOwnPropertyNames(e);for(let t=0;t<n.length;t++){const r=n[t],o=Object.getOwnPropertyDescriptor(e,r);o.configurable&&o.enumerable&&(o.enumerable=!1,Object.defineProperty(e,r,o))}const r=Object.getOwnPropertyNames(e.prototype);for(let t=0;t<r.length;t++){const n=r[t],o=Object.getOwnPropertyDescriptor(e.prototype,n);o.configurable&&o.enumerable&&(o.enumerable=!1,Object.defineProperty(e.prototype,n,o))}se(t,e),se(`${t}.prototype`,e.prototype)}function se(e,t){const n=`%${e}%`;if(void 0!==ie[n])throw new Error(`intrinsic ${e} already exists`);ie[n]=t}function ce(e){return ie[e]}function de(e,t){let n=e;if(0===n)return{div:n,mod:n};const r=Math.sign(n);n=Math.abs(n);const o=Math.trunc(1+Math.log10(n));if(t>=o)return{div:0*r,mod:r*n};if(0===t)return{div:r*n,mod:0*r};const i=n.toPrecision(o);return{div:r*Number.parseInt(i.slice(0,o-t),10),mod:r*Number.parseInt(i.slice(o-t),10)}}function he(e,t,n){let r=e,o=n;if(0===r)return o;const i=Math.sign(r)||Math.sign(o);r=Math.abs(r),o=Math.abs(o);const a=r.toPrecision(Math.trunc(1+Math.log10(r)));if(0===o)return i*Number.parseInt(a+"0".repeat(t),10);const s=a+o.toPrecision(Math.trunc(1+Math.log10(o))).padStart(t,"0");return i*Number.parseInt(s,10)}function ue(e,t){const n="negative"===t;switch(e){case"ceil":return n?"zero":"infinity";case"floor":return n?"infinity":"zero";case"expand":return"infinity";case"trunc":return"zero";case"halfCeil":return n?"half-zero":"half-infinity";case"halfFloor":return n?"half-infinity":"half-zero";case"halfExpand":return"half-infinity";case"halfTrunc":return"half-zero";case"halfEven":return"half-even"}}function le(e,t,n,r,o){return"zero"===o?e:"infinity"===o?t:n<0?e:n>0?t:"half-zero"===o?e:"half-infinity"===o?t:r?e:t}class TimeDuration{constructor(t){this.totalNs=m(t),this.sec=jsbi_cjs.toNumber(jsbi_cjs.divide(this.totalNs,d)),this.subsec=jsbi_cjs.toNumber(jsbi_cjs.remainder(this.totalNs,d))}static validateNew(t,n){if(jsbi_cjs.greaterThan(y(t),TimeDuration.MAX))throw new RangeError(`${n} of duration time units cannot exceed ${TimeDuration.MAX} s`);return new TimeDuration(t)}static fromEpochNsDiff(t,n){const r=jsbi_cjs.subtract(m(t),m(n));return new TimeDuration(r)}static fromComponents(t,n,r,o,i,a){const l=jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.add(jsbi_cjs.BigInt(a),jsbi_cjs.multiply(jsbi_cjs.BigInt(i),s)),jsbi_cjs.multiply(jsbi_cjs.BigInt(o),c)),jsbi_cjs.multiply(jsbi_cjs.BigInt(r),d)),jsbi_cjs.multiply(jsbi_cjs.BigInt(n),u)),jsbi_cjs.multiply(jsbi_cjs.BigInt(t),h));return TimeDuration.validateNew(l,"total")}abs(){return new TimeDuration(y(this.totalNs))}add(t){return TimeDuration.validateNew(jsbi_cjs.add(this.totalNs,t.totalNs),"sum")}add24HourDays(t){return TimeDuration.validateNew(jsbi_cjs.add(this.totalNs,jsbi_cjs.multiply(jsbi_cjs.BigInt(t),l)),"sum")}addToEpochNs(t){return jsbi_cjs.add(m(t),this.totalNs)}cmp(e){return p(this.totalNs,e.totalNs)}divmod(t){const{quotient:n,remainder:r}=g(this.totalNs,jsbi_cjs.BigInt(t));return{quotient:jsbi_cjs.toNumber(n),remainder:new TimeDuration(r)}}fdiv(n){const r=m(n),i=jsbi_cjs.BigInt(r);let{quotient:a,remainder:s}=g(this.totalNs,i);const c=[];let d;const h=(jsbi_cjs.lessThan(this.totalNs,t)?-1:1)*Math.sign(jsbi_cjs.toNumber(r));for(;!jsbi_cjs.equal(s,t)&&c.length<50;)s=jsbi_cjs.multiply(s,o),({quotient:d,remainder:s}=g(s,i)),c.push(Math.abs(jsbi_cjs.toNumber(d)));return h*Number(y(a).toString()+"."+c.join(""))}isZero(){return jsbi_cjs.equal(this.totalNs,t)}round(o,i){const a=m(o);if(jsbi_cjs.equal(a,n))return this;const{quotient:s,remainder:c}=g(this.totalNs,a),d=jsbi_cjs.lessThan(this.totalNs,t)?"negative":"positive",h=jsbi_cjs.multiply(y(s),a),u=jsbi_cjs.add(h,a),l=p(y(jsbi_cjs.multiply(c,r)),a),w=ue(i,d),v=jsbi_cjs.equal(y(this.totalNs),h)?h:le(h,u,l,f(s),w),b="positive"===d?v:jsbi_cjs.unaryMinus(v);return TimeDuration.validateNew(b,"rounding")}sign(){return this.cmp(new TimeDuration(t))}subtract(t){return TimeDuration.validateNew(jsbi_cjs.subtract(this.totalNs,t.totalNs),"difference")}}TimeDuration.MAX=jsbi_cjs.BigInt("9007199254740991999999999"),TimeDuration.ZERO=new TimeDuration(t);const me=/[A-Za-z._][A-Za-z._0-9+-]*/,fe=new RegExp(`(?:${/(?:[+-](?:[01][0-9]|2[0-3])(?::?[0-5][0-9])?)/.source}|(?:${me.source})(?:\\/(?:${me.source}))*)`),ye=/(?:[+-]\d{6}|\d{4})/,pe=/(?:0[1-9]|1[0-2])/,ge=/(?:0[1-9]|[12]\d|3[01])/,we=new RegExp(`(${ye.source})(?:-(${pe.source})-(${ge.source})|(${pe.source})(${ge.source}))`),ve=/(\d{2})(?::(\d{2})(?::(\d{2})(?:[.,](\d{1,9}))?)?|(\d{2})(?:(\d{2})(?:[.,](\d{1,9}))?)?)?/,be=/((?:[+-])(?:[01][0-9]|2[0-3])(?::?(?:[0-5][0-9])(?::?(?:[0-5][0-9])(?:[.,](?:\d{1,9}))?)?)?)/,De=new RegExp(`([zZ])|${be.source}?`),Te=/\[(!)?([a-z_][a-z0-9_-]*)=([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\]/g,Me=new RegExp([`^${we.source}`,`(?:(?:[tT]|\\s+)${ve.source}(?:${De.source})?)?`,`(?:\\[!?(${fe.source})\\])?`,`((?:${Te.source})*)$`].join("")),Ee=new RegExp([`^[tT]?${ve.source}`,`(?:${De.source})?`,`(?:\\[!?${fe.source}\\])?`,`((?:${Te.source})*)$`].join("")),Ie=new RegExp(`^(${ye.source})-?(${pe.source})(?:\\[!?${fe.source}\\])?((?:${Te.source})*)$`),Ce=new RegExp(`^(?:--)?(${pe.source})-?(${ge.source})(?:\\[!?${fe.source}\\])?((?:${Te.source})*)$`),Oe=/(\d+)(?:[.,](\d{1,9}))?/,$e=new RegExp(`(?:${Oe.source}H)?(?:${Oe.source}M)?(?:${Oe.source}S)?`),Ye=new RegExp(`^([+-])?P${/(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?/.source}(?:T(?!$)${$e.source})?$`,"i"),Re=864e5,Se=1e6*Re,je=6e10,ke=1e8*Re,Ne=xo(ke),xe=jsbi_cjs.unaryMinus(Ne),Le=jsbi_cjs.add(jsbi_cjs.subtract(xe,l),n),Pe=jsbi_cjs.subtract(jsbi_cjs.add(Ne,l),n),Ue=146097*Re,Be=-271821,Ze=275760,Fe=Date.UTC(1847,0,1),He=["iso8601","hebrew","islamic","islamic-umalqura","islamic-tbla","islamic-civil","islamic-rgsa","islamicc","persian","ethiopic","ethioaa","ethiopic-amete-alem","coptic","chinese","dangi","roc","indian","buddhist","japanese","gregory"],ze=new Set(["ACT","AET","AGT","ART","AST","BET","BST","CAT","CNT","CST","CTT","EAT","ECT","IET","IST","JST","MIT","NET","NST","PLT","PNT","PRT","PST","SST","VST"]);function Ae(e){return"object"==typeof e&&null!==e||"function"==typeof e}function qe(e){if("bigint"==typeof e)throw new TypeError("Cannot convert BigInt to number");return Number(e)}function We(e){if("symbol"==typeof e)throw new TypeError("Cannot convert a Symbol value to a String");return String(e)}function _e(e){const t=qe(e);if(0===t)return 0;if(Number.isNaN(t)||t===1/0||t===-1/0)throw new RangeError("invalid number value");const n=Math.trunc(t);return 0===n?0:n}function Je(e,t){const n=_e(e);if(n<=0){if(void 0!==t)throw new RangeError(`property '${t}' cannot be a a number less than one`);throw new RangeError("Cannot convert a number less than one to a positive integer")}return n}function Ge(e){const t=qe(e);if(Number.isNaN(t))throw new RangeError("not a number");if(t===1/0||t===-1/0)throw new RangeError("infinity is out of range");if(!function(e){if("number"!=typeof e||Number.isNaN(e)||e===1/0||e===-1/0)return!1;const t=Math.abs(e);return Math.floor(t)===t}(t))throw new RangeError(`unsupported fractional value ${e}`);return 0===t?0:t}function Ke(e,t){return String(e).padStart(t,"0")}function Ve(e){if("string"!=typeof e)throw new TypeError(`expected a string, not ${String(e)}`);return e}function Xe(e,t){if(Ae(e)){const t=e?.toString();if("string"==typeof t||"number"==typeof t)return t;throw new TypeError("Cannot convert object to primitive value")}return e}const Qe=["era","eraYear","year","month","monthCode","day","hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],et={era:We,eraYear:_e,year:_e,month:Je,monthCode:function(e){const t=Ve(Xe(e));if(t.length<3||t.length>4||"M"!==t[0]||-1==="0123456789".indexOf(t[1])||-1==="0123456789".indexOf(t[2])||t[1]+t[2]==="00"&&"L"!==t[3]||"L"!==t[3]&&void 0!==t[3])throw new RangeError(`bad month code ${t}; must match M01-M99 or M00L-M99L`);return t},day:Je,hour:_e,minute:_e,second:_e,millisecond:_e,microsecond:_e,nanosecond:_e,offset:function(e){const t=Ve(Xe(e));return sr(t),t},timeZone:Bn},tt={hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},nt=[["years","year","date"],["months","month","date"],["weeks","week","date"],["days","day","date"],["hours","hour","time"],["minutes","minute","time"],["seconds","second","time"],["milliseconds","millisecond","time"],["microseconds","microsecond","time"],["nanoseconds","nanosecond","time"]],rt=Object.fromEntries(nt.map((e=>[e[0],e[1]]))),ot=Object.fromEntries(nt.map((([e,t])=>[t,e]))),it=nt.map((([,e])=>e)),at={day:Se,hour:36e11,minute:6e10,second:1e9,millisecond:1e6,microsecond:1e3,nanosecond:1},st=["days","hours","microseconds","milliseconds","minutes","months","nanoseconds","seconds","weeks","years"],ct=Intl.DateTimeFormat,dt=new Map;function ht(e){const t=Ao(e);let n=dt.get(t);return void 0===n&&(n=new ct("en-us",{timeZone:t,hour12:!1,era:"short",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"}),dt.set(t,n)),n}function ut(e){return ne(e,b)&&!ne(e,$,E)}function lt(e){return ne(e,Y,R,j,k,N,x,L,P,U)}function mt(e){return ne(e,I)}function ft(e){return ne(e,M)}function yt(e){return ne(e,T)}function pt(e){return ne(e,C)}function gt(e){return ne(e,O)}function wt(e){return ne(e,b,$,E)}function vt(e,t){if(!t(e))throw new TypeError("invalid receiver: method called with the wrong type of this-object")}function bt(e){if(ne(e,E)||ne(e,$))throw new TypeError("with() does not support a calendar or timeZone property");if(ft(e))throw new TypeError("with() does not accept Temporal.PlainTime, use withPlainTime() instead");if(void 0!==e.calendar)throw new TypeError("with() does not support a calendar property");if(void 0!==e.timeZone)throw new TypeError("with() does not support a timeZone property")}function Dt(e,t){return"never"===t||"auto"===t&&"iso8601"===e?"":`[${"critical"===t?"!":""}u-ca=${e}]`}function Tt(e){let t,n,r=!1;for(Te.lastIndex=0;n=Te.exec(e);){const{1:o,2:i,3:a}=n;if("u-ca"===i){if(void 0===t)t=a,r="!"===o;else if("!"===o||r)throw new RangeError(`Invalid annotations in ${e}: more than one u-ca present with critical flag`)}else if("!"===o)throw new RangeError(`Unrecognized annotation: !${i}=${a}`)}return t}function Mt(e){const t=Me.exec(e);if(!t)throw new RangeError(`invalid RFC 9557 string: ${e}`);const n=Tt(t[16]);let r=t[1];if("-000000"===r)throw new RangeError(`invalid RFC 9557 string: ${e}`);const o=+r,i=+(t[2]??t[4]??1),a=+(t[3]??t[5]??1),s=void 0!==t[6],c=+(t[6]??0),d=+(t[7]??t[10]??0);let h=+(t[8]??t[11]??0);60===h&&(h=59);const u=(t[9]??t[12]??"")+"000000000",l=+u.slice(0,3),m=+u.slice(3,6),f=+u.slice(6,9);let y,p=!1;t[13]?(y=void 0,p=!0):t[14]&&(y=t[14]);const g=t[15];return Ur(o,i,a,c,d,h,l,m,f),{year:o,month:i,day:a,time:s?{hour:c,minute:d,second:h,millisecond:l,microsecond:m,nanosecond:f}:"start-of-day",tzAnnotation:g,offset:y,z:p,calendar:n}}function Et(e){const t=Ee.exec(e);let n,r,o,i,a,s,c;if(t){c=Tt(t[10]),n=+(t[1]??0),r=+(t[2]??t[5]??0),o=+(t[3]??t[6]??0),60===o&&(o=59);const e=(t[4]??t[7]??"")+"000000000";if(i=+e.slice(0,3),a=+e.slice(3,6),s=+e.slice(6,9),t[8])throw new RangeError("Z designator not supported for PlainTime")}else{let t,d;if(({time:t,z:d,calendar:c}=Mt(e)),"start-of-day"===t)throw new RangeError(`time is missing in string: ${e}`);if(d)throw new RangeError("Z designator not supported for PlainTime");({hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s}=t)}if(Pr(n,r,o,i,a,s),/[tT ][0-9][0-9]/.test(e))return{hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s,calendar:c};try{const{month:t,day:n}=Ct(e);xr(1972,t,n)}catch{try{const{year:t,month:n}=It(e);xr(t,n,1)}catch{return{hour:n,minute:r,second:o,millisecond:i,microsecond:a,nanosecond:s,calendar:c}}}throw new RangeError(`invalid RFC 9557 time-only string ${e}; may need a T prefix`)}function It(e){const t=Ie.exec(e);let n,r,o,i;if(t){o=Tt(t[3]);let a=t[1];if("-000000"===a)throw new RangeError(`invalid RFC 9557 string: ${e}`);if(n=+a,r=+t[2],i=1,void 0!==o&&"iso8601"!==o)throw new RangeError("YYYY-MM format is only valid with iso8601 calendar")}else{let t;if(({year:n,month:r,calendar:o,day:i,z:t}=Mt(e)),t)throw new RangeError("Z designator not supported for PlainYearMonth")}return{year:n,month:r,calendar:o,referenceISODay:i}}function Ct(e){const t=Ce.exec(e);let n,r,o,i;if(t){if(o=Tt(t[3]),n=+t[1],r=+t[2],void 0!==o&&"iso8601"!==o)throw new RangeError("MM-DD format is only valid with iso8601 calendar")}else{let t;if(({month:n,day:r,calendar:o,year:i,z:t}=Mt(e)),t)throw new RangeError("Z designator not supported for PlainMonthDay")}return{month:n,day:r,calendar:o,referenceISOYear:i}}const Ot=new RegExp(`^${fe.source}$`,"i"),$t=new RegExp(`^${/([+-])([01][0-9]|2[0-3])(?::?([0-5][0-9])?)?/.source}$`);function Yt(e){const t=Wo.test(e)?"Seconds not allowed in offset time zone":"Invalid time zone";throw new RangeError(`${t}: ${e}`)}function Rt(e){return Ot.test(e)||Yt(e),$t.test(e)?{offsetMinutes:sr(e)/6e10}:{tzName:e}}function St(e,t,n,r){let o=e,i=t,a=n;switch(r){case"reject":xr(o,i,a);break;case"constrain":({year:o,month:i,day:a}=kr(o,i,a))}return{year:o,month:i,day:a}}function jt(e,t,n,r,o,i,a){let s=e,c=t,d=n,h=r,u=o,l=i;switch(a){case"reject":Pr(s,c,d,h,u,l);break;case"constrain":s=jr(s,0,23),c=jr(c,0,59),d=jr(d,0,59),h=jr(h,0,999),u=jr(u,0,999),l=jr(l,0,999)}return{hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}function kt(e){if(!Ae(e))throw new TypeError("invalid duration-like");const t={years:void 0,months:void 0,weeks:void 0,days:void 0,hours:void 0,minutes:void 0,seconds:void 0,milliseconds:void 0,microseconds:void 0,nanoseconds:void 0};let n=!1;for(let r=0;r<st.length;r++){const o=st[r],i=e[o];void 0!==i&&(n=!0,t[o]=Ge(i))}if(!n)throw new TypeError("invalid duration-like");return t}function Nt({years:e,months:t,weeks:n,days:r},o,i,a){return{years:e,months:a??t,weeks:i??n,days:o??r}}function xt(e,t){return{isoDate:e,time:t}}function Lt(e){return Ho(e,"overflow",["constrain","reject"],"constrain")}function Pt(e){return Ho(e,"disambiguation",["compatible","earlier","later","reject"],"compatible")}function Ut(e,t){return Ho(e,"roundingMode",["ceil","floor","expand","trunc","halfCeil","halfFloor","halfExpand","halfTrunc","halfEven"],t)}function Bt(e,t){return Ho(e,"offset",["prefer","use","ignore","reject"],t)}function Zt(e){return Ho(e,"calendarName",["auto","always","never","critical"],"auto")}function Ft(e){let t=e.roundingIncrement;if(void 0===t)return 1;const n=_e(t);if(n<1||n>1e9)throw new RangeError(`roundingIncrement must be at least 1 and at most 1e9, not ${t}`);return n}function Ht(e,t,n){const r=n?t:t-1;if(e>r)throw new RangeError(`roundingIncrement must be at least 1 and less than ${r}, not ${e}`);if(t%e!=0)throw new RangeError(`Rounding increment must divide evenly into ${t}`)}function zt(e){const t=e.fractionalSecondDigits;if(void 0===t)return"auto";if("number"!=typeof t){if("auto"!==We(t))throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`);return"auto"}const n=Math.floor(t);if(!Number.isFinite(n)||n<0||n>9)throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`);return n}function At(e,t){switch(e){case"minute":return{precision:"minute",unit:"minute",increment:1};case"second":return{precision:0,unit:"second",increment:1};case"millisecond":return{precision:3,unit:"millisecond",increment:1};case"microsecond":return{precision:6,unit:"microsecond",increment:1};case"nanosecond":return{precision:9,unit:"nanosecond",increment:1}}switch(t){case"auto":return{precision:t,unit:"nanosecond",increment:1};case 0:return{precision:t,unit:"second",increment:1};case 1:case 2:case 3:return{precision:t,unit:"millisecond",increment:10**(3-t)};case 4:case 5:case 6:return{precision:t,unit:"microsecond",increment:10**(6-t)};case 7:case 8:case 9:return{precision:t,unit:"nanosecond",increment:10**(9-t)};default:throw new RangeError(`fractionalSecondDigits must be 'auto' or 0 through 9, not ${t}`)}}const qt=Symbol("~required~");function Wt(e,t,n,r,o=[]){let i=[];for(let e=0;e<nt.length;e++){const t=nt[e],r=t[1],o=t[2];"datetime"!==n&&n!==o||i.push(r)}i=i.concat(o);let a=r;a===qt?a=void 0:void 0!==a&&i.push(a);let s=[];s=s.concat(i);for(let e=0;e<i.length;e++){const t=i[e],n=ot[t];void 0!==n&&s.push(n)}let c=Ho(e,t,s,a);if(void 0===c&&r===qt)throw new RangeError(`${t} is required`);return c&&c in rt?rt[c]:c}function _t(e){const t=e.relativeTo;if(void 0===t)return{};let n,r,o,i,a,s="option",c=!1;if(Ae(t)){if(wt(t))return{zonedRelativeTo:t};if(mt(t))return{plainRelativeTo:t};if(yt(t))return{plainRelativeTo:pn(re(t,T).isoDate,re(t,E))};o=Nn(t);const e=tn(o,t,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],[]);({isoDate:n,time:r}=on(o,e,"constrain")),({offset:a,timeZone:i}=e),void 0===a&&(s="wall")}else{let e,d,h,u,l;if(({year:h,month:u,day:l,time:r,calendar:o,tzAnnotation:e,offset:a,z:d}=Mt(Ve(t))),e)i=Bn(e),d?s="exact":a||(s="wall"),c=!0;else if(d)throw new RangeError("Z designator not supported for PlainDate relativeTo; either remove the Z or add a bracketed time zone");o||(o="iso8601"),o=zo(o),n={year:h,month:u,day:l}}return void 0===i?{plainRelativeTo:pn(n,o)}:{zonedRelativeTo:$n(mn(n,r,s,"option"===s?sr(a):0,i,"compatible","reject",c),i,o)}}function Jt(e){return 0!==re(e,Y)?"year":0!==re(e,R)?"month":0!==re(e,S)?"week":0!==re(e,j)?"day":0!==re(e,k)?"hour":0!==re(e,N)?"minute":0!==re(e,x)?"second":0!==re(e,L)?"millisecond":0!==re(e,P)?"microsecond":"nanosecond"}function Gt(e,t){return it.indexOf(e)>it.indexOf(t)?t:e}function Kt(e){return"year"===e||"month"===e||"week"===e}function Vt(e){return Kt(e)||"day"===e?"date":"time"}function Xt(e){return ce("%calendarImpl%")(e)}function Qt(e){return ce("%calendarImpl%")(re(e,E))}function en(e,t,n="date"){const r=Object.create(null),o=Xt(e).isoToDate(t,{year:!0,monthCode:!0,day:!0});return r.monthCode=o.monthCode,"month-day"!==n&&"date"!==n||(r.day=o.day),"year-month"!==n&&"date"!==n||(r.year=o.year),r}function tn(e,t,n,r,o){const i=Xt(e).extraFields(n),a=n.concat(r,i),s=Object.create(null);let c=!1;a.sort();for(let e=0;e<a.length;e++){const n=a[e],r=t[n];if(void 0!==r)c=!0,s[n]=(0,et[n])(r);else if("partial"!==o){if(o.includes(n))throw new TypeError(`required property '${n}' missing or undefined`);s[n]=tt[n]}}if("partial"===o&&!c)throw new TypeError("no supported properties found");return s}function nn(e,t="complete"){const n=["hour","microsecond","millisecond","minute","nanosecond","second"];let r=!1;const o=Object.create(null);for(let i=0;i<n.length;i++){const a=n[i],s=e[a];void 0!==s?(o[a]=_e(s),r=!0):"complete"===t&&(o[a]=0)}if(!r)throw new TypeError("invalid time-like");return o}function rn(e,t){if(Ae(e)){if(mt(e))return Lt(Zo(t)),pn(re(e,D),re(e,E));if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),pn(n.isoDate,re(e,E))}if(yt(e))return Lt(Zo(t)),pn(re(e,T).isoDate,re(e,E));const n=Nn(e);return pn(Ln(n,tn(n,e,["year","month","monthCode","day"],[],[]),Lt(Zo(t))),n)}let{year:n,month:r,day:o,calendar:i,z:a}=Mt(Ve(e));if(a)throw new RangeError("Z designator not supported for PlainDate");return i||(i="iso8601"),i=zo(i),Lt(Zo(t)),pn({year:n,month:r,day:o},i)}function on(e,t,n){return xt(Ln(e,t,n),jt(t.hour,t.minute,t.second,t.millisecond,t.microsecond,t.nanosecond,n))}function an(e,t){let n,r,o;if(Ae(e)){if(yt(e))return Lt(Zo(t)),wn(re(e,T),re(e,E));if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),wn(n,re(e,E))}if(mt(e))return Lt(Zo(t)),wn(xt(re(e,D),{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),re(e,E));o=Nn(e);const i=tn(o,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond"],[]),a=Lt(Zo(t));({isoDate:n,time:r}=on(o,i,a))}else{let i,a,s,c;if(({year:a,month:s,day:c,time:r,calendar:o,z:i}=Mt(Ve(e))),i)throw new RangeError("Z designator not supported for PlainDateTime");"start-of-day"===r&&(r={deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),Ur(a,s,c,r.hour,r.minute,r.second,r.millisecond,r.microsecond,r.nanosecond),o||(o="iso8601"),o=zo(o),Lt(Zo(t)),n={year:a,month:s,day:c}}return wn(xt(n,r),o)}function sn(e){const t=ce("%Temporal.Duration%");if(lt(e))return new t(re(e,Y),re(e,R),re(e,S),re(e,j),re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U));if(!Ae(e))return function(e){const{years:t,months:n,weeks:r,days:o,hours:i,minutes:a,seconds:s,milliseconds:c,microseconds:d,nanoseconds:h}=function(e){const t=Ye.exec(e);if(!t)throw new RangeError(`invalid duration: ${e}`);if(t.every(((e,t)=>t<2||void 0===e)))throw new RangeError(`invalid duration: ${e}`);const n="-"===t[1]?-1:1,r=void 0===t[2]?0:_e(t[2])*n,o=void 0===t[3]?0:_e(t[3])*n,i=void 0===t[4]?0:_e(t[4])*n,a=void 0===t[5]?0:_e(t[5])*n,s=void 0===t[6]?0:_e(t[6])*n,c=t[7],d=t[8],h=t[9],u=t[10],l=t[11];let m=0,f=0,y=0;if(void 0!==c){if(d??h??u??l)throw new RangeError("only the smallest unit can be fractional");y=3600*_e((c+"000000000").slice(0,9))*n}else if(m=void 0===d?0:_e(d)*n,void 0!==h){if(u??l)throw new RangeError("only the smallest unit can be fractional");y=60*_e((h+"000000000").slice(0,9))*n}else f=void 0===u?0:_e(u)*n,void 0!==l&&(y=_e((l+"000000000").slice(0,9))*n);const p=y%1e3,g=Math.trunc(y/1e3)%1e3,w=Math.trunc(y/1e6)%1e3;return f+=Math.trunc(y/1e9)%60,m+=Math.trunc(y/6e10),zr(r,o,i,a,s,m,f,w,g,p),{years:r,months:o,weeks:i,days:a,hours:s,minutes:m,seconds:f,milliseconds:w,microseconds:g,nanoseconds:p}}(e);return new(ce("%Temporal.Duration%"))(t,n,r,o,i,a,s,c,d,h)}(Ve(e));const n={years:0,months:0,weeks:0,days:0,hours:0,minutes:0,seconds:0,milliseconds:0,microseconds:0,nanoseconds:0};let r=kt(e);for(let e=0;e<st.length;e++){const t=st[e],o=r[t];void 0!==o&&(n[t]=o)}return new t(n.years,n.months,n.weeks,n.days,n.hours,n.minutes,n.seconds,n.milliseconds,n.microseconds,n.nanoseconds)}function cn(e){let t;if(Ae(e)){if(ut(e)||wt(e))return Cn(re(e,b));t=Xe(e)}else t=e;const{year:n,month:r,day:o,time:i,offset:a,z:s}=function(e){const t=Mt(e);if(!t.z&&!t.offset)throw new RangeError("Temporal.Instant requires a time zone offset");return t}(Ve(t)),{hour:c=0,minute:d=0,second:h=0,millisecond:u=0,microsecond:l=0,nanosecond:m=0}="start-of-day"===i?{}:i,f=$r(n,r,o,c,d,h,u,l,m-(s?0:sr(a)));return Kr(f.isoDate),Cn(pr(f))}function dn(e,t){if(Ae(e)){if(gt(e))return Lt(Zo(t)),bn(re(e,D),re(e,E));let n;return ne(e,E)?n=re(e,E):(n=e.calendar,void 0===n&&(n="iso8601"),n=kn(n)),bn(Un(n,tn(n,e,["year","month","monthCode","day"],[],[]),Lt(Zo(t))),n)}let{month:n,day:r,referenceISOYear:o,calendar:i}=Ct(Ve(e));if(void 0===i&&(i="iso8601"),i=zo(i),Lt(Zo(t)),"iso8601"===i)return bn({year:1972,month:n,day:r},i);let a={year:o,month:n,day:r};return Lr(a),a=Un(i,en(i,a,"month-day"),"constrain"),bn(a,i)}function hn(e,t){let n;if(Ae(e)){if(ft(e))return Lt(Zo(t)),Tn(re(e,M));if(yt(e))return Lt(Zo(t)),Tn(re(e,T).time);if(wt(e)){const n=zn(re(e,$),re(e,b));return Lt(Zo(t)),Tn(n.time)}const{hour:r,minute:o,second:i,millisecond:a,microsecond:s,nanosecond:c}=nn(e);n=jt(r,o,i,a,s,c,Lt(Zo(t)))}else n=Et(Ve(e)),Lt(Zo(t));return Tn(n)}function un(e){return void 0===e?{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}:re(hn(e),M)}function ln(e,t){if(Ae(e)){if(pt(e))return Lt(Zo(t)),En(re(e,D),re(e,E));const n=Nn(e);return En(Pn(n,tn(n,e,["year","month","monthCode"],[],[]),Lt(Zo(t))),n)}let{year:n,month:r,referenceISODay:o,calendar:i}=It(Ve(e));void 0===i&&(i="iso8601"),i=zo(i),Lt(Zo(t));let a={year:n,month:r,day:o};return Hr(a),a=Pn(i,en(i,a,"year-month"),"constrain"),En(a,i)}function mn(t,n,r,o,i,a,s,c){if("start-of-day"===n)return _n(i,t);const d=xt(t,n);if("wall"===r||"ignore"===s)return An(i,d,a);if("exact"===r||"use"===s){const e=$r(t.year,t.month,t.day,n.hour,n.minute,n.second,n.millisecond,n.microsecond,n.nanosecond-o);Kr(e.isoDate);const r=pr(e);return Fr(r),r}Kr(t);const h=pr(d),u=Wn(i,d);for(let t=0;t<u.length;t++){const n=u[t],r=jsbi_cjs.toNumber(jsbi_cjs.subtract(h,n)),i=Eo(r,6e10,"halfExpand");if(r===o||c&&i===o)return n}if("reject"===s){const e=Hn(o),t=nr(d,"iso8601","auto");throw new RangeError(`Offset ${e} is invalid for ${t} in ${i}`)}return qn(u,i,d,a)}function fn(e,t){let n,r,o,i,a,s,c,d=!1,h="option";if(Ae(e)){if(wt(e)){const n=Zo(t);return Pt(n),Bt(n,"reject"),Lt(n),$n(re(e,b),re(e,$),re(e,E))}a=Nn(e);const d=tn(a,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset","timeZone"],["timeZone"]);({offset:i,timeZone:o}=d),void 0===i&&(h="wall");const u=Zo(t);s=Pt(u),c=Bt(u,"reject");const l=Lt(u);({isoDate:n,time:r}=on(a,d,l))}else{let u,l,m,f,y;({year:m,month:f,day:y,time:r,tzAnnotation:u,offset:i,z:l,calendar:a}=function(e){const t=Mt(e);if(!t.tzAnnotation)throw new RangeError("Temporal.ZonedDateTime requires a time zone ID in brackets");return t}(Ve(e))),o=Bn(u),l?h="exact":i||(h="wall"),a||(a="iso8601"),a=zo(a),d=!0;const p=Zo(t);s=Pt(p),c=Bt(p,"reject"),Lt(p),n={year:m,month:f,day:y}}let u=0;return"option"===h&&(u=sr(i)),$n(mn(n,r,h,u,o,s,c,d),o,a)}function yn(e,t,n){Lr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,I,!0)}function pn(e,t){const n=ce("%Temporal.PlainDate%"),r=Object.create(n.prototype);return yn(r,e,t),r}function gn(e,t,n){Br(t),te(e),oe(e,T,t),oe(e,E,n)}function wn(e,t){const n=ce("%Temporal.PlainDateTime%"),r=Object.create(n.prototype);return gn(r,e,t),r}function vn(e,t,n){Lr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,O,!0)}function bn(e,t){const n=ce("%Temporal.PlainMonthDay%"),r=Object.create(n.prototype);return vn(r,e,t),r}function Dn(e,t){te(e),oe(e,M,t)}function Tn(e){const t=ce("%Temporal.PlainTime%"),n=Object.create(t.prototype);return Dn(n,e),n}function Mn(e,t,n){Hr(t),te(e),oe(e,D,t),oe(e,E,n),oe(e,C,!0)}function En(e,t){const n=ce("%Temporal.PlainYearMonth%"),r=Object.create(n.prototype);return Mn(r,e,t),r}function In(e,t){Fr(t),te(e),oe(e,b,t)}function Cn(e){const t=ce("%Temporal.Instant%"),n=Object.create(t.prototype);return In(n,e),n}function On(e,t,n,r){Fr(t),te(e),oe(e,b,t),oe(e,$,n),oe(e,E,r)}function $n(e,t,n="iso8601"){const r=ce("%Temporal.ZonedDateTime%"),o=Object.create(r.prototype);return On(o,e,t,n),o}function Yn(e){return Qe.filter((t=>void 0!==e[t]))}function Rn(e,t,n){const r=Yn(n),o=Xt(e).fieldKeysToIgnore(r),i=Object.create(null),a=Yn(t);for(let e=0;e<Qe.length;e++){let s;const c=Qe[e];a.includes(c)&&!o.includes(c)&&(s=t[c]),r.includes(c)&&(s=n[c]),void 0!==s&&(i[c]=s)}return i}function Sn(e,t,n,r){const o=Xt(e).dateAdd(t,n,r);return Lr(o),o}function jn(e,t,n,r){return Xt(e).dateUntil(t,n,r)}function kn(e){if(Ae(e)&&ne(e,E))return re(e,E);const t=Ve(e);try{return zo(t)}catch{}let n;try{({calendar:n}=Mt(t))}catch{try{({calendar:n}=Et(t))}catch{try{({calendar:n}=It(t))}catch{({calendar:n}=Ct(t))}}}return n||(n="iso8601"),zo(n)}function Nn(e){if(ne(e,E))return re(e,E);const{calendar:t}=e;return void 0===t?"iso8601":kn(t)}function xn(e,t){return zo(e)===zo(t)}function Ln(e,t,n){const r=Xt(e);r.resolveFields(t,"date");const o=r.dateToISO(t,n);return Lr(o),o}function Pn(e,t,n){const r=Xt(e);r.resolveFields(t,"year-month"),t.day=1;const o=r.dateToISO(t,n);return Hr(o),o}function Un(e,t,n){const r=Xt(e);r.resolveFields(t,"month-day");const o=r.monthDayToISOReferenceDate(t,n);return Lr(o),o}function Bn(e){if(Ae(e)&&wt(e))return re(e,$);const t=Ve(e);if("UTC"===t)return"UTC";const{tzName:n,offsetMinutes:r}=function(e){const{tzAnnotation:t,offset:n,z:r}=function(e){if(Ot.test(e))return{tzAnnotation:e,offset:void 0,z:!1};try{const{tzAnnotation:t,offset:n,z:r}=Mt(e);if(r||t||n)return{tzAnnotation:t,offset:n,z:r}}catch{}Yt(e)}(e);return t?Rt(t):r?Rt("UTC"):n?Rt(n):void 0}(t);if(void 0!==r)return mr(r);const o=hr(n);if(!o)throw new RangeError(`Unrecognized time zone ${n}`);return o.identifier}function Zn(e,t){if(e===t)return!0;const n=Rt(e).offsetMinutes,r=Rt(t).offsetMinutes;if(void 0===n&&void 0===r){const n=hr(t);if(!n)return!1;const r=hr(e);return!!r&&r.primaryIdentifier===n.primaryIdentifier}return n===r}function Fn(e,t){const n=Rt(e).offsetMinutes;return void 0!==n?6e10*n:lr(e,t)}function Hn(e){const t=e<0?"-":"+",n=Math.abs(e),r=Math.floor(n/36e11),o=Math.floor(n/6e10)%60,i=Math.floor(n/1e9)%60,a=n%1e9;return`${t}${Vn(r,o,i,a,0===i&&0===a?"minute":"auto")}`}function zn(e,t){const n=Fn(e,t);let{isoDate:{year:r,month:o,day:i},time:{hour:a,minute:s,second:c,millisecond:d,microsecond:h,nanosecond:u}}=gr(t);return $r(r,o,i,a,s,c,d,h,u+n)}function An(e,t,n){return qn(Wn(e,t),e,t,n)}function qn(t,n,r,o){const i=t.length;if(1===i)return t[0];if(i)switch(o){case"compatible":case"earlier":return t[0];case"later":return t[i-1];case"reject":throw new RangeError("multiple instants found")}if("reject"===o)throw new RangeError("multiple instants found");const a=pr(r),s=jsbi_cjs.subtract(a,l);Fr(s);const c=Fn(n,s),d=jsbi_cjs.add(a,l);Fr(d);const h=Fn(n,d)-c;switch(o){case"earlier":{const e=TimeDuration.fromComponents(0,0,0,0,0,-h),t=fo(r.time,e);return Wn(n,xt(Or(r.isoDate.year,r.isoDate.month,r.isoDate.day+t.deltaDays),t))[0]}case"compatible":case"later":{const e=TimeDuration.fromComponents(0,0,0,0,0,h),t=fo(r.time,e),o=Wn(n,xt(Or(r.isoDate.year,r.isoDate.month,r.isoDate.day+t.deltaDays),t));return o[o.length-1]}}}function Wn(t,n){if("UTC"===t)return Kr(n.isoDate),[pr(n)];const r=Rt(t).offsetMinutes;if(void 0!==r){const e=$r(n.isoDate.year,n.isoDate.month,n.isoDate.day,n.time.hour,n.time.minute-r,n.time.second,n.time.millisecond,n.time.microsecond,n.time.nanosecond);Kr(e.isoDate);const t=pr(e);return Fr(t),[t]}return Kr(n.isoDate),function(t,n){let r=pr(n),o=jsbi_cjs.subtract(r,l);jsbi_cjs.lessThan(o,xe)&&(o=r);let i=jsbi_cjs.add(r,l);jsbi_cjs.greaterThan(i,Ne)&&(i=r);const a=lr(t,o),s=lr(t,i),c=(a===s?[a]:[a,s]).map((o=>{const i=jsbi_cjs.subtract(r,jsbi_cjs.BigInt(o)),a=function(e,t){const{epochMilliseconds:n,time:{millisecond:r,microsecond:o,nanosecond:i}}=gr(t),{year:a,month:s,day:c,hour:d,minute:h,second:u}=br(e,n);return $r(a,s,c,d,h,u,r,o,i)}(t,i);if(0===jo(n,a))return Fr(i),i}));return c.filter((e=>void 0!==e))}(t,n)}function _n(t,n){const r=xt(n,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),o=Wn(t,r);if(o.length)return o[0];const i=pr(r),a=jsbi_cjs.subtract(i,l);return Fr(a),wr(t,a)}function Jn(e){let t;return t=e<0||e>9999?(e<0?"-":"+")+Ke(Math.abs(e),6):Ke(e,4),t}function Gn(e){return Ke(e,2)}function Kn(e,t){let n;if("auto"===t){if(0===e)return"";n=Ke(e,9).replace(/0+$/,"")}else{if(0===t)return"";n=Ke(e,9).slice(0,t)}return`.${n}`}function Vn(e,t,n,r,o){let i=`${Gn(e)}:${Gn(t)}`;return"minute"===o||(i+=`:${Gn(n)}`,i+=Kn(r,o)),i}function Xn(e,t,n){let r=t;void 0===r&&(r="UTC");const o=re(e,b),i=nr(zn(r,o),"iso8601",n,"never");let a="Z";return void 0!==t&&(a=fr(Fn(r,o))),`${i}${a}`}function Qn(e,t){const n=re(e,Y),r=re(e,R),o=re(e,S),i=re(e,j),a=re(e,k),s=re(e,N),c=Mr(e);let d="";0!==n&&(d+=`${Math.abs(n)}Y`),0!==r&&(d+=`${Math.abs(r)}M`),0!==o&&(d+=`${Math.abs(o)}W`),0!==i&&(d+=`${Math.abs(i)}D`);let h="";0!==a&&(h+=`${Math.abs(a)}H`),0!==s&&(h+=`${Math.abs(s)}M`);const u=TimeDuration.fromComponents(0,0,re(e,x),re(e,L),re(e,P),re(e,U));u.isZero()&&!["second","millisecond","microsecond","nanosecond"].includes(Jt(e))&&"auto"===t||(h+=`${Math.abs(u.sec)}${Kn(Math.abs(u.subsec),t)}S`);let l=`${c<0?"-":""}P${d}`;return h&&(l=`${l}T${h}`),l}function er(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);return`${Jn(n)}-${Gn(r)}-${Gn(o)}${Dt(re(e,E),t)}`}function index_esm_tr({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a){return Vn(e,t,n,1e6*r+1e3*o+i,a)}function nr(e,t,n,r="auto"){const{isoDate:{year:o,month:i,day:a},time:{hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}=e;return`${Jn(o)}-${Gn(i)}-${Gn(a)}T${Vn(s,c,d,1e6*h+1e3*u+l,n)}${Dt(t,r)}`}function rr(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);let i=`${Gn(r)}-${Gn(o)}`;const a=re(e,E);"always"!==t&&"critical"!==t&&"iso8601"===a||(i=`${Jn(n)}-${i}`);const s=Dt(a,t);return s&&(i+=s),i}function or(e,t="auto"){const{year:n,month:r,day:o}=re(e,D);let i=`${Jn(n)}-${Gn(r)}`;const a=re(e,E);"always"!==t&&"critical"!==t&&"iso8601"===a||(i+=`-${Gn(o)}`);const s=Dt(a,t);return s&&(i+=s),i}function ir(e,t,n="auto",r="auto",o="auto",i=void 0){let a=re(e,b);if(i){const{unit:e,increment:t,roundingMode:n}=i;a=Io(a,t,e,n)}const s=re(e,$),c=Fn(s,a);let d=nr(zn(s,a),"iso8601",t,"never");return"never"!==o&&(d+=fr(c)),"never"!==r&&(d+=`[${"critical"===r?"!":""}${s}]`),d+=Dt(re(e,E),n),d}function ar(e){return $t.test(e)}function sr(e){const t=_o.exec(e);if(!t)throw new RangeError(`invalid time zone offset: ${e}; must match ±HH:MM[:SS.SSSSSSSSS]`);return("-"===t[1]?-1:1)*(1e9*(60*(60*+t[2]+ +(t[3]||0))+ +(t[4]||0))+ +((t[5]||0)+"000000000").slice(0,9))}let cr;const dr=Object.assign(Object.create(null),{"/":!0,"-":!0,_:!0});function hr(e){if(void 0===cr){const e=Intl.supportedValuesOf?.("timeZone");if(e){cr=new Map;for(let t=0;t<e.length;t++){const n=e[t];cr.set(Ao(n),n)}}else cr=null}const t=Ao(e);let n=cr?.get(t);if(n)return{identifier:n,primaryIdentifier:n};try{n=ht(e).resolvedOptions().timeZone}catch{return}if("antarctica/south_pole"===t&&(n="Antarctica/McMurdo"),ze.has(e))throw new RangeError(`${e} is a legacy time zone identifier from ICU. Use ${n} instead`);const r=[...t].map(((e,n)=>0===n||dr[t[n-1]]?e.toUpperCase():e)).join("").split("/");if(1===r.length)return"gb-eire"===t?{identifier:"GB-Eire",primaryIdentifier:n}:{identifier:t.length<=3||/[-0-9]/.test(t)?t.toUpperCase():r[0],primaryIdentifier:n};if("Etc"===r[0])return{identifier:`Etc/${["Zulu","Greenwich","Universal"].includes(r[1])?r[1]:r[1].toUpperCase()}`,primaryIdentifier:n};if("Us"===r[0])return{identifier:`US/${r[1]}`,primaryIdentifier:n};const o=new Map([["Act","ACT"],["Lhi","LHI"],["Nsw","NSW"],["Dar_Es_Salaam","Dar_es_Salaam"],["Port_Of_Spain","Port_of_Spain"],["Port-Au-Prince","Port-au-Prince"],["Isle_Of_Man","Isle_of_Man"],["Comodrivadavia","ComodRivadavia"],["Knox_In","Knox_IN"],["Dumontdurville","DumontDUrville"],["Mcmurdo","McMurdo"],["Denoronha","DeNoronha"],["Easterisland","EasterIsland"],["Bajanorte","BajaNorte"],["Bajasur","BajaSur"]]);return r[1]=o.get(r[1])??r[1],r.length>2&&(r[2]=o.get(r[2])??r[2]),{identifier:r.join("/"),primaryIdentifier:n}}function ur(e,t){const{year:n,month:r,day:o,hour:i,minute:a,second:s}=br(e,t);let c=t%1e3;return c<0&&(c+=1e3),1e6*(yr({isoDate:{year:n,month:r,day:o},time:{hour:i,minute:a,second:s,millisecond:c}})-t)}function lr(e,t){return ur(e,No(t,"floor"))}function mr(e){const t=e<0?"-":"+",n=Math.abs(e);return`${t}${Vn(Math.floor(n/60),n%60,0,0,"minute")}`}function fr(e){return mr(Eo(e,je,"halfExpand")/6e10)}function yr({isoDate:{year:e,month:t,day:n},time:{hour:r,minute:o,second:i,millisecond:a}}){const s=e%400,c=(e-s)/400,d=new Date;return d.setUTCHours(r,o,i,a),d.setUTCFullYear(s,t-1,n),d.getTime()+Ue*c}function pr(t){const n=yr(t),r=1e3*t.time.microsecond+t.time.nanosecond;return jsbi_cjs.add(xo(n),jsbi_cjs.BigInt(r))}function gr(t){let n=No(t,"trunc"),r=jsbi_cjs.toNumber(jsbi_cjs.remainder(t,c));r<0&&(r+=1e6,n-=1);const o=Math.floor(r/1e3)%1e3,i=r%1e3,a=new Date(n);return{epochMilliseconds:n,isoDate:{year:a.getUTCFullYear(),month:a.getUTCMonth()+1,day:a.getUTCDate()},time:{hour:a.getUTCHours(),minute:a.getUTCMinutes(),second:a.getUTCSeconds(),millisecond:a.getUTCMilliseconds(),microsecond:o,nanosecond:i}}}function wr(e,t){if("UTC"===e)return null;const n=No(t,"floor");if(n<Fe)return wr(e,xo(Fe));const r=Date.now(),o=Math.max(n,r)+366*Re*3;let i=n,a=ur(e,i),s=i,c=a;for(;a===c&&i<o;){if(s=i+2*Re*7,s>ke)return null;c=ur(e,s),a===c&&(i=s)}return a===c?null:xo(Jo((t=>ur(e,t)),i,s,a,c))}function vr(t,n){if("UTC"===t)return null;const r=No(n,"ceil"),o=Date.now(),i=o+366*Re*3;if(r>i){const n=vr(t,xo(i));if(null===n||jsbi_cjs.lessThan(n,xo(o)))return n}if("Africa/Casablanca"===t||"Africa/El_Aaiun"===t){const e=Date.UTC(2088,0,1);if(e<r)return vr(t,xo(e))}let a=r-1;if(a<Fe)return null;let s=ur(t,a),c=a,d=s;for(;s===d&&a>Fe;){if(c=a-2*Re*7,c<Fe)return null;d=ur(t,c),s===d&&(a=c)}return s===d?null:xo(Jo((e=>ur(t,e)),c,a,d,s))}function br(e,t){return function(e){const t=e.split(/[^\w]+/);if(7!==t.length)throw new RangeError(`expected 7 parts in "${e}`);const n=+t[0],r=+t[1];let o=+t[2];const i=t[3];if("b"===i[0]||"B"===i[0])o=1-o;else if("a"!==i[0]&&"A"!==i[0])throw new RangeError(`Unknown era ${i} in "${e}`);const a="24"===t[4]?0:+t[4],s=+t[5],c=+t[6];if(!(Number.isFinite(o)&&Number.isFinite(n)&&Number.isFinite(r)&&Number.isFinite(a)&&Number.isFinite(s)&&Number.isFinite(c)))throw new RangeError(`Invalid number in "${e}`);return{year:o,month:n,day:r,hour:a,minute:s,second:c}}(ht(e).format(t))}function Dr(e){return void 0!==e&&!(e%4!=0||e%100==0&&e%400!=0)}function Tr(e,t){return{standard:[31,28,31,30,31,30,31,31,30,31,30,31],leapyear:[31,29,31,30,31,30,31,31,30,31,30,31]}[Dr(e)?"leapyear":"standard"][t-1]}function Mr(e){const t=[re(e,Y),re(e,R),re(e,S),re(e,j),re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U)];for(let e=0;e<t.length;e++){const n=t[e];if(0!==n)return n<0?-1:1}return 0}function Er(e){const t=["years","months","weeks","days"];for(let n=0;n<t.length;n++){const r=e[t[n]];if(0!==r)return r<0?-1:1}return 0}function Ir(e){const t=Er(e.date);return 0!==t?t:e.time.sign()}function Cr(e,t){let n=e,r=t;if(!Number.isFinite(n)||!Number.isFinite(r))throw new RangeError("infinity is out of range");return r-=1,n+=Math.floor(r/12),r%=12,r<0&&(r+=12),r+=1,{year:n,month:r}}function Or(e,t,n){let r=e,o=t,i=n;if(!Number.isFinite(i))throw new RangeError("infinity is out of range");({year:r,month:o}=Cr(r,o));const a=146097;if(Math.abs(i)>a){const e=Math.trunc(i/a);r+=400*e,i-=e*a}let s=0,c=o>2?r:r-1;for(;s=Dr(c)?366:365,i<-s;)r-=1,c-=1,i+=s;for(c+=1;s=Dr(c)?366:365,i>s;)r+=1,c+=1,i-=s;for(;i<1;)({year:r,month:o}=Cr(r,o-1)),i+=Tr(r,o);for(;i>Tr(r,o);)i-=Tr(r,o),({year:r,month:o}=Cr(r,o+1));return{year:r,month:o,day:i}}function $r(e,t,n,r,o,i,a,s,c){const d=Yr(r,o,i,a,s,c);return xt(Or(e,t,n+d.deltaDays),d)}function Yr(e,t,n,r,o,i){let a,s=e,c=t,d=n,h=r,u=o,l=i;({div:a,mod:l}=de(l,3)),u+=a,l<0&&(u-=1,l+=1e3),({div:a,mod:u}=de(u,3)),h+=a,u<0&&(h-=1,u+=1e3),d+=Math.trunc(h/1e3),h%=1e3,h<0&&(d-=1,h+=1e3),c+=Math.trunc(d/60),d%=60,d<0&&(c-=1,d+=60),s+=Math.trunc(c/60),c%=60,c<0&&(s-=1,c+=60);let m=Math.trunc(s/24);return s%=24,s<0&&(m-=1,s+=24),m+=0,s+=0,c+=0,d+=0,h+=0,u+=0,l+=0,{deltaDays:m,hour:s,minute:c,second:d,millisecond:h,microsecond:u,nanosecond:l}}function Rr(e,t){const n=Nt(e,0);if(0===Er(n))return e.days;const r=re(t,D),o=Sn(re(t,E),r,n,"constrain"),i=Gr(r.year,r.month-1,r.day),a=Gr(o.year,o.month-1,o.day)-i;return e.days+a}function Sr(e){return new(ce("%Temporal.Duration%"))(-re(e,Y),-re(e,R),-re(e,S),-re(e,j),-re(e,k),-re(e,N),-re(e,x),-re(e,L),-re(e,P),-re(e,U))}function jr(e,t,n){return Math.min(n,Math.max(t,e))}function kr(e,t,n){const r=jr(t,1,12);return{year:e,month:r,day:jr(n,1,Tr(e,r))}}function Nr(e,t,n){if(e<t||e>n)throw new RangeError(`value out of range: ${t} <= ${e} <= ${n}`)}function xr(e,t,n){Nr(t,1,12),Nr(n,1,Tr(e,t))}function Lr(e){Br(xt(e,{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}))}function Pr(e,t,n,r,o,i){Nr(e,0,23),Nr(t,0,59),Nr(n,0,59),Nr(r,0,999),Nr(o,0,999),Nr(i,0,999)}function Ur(e,t,n,r,o,i,a,s,c){xr(e,t,n),Pr(r,o,i,a,s,c)}function Br(t){const n=pr(t);(jsbi_cjs.lessThan(n,Le)||jsbi_cjs.greaterThan(n,Pe))&&Fr(n)}function Zr(e){pr(e)}function Fr(t){if(jsbi_cjs.lessThan(t,xe)||jsbi_cjs.greaterThan(t,Ne))throw new RangeError("date/time value is outside of supported range")}function Hr({year:e,month:t}){Nr(e,Be,Ze),e===Be?Nr(t,4,12):e===Ze&&Nr(t,1,9)}function zr(e,t,n,r,o,i,a,s,c,d){let h=0;const u=[e,t,n,r,o,i,a,s,c,d];for(let e=0;e<u.length;e++){const t=u[e];if(t===1/0||t===-1/0)throw new RangeError("infinite values not allowed as duration fields");if(0!==t){const e=t<0?-1:1;if(0!==h&&e!==h)throw new RangeError("mixed-sign values not allowed as duration fields");h=e}}if(Math.abs(e)>=2**32||Math.abs(t)>=2**32||Math.abs(n)>=2**32)throw new RangeError("years, months, and weeks must be < 2³²");const l=de(s,3),m=de(c,6),f=de(d,9),y=de(1e6*l.mod+1e3*m.mod+f.mod,9).div,p=86400*r+3600*o+60*i+a+l.div+m.div+f.div+y;if(!Number.isSafeInteger(p))throw new RangeError("total of duration time units cannot exceed 9007199254740991.999999999 s")}function Ar(e){return{date:{years:re(e,Y),months:re(e,R),weeks:re(e,S),days:re(e,j)},time:TimeDuration.fromComponents(re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U))}}function qr(e){const t=TimeDuration.fromComponents(re(e,k),re(e,N),re(e,x),re(e,L),re(e,P),re(e,U)).add24HourDays(re(e,j));return{date:{years:re(e,Y),months:re(e,R),weeks:re(e,S),days:0},time:t}}function Wr(e){const t=qr(e),n=Math.trunc(t.time.sec/86400);return zr(t.date.years,t.date.months,t.date.weeks,n,0,0,0,0,0,0),{...t.date,days:n}}function _r(e,t){const n=e.time.sign();let r=e.time.abs().subsec,o=0,i=0,a=e.time.abs().sec,s=0,c=0,d=0;switch(t){case"year":case"month":case"week":case"day":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60,c=Math.trunc(s/60),s%=60,d=Math.trunc(c/24),c%=24;break;case"hour":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60,c=Math.trunc(s/60),s%=60;break;case"minute":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3,s=Math.trunc(a/60),a%=60;break;case"second":o=Math.trunc(r/1e3),r%=1e3,i=Math.trunc(o/1e3),o%=1e3,a+=Math.trunc(i/1e3),i%=1e3;break;case"millisecond":o=Math.trunc(r/1e3),r%=1e3,i=he(a,3,Math.trunc(o/1e3)),o%=1e3,a=0;break;case"microsecond":o=he(a,6,Math.trunc(r/1e3)),r%=1e3,a=0;break;case"nanosecond":r=he(a,9,r),a=0}return new(ce("%Temporal.Duration%"))(e.date.years,e.date.months,e.date.weeks,e.date.days+n*d,n*c,n*s,n*a,n*i,n*o,n*r)}function Jr(e,t){return Er(e),t.sign(),{date:e,time:t}}function Gr(e,t,n){return yr({isoDate:{year:e,month:t+1,day:n},time:{hour:0,minute:0,second:0,millisecond:0}})/Re}function Kr({year:e,month:t,day:n}){if(Math.abs(Gr(e,t-1,n))>1e8)throw new RangeError("date/time value is outside the supported range")}function Vr(e,t){const n=t.hour-e.hour,r=t.minute-e.minute,o=t.second-e.second,i=t.millisecond-e.millisecond,a=t.microsecond-e.microsecond,s=t.nanosecond-e.nanosecond;return TimeDuration.fromComponents(n,r,o,i,a,s)}function Xr(e,t,n,r,o){let i=TimeDuration.fromEpochNsDiff(t,e);return i=$o(i,n,r,o),Jr({years:0,months:0,weeks:0,days:0},i)}function Qr(e,t,n,r){Zr(e),Zr(t);let o=Vr(e.time,t.time);const i=o.sign(),a=Ro(e.isoDate,t.isoDate);let s=t.isoDate;a===i&&(s=Or(s.year,s.month,s.day+i),o=o.add24HourDays(-i));const c=Gt("day",r),d=jn(n,e.isoDate,s,c);return r!==c&&(o=o.add24HourDays(d.days),d.days=0),Jr(d,o)}function eo(n,r,o,i,a){const s=jsbi_cjs.subtract(r,n);if(jsbi_cjs.equal(s,t))return{date:{years:0,months:0,weeks:0,days:0},time:TimeDuration.ZERO};const c=jsbi_cjs.lessThan(s,t)?-1:1,d=zn(o,n),h=zn(o,r);let u,l=0,m=1===c?2:1,f=Vr(d.time,h.time);for(f.sign()===-c&&l++;l<=m;l++){u=xt(Or(h.isoDate.year,h.isoDate.month,h.isoDate.day-l*c),d.time);const e=An(o,u,"compatible");if(f=TimeDuration.fromEpochNsDiff(r,e),f.sign()!==-c)break}const y=Gt("day",a);return Jr(jn(i,d.isoDate,u.isoDate,y),f)}function to(t,n,r,o,i,a,s,c,d){let h,u,l,m,f=n;switch(c){case"year":{const e=Eo(f.date.years,s,"trunc");h=e,u=e+s*t,l={years:h,months:0,weeks:0,days:0},m={...l,years:u};break}case"month":{const e=Eo(f.date.months,s,"trunc");h=e,u=e+s*t,l=Nt(f.date,0,0,h),m=Nt(f.date,0,0,u);break}case"week":{const e=Nt(f.date,0,0),n=Sn(a,o.isoDate,e,"constrain"),r=jn(a,n,Or(n.year,n.month,n.day+f.date.days),"week"),i=Eo(f.date.weeks+r.weeks,s,"trunc");h=i,u=i+s*t,l=Nt(f.date,0,h),m=Nt(f.date,0,u);break}case"day":{const e=Eo(f.date.days,s,"trunc");h=e,u=e+s*t,l=Nt(f.date,h),m=Nt(f.date,u);break}}const y=Sn(a,o.isoDate,l,"constrain"),p=Sn(a,o.isoDate,m,"constrain");let g,w;const v=xt(y,o.time),b=xt(p,o.time);i?(g=An(i,v,"compatible"),w=An(i,b,"compatible")):(g=pr(v),w=pr(b));const D=TimeDuration.fromEpochNsDiff(r,g),T=TimeDuration.fromEpochNsDiff(w,g),M=ue(d,t<0?"negative":"positive"),E=D.add(D).abs().subtract(T.abs()).sign(),I=Math.abs(h)/s%2==0,C=D.isZero()?Math.abs(h):D.cmp(T)?le(Math.abs(h),Math.abs(u),E,I,M):Math.abs(u),O=new TimeDuration(jsbi_cjs.add(jsbi_cjs.multiply(T.totalNs,jsbi_cjs.BigInt(h)),jsbi_cjs.multiply(D.totalNs,jsbi_cjs.BigInt(s*t)))).fdiv(T.totalNs),$=C===Math.abs(u);return f={date:$?m:l,time:TimeDuration.ZERO},{nudgeResult:{duration:f,nudgedEpochNs:$?w:g,didExpandCalendarUnit:$},total:O}}function no(t,n,r,o,i,a,s,c,d){let h=t;const u=Kt(c)||o&&"day"===c,l=Ir(h)<0?-1:1;let m;return u?({nudgeResult:m}=to(l,h,n,r,o,i,s,c,d)):m=o?function(t,n,r,o,i,a,s,c){let d=n;const h=Sn(i,r.isoDate,d.date,"constrain"),u=xt(h,r.time),l=xt(Or(h.year,h.month,h.day+t),r.time),m=An(o,u,"compatible"),f=An(o,l,"compatible"),y=TimeDuration.fromEpochNsDiff(f,m);if(y.sign()!==t)throw new RangeError("time zone returned inconsistent Instants");const p=jsbi_cjs.BigInt(at[s]*a);let g=d.time.round(p,c);const w=g.subtract(y),v=w.sign()!==-t;let b,D;return v?(b=t,g=w.round(p,c),D=g.addToEpochNs(f)):(b=0,D=g.addToEpochNs(m)),{duration:Jr(Nt(d.date,d.date.days+b),g),nudgedEpochNs:D,didExpandCalendarUnit:v}}(l,h,r,o,i,s,c,d):function(t,n,r,o,i,a){let s=t;const c=s.time.add24HourDays(s.date.days),d=c.round(jsbi_cjs.BigInt(o*at[i]),a),h=d.subtract(c),{quotient:u}=c.divmod(Se),{quotient:l}=d.divmod(Se),m=Math.sign(l-u)===c.sign(),f=h.addToEpochNs(n);let y=0,p=d;return"date"===Vt(r)&&(y=l,p=d.add(TimeDuration.fromComponents(24*-l,0,0,0,0,0))),{duration:{date:Nt(s.date,y),time:p},nudgedEpochNs:f,didExpandCalendarUnit:m}}(h,n,a,s,c,d),h=m.duration,m.didExpandCalendarUnit&&"week"!==c&&(h=function(e,t,n,r,o,i,a,s){let c=t;if(s===a)return c;const d=it.indexOf(a);for(let t=it.indexOf(s)-1;t>=d;t--){const s=it[t];if("week"===s&&"week"!==a)continue;let d;switch(s){case"year":d={years:c.date.years+e,months:0,weeks:0,days:0};break;case"month":{const t=c.date.months+e;d=Nt(c.date,0,0,t);break}case"week":{const t=c.date.weeks+e;d=Nt(c.date,0,t);break}}const h=xt(Sn(i,r.isoDate,d,"constrain"),r.time);let u;if(u=o?An(o,h,"compatible"):pr(h),p(n,u)===-e)break;c={date:d,time:TimeDuration.ZERO}}return c}(l,h,m.nudgedEpochNs,r,o,i,a,Gt(c,"day"))),h}function ro(e,t,n,r,o,i){return Kt(i)||r&&"day"===i?to(Ir(e)<0?-1:1,e,t,n,r,o,1,i,"trunc").total:Yo(e.time.add24HourDays(e.date.days),i)}function oo(e,t,n,r,o,i,a){if(0==jo(e,t))return{date:{years:0,months:0,weeks:0,days:0},time:TimeDuration.ZERO};Br(e),Br(t);const s=Qr(e,t,n,r);return"nanosecond"===i&&1===o?s:no(s,pr(t),e,null,n,r,o,i,a)}function io(e,t,n,r,o,i,a,s){if("time"===Vt(o))return Xr(e,t,i,a,s);const c=eo(e,t,n,r,o);return"nanosecond"===a&&1===i?c:no(c,t,zn(n,e),n,r,o,i,a,s)}function ao(e,t,n,r,o,i){const a=nt.reduce(((e,t)=>{const o=t[0],i=t[1],a=t[2];return"datetime"!==n&&a!==n||r.includes(i)||e.push(i,o),e}),[]);let s=Wt(t,"largestUnit",n,"auto");if(r.includes(s))throw new RangeError(`largestUnit must be one of ${a.join(", ")}, not ${s}`);const c=Ft(t);let d=Ut(t,"trunc");"since"===e&&(d=function(e){switch(e){case"ceil":return"floor";case"floor":return"ceil";case"halfCeil":return"halfFloor";case"halfFloor":return"halfCeil";default:return e}}(d));const h=Wt(t,"smallestUnit",n,o);if(r.includes(h))throw new RangeError(`smallestUnit must be one of ${a.join(", ")}, not ${h}`);const u=Gt(i,h);if("auto"===s&&(s=u),Gt(s,h)!==s)throw new RangeError(`largestUnit ${s} cannot be smaller than smallestUnit ${h}`);const l={hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[h];return void 0!==l&&Ht(c,l,!1),{largestUnit:s,roundingIncrement:c,roundingMode:d,smallestUnit:h}}function so(e,t,n,r){const o=cn(n),i=ao(e,Zo(r),"time",[],"nanosecond","second");let a=_r(Xr(re(t,b),re(o,b),i.roundingIncrement,i.smallestUnit,i.roundingMode),i.largestUnit);return"since"===e&&(a=Sr(a)),a}function co(e,t,n,r){const o=rn(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between dates of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"date",[],"day","day"),c=ce("%Temporal.Duration%"),d=re(t,D),h=re(o,D);if(0===Ro(d,h))return new c;let u={date:jn(i,d,h,s.largestUnit),time:TimeDuration.ZERO};if("day"!==s.smallestUnit||1!==s.roundingIncrement){const e=xt(d,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});u=no(u,pr(xt(h,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0})),e,null,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode)}let l=_r(u,"day");return"since"===e&&(l=Sr(l)),l}function ho(e,t,n,r){const o=an(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between dates of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"datetime",[],"nanosecond","day"),c=ce("%Temporal.Duration%"),d=re(t,T),h=re(o,T);if(0===jo(d,h))return new c;let u=_r(oo(d,h,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode),s.largestUnit);return"since"===e&&(u=Sr(u)),u}function uo(e,t,n,r){const o=hn(n),i=ao(e,Zo(r),"time",[],"nanosecond","hour");let a=Vr(re(t,M),re(o,M));a=$o(a,i.roundingIncrement,i.smallestUnit,i.roundingMode);let s=_r(Jr({years:0,months:0,weeks:0,days:0},a),i.largestUnit);return"since"===e&&(s=Sr(s)),s}function lo(e,t,n,r){const o=ln(n),i=re(t,E),a=re(o,E);if(!xn(i,a))throw new RangeError(`cannot compute difference between months of ${i} and ${a} calendars`);const s=ao(e,Zo(r),"date",["week","day"],"month","year"),c=ce("%Temporal.Duration%");if(0==Ro(re(t,D),re(o,D)))return new c;const d=en(i,re(t,D),"year-month");d.day=1;const h=Ln(i,d,"constrain"),u=en(i,re(o,D),"year-month");u.day=1;const l=Ln(i,u,"constrain");let m={date:Nt(jn(i,h,l,s.largestUnit),0,0),time:TimeDuration.ZERO};if("month"!==s.smallestUnit||1!==s.roundingIncrement){const e=xt(h,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});m=no(m,pr(xt(l,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0})),e,null,i,s.largestUnit,s.roundingIncrement,s.smallestUnit,s.roundingMode)}let f=_r(m,"day");return"since"===e&&(f=Sr(f)),f}function mo(t,n,r,o){const i=fn(r),a=re(n,E),s=re(i,E);if(!xn(a,s))throw new RangeError(`cannot compute difference between dates of ${a} and ${s} calendars`);const c=ao(t,Zo(o),"datetime",[],"nanosecond","hour"),d=re(n,b),h=re(i,b),u=ce("%Temporal.Duration%");let l;if("date"!==Vt(c.largestUnit))l=_r(Xr(d,h,c.roundingIncrement,c.smallestUnit,c.roundingMode),c.largestUnit);else{const t=re(n,$);if(!Zn(t,re(i,$)))throw new RangeError("When calculating difference between time zones, largestUnit must be 'hours' or smaller because day lengths can vary between time zones due to DST or time zone offset changes.");if(jsbi_cjs.equal(d,h))return new u;l=_r(io(d,h,t,a,c.largestUnit,c.roundingIncrement,c.smallestUnit,c.roundingMode),"hour")}return"since"===t&&(l=Sr(l)),l}function fo({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a){let s=n,c=i;return s+=a.sec,c+=a.subsec,Yr(e,t,s,r,o,c)}function yo(e,t){const n=t.addToEpochNs(e);return Fr(n),n}function po(e,t,n,r,o="constrain"){if(0===Er(r.date))return yo(e,r.time);const i=zn(t,e);return yo(An(t,xt(Sn(n,i.isoDate,r.date,o),i.time),"compatible"),r.time)}function go(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=Gt(Jt(t),Jt(r));if(Kt(o))throw new RangeError("For years, months, or weeks arithmetic, use date arithmetic relative to a starting point");const i=qr(t),a=qr(r);return _r(Jr({years:0,months:0,weeks:0,days:0},i.time.add(a.time)),o)}function wo(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=Jt(r);if("date"===Vt(o))throw new RangeError(`Duration field ${o} not supported by Temporal.Instant. Try Temporal.ZonedDateTime instead.`);const i=qr(r);return Cn(yo(re(t,b),i.time))}function vo(e,t,n,r){const o=re(t,E);let i=sn(n);"subtract"===e&&(i=Sr(i));const a=Wr(i),s=Lt(Zo(r));return pn(Sn(o,re(t,D),a,s),o)}function bo(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=re(t,E),s=qr(o),c=re(t,T),d=fo(c.time,s.time),h=Nt(s.date,d.deltaDays);return zr(h.years,h.months,h.weeks,h.days,0,0,0,0,0,0),wn(xt(Sn(a,c.isoDate,h,i),d),a)}function Do(e,t,n){let r=sn(n);"subtract"===e&&(r=Sr(r));const o=qr(r),{hour:i,minute:a,second:s,millisecond:c,microsecond:d,nanosecond:h}=fo(re(t,M),o.time);return Tn(jt(i,a,s,c,d,h,"reject"))}function To(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=Mr(o),s=re(t,E),c=en(s,re(t,D),"year-month");c.day=1;let d=Ln(s,c,"constrain");if(a<0){const e=Sn(s,d,{months:1},"constrain");d=Or(e.year,e.month,e.day-1)}const h=Wr(o);return Lr(d),En(Pn(s,en(s,Sn(s,d,h,i),"year-month"),i),s)}function Mo(e,t,n,r){let o=sn(n);"subtract"===e&&(o=Sr(o));const i=Lt(Zo(r)),a=re(t,$),s=re(t,E),c=Ar(o);return $n(po(re(t,b),a,s,c,i),a,s)}function Eo(e,t,n){const r=Math.trunc(e/t),o=e%t,i=e<0?"negative":"positive",a=Math.abs(r),s=a+1,c=Bo(Math.abs(2*o)-t),d=a%2==0,h=ue(n,i),u=0===o?a:le(a,s,c,d,h);return t*("positive"===i?u:-u)}function Io(o,i,a,s){const c=at[a]*i;return function(o,i,a){const s=m(o),c=m(i),d=jsbi_cjs.divide(s,c),h=jsbi_cjs.remainder(s,c),u=ue(a,"positive");let l,g;jsbi_cjs.lessThan(s,t)?(l=jsbi_cjs.subtract(d,n),g=d):(l=d,g=jsbi_cjs.add(d,n));const w=p(y(jsbi_cjs.multiply(h,r)),c)*(jsbi_cjs.lessThan(s,t)?-1:1)+0,v=jsbi_cjs.equal(h,t)?d:le(l,g,w,f(l),u);return jsbi_cjs.multiply(v,c)}(o,jsbi_cjs.BigInt(c),s)}function Co(e,t,n,r){Zr(e);const{year:o,month:i,day:a}=e.isoDate,s=Oo(e.time,t,n,r);return xt(Or(o,i,a+s.deltaDays),s)}function Oo({hour:e,minute:t,second:n,millisecond:r,microsecond:o,nanosecond:i},a,s,c){let d;switch(s){case"day":case"hour":d=1e3*(1e3*(1e3*(60*(60*e+t)+n)+r)+o)+i;break;case"minute":d=1e3*(1e3*(1e3*(60*t+n)+r)+o)+i;break;case"second":d=1e3*(1e3*(1e3*n+r)+o)+i;break;case"millisecond":d=1e3*(1e3*r+o)+i;break;case"microsecond":d=1e3*o+i;break;case"nanosecond":d=i}const h=at[s],u=Eo(d,h*a,c)/h;switch(s){case"day":return{deltaDays:u,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0};case"hour":return Yr(u,0,0,0,0,0);case"minute":return Yr(e,u,0,0,0,0);case"second":return Yr(e,t,u,0,0,0);case"millisecond":return Yr(e,t,n,u,0,0);case"microsecond":return Yr(e,t,n,r,u,0);case"nanosecond":return Yr(e,t,n,r,o,u);default:throw new Error(`Invalid unit ${s}`)}}function $o(t,n,r,o){const i=at[r];return t.round(jsbi_cjs.BigInt(i*n),o)}function Yo(t,n){const r=at[n];return t.fdiv(jsbi_cjs.BigInt(r))}function Ro(e,t){return e.year!==t.year?Bo(e.year-t.year):e.month!==t.month?Bo(e.month-t.month):e.day!==t.day?Bo(e.day-t.day):0}function So(e,t){return e.hour!==t.hour?Bo(e.hour-t.hour):e.minute!==t.minute?Bo(e.minute-t.minute):e.second!==t.second?Bo(e.second-t.second):e.millisecond!==t.millisecond?Bo(e.millisecond-t.millisecond):e.microsecond!==t.microsecond?Bo(e.microsecond-t.microsecond):e.nanosecond!==t.nanosecond?Bo(e.nanosecond-t.nanosecond):0}function jo(e,t){const n=Ro(e.isoDate,t.isoDate);return 0!==n?n:So(e.time,t.time)}function ko(e){const t=Lo(e);return void 0!==globalThis.BigInt?globalThis.BigInt(t.toString(10)):t}function No(t,n){const r=m(t),{quotient:o,remainder:i}=g(r,c);let a=jsbi_cjs.toNumber(o);return"floor"===n&&jsbi_cjs.toNumber(i)<0&&(a-=1),"ceil"===n&&jsbi_cjs.toNumber(i)>0&&(a+=1),a}function xo(t){if(!Number.isInteger(t))throw new RangeError("epoch milliseconds must be an integer");return jsbi_cjs.multiply(jsbi_cjs.BigInt(t),c)}function Lo(t){let n=t;if("object"==typeof t){const e=t[Symbol.toPrimitive];e&&"function"==typeof e&&(n=e.call(t,"number"))}if("number"==typeof n)throw new TypeError("cannot convert number to bigint");return"bigint"==typeof n?jsbi_cjs.BigInt(n.toString(10)):jsbi_cjs.BigInt(n)}const Po=(()=>{let t=jsbi_cjs.BigInt(Date.now()%1e6);return()=>{const n=Date.now(),r=jsbi_cjs.BigInt(n),o=jsbi_cjs.add(xo(n),t);return t=jsbi_cjs.remainder(r,c),jsbi_cjs.greaterThan(o,Ne)?Ne:jsbi_cjs.lessThan(o,xe)?xe:o}})();function Uo(){return(new Intl.DateTimeFormat).resolvedOptions().timeZone}function Bo(e){return e<0?-1:e>0?1:e}function Zo(e){if(void 0===e)return Object.create(null);if(Ae(e)&&null!==e)return e;throw new TypeError("Options parameter must be an object, not "+(null===e?"null":typeof e))}function Fo(e,t){const n=Object.create(null);return n[e]=t,n}function Ho(e,t,n,r){let o=e[t];if(void 0!==o){if(o=We(o),!n.includes(o))throw new RangeError(`${t} must be one of ${n.join(", ")}, not ${o}`);return o}if(r===qt)throw new RangeError(`${t} option is required`);return r}function zo(e){const t=Ao(e);if(!He.includes(Ao(t)))throw new RangeError(`invalid calendar identifier ${t}`);switch(t){case"ethiopic-amete-alem":return"ethioaa";case"islamicc":return"islamic-civil"}return t}function Ao(e){let t="";for(let n=0;n<e.length;n++){const r=e.charCodeAt(n);t+=r>=65&&r<=90?String.fromCharCode(r+32):String.fromCharCode(r)}return t}function qo(e){throw new TypeError(`Do not use built-in arithmetic operators with Temporal objects. When comparing, use ${"PlainMonthDay"===e?"Temporal.PlainDate.compare(obj1.toPlainDate(year), obj2.toPlainDate(year))":`Temporal.${e}.compare(obj1, obj2)`}, not obj1 > obj2. When coercing to strings, use \`\${obj}\` or String(obj), not '' + obj. When coercing to numbers, use properties or methods of the object, not \`+obj\`. When concatenating with strings, use \`\${str}\${obj}\` or str.concat(obj), not str + obj. In React, coerce to a string before rendering a Temporal object.`)}const Wo=new RegExp(`^${be.source}$`),_o=new RegExp(`^${/([+-])([01][0-9]|2[0-3])(?::?([0-5][0-9])(?::?([0-5][0-9])(?:[.,](\d{1,9}))?)?)?/.source}$`);function Jo(e,t,n,r=e(t),o=e(n)){let i=t,a=n,s=r,c=o;for(;a-i>1;){let t=Math.trunc((i+a)/2);const n=e(t);n===s?(i=t,s=n):n===c&&(a=t,c=n)}return a}function Go(e){return[...e]}function Ko(e,t){if("gregory"!==e&&"iso8601"!==e)return;const n=Xo[e];let r=t.year;const{dayOfWeek:o,dayOfYear:i,daysInYear:a}=n.isoToDate(t,{dayOfWeek:!0,dayOfYear:!0,daysInYear:!0}),s=n.getFirstDayOfWeek(),c=n.getMinimalDaysInFirstWeek();let d=(o+7-s)%7,h=(o-i+7001-s)%7,u=Math.floor((i-1+h)/7);if(7-h>=c&&++u,0==u)u=function(e,t,n,r){let o=(r-e-n+1)%7;o<0&&(o+=7);let i=Math.floor((n+o-1)/7);return 7-o>=t&&++i,i}(s,c,i+n.isoToDate(n.dateAdd(t,{years:-1},"constrain"),{daysInYear:!0}).daysInYear,o),r--;else if(i>=a-5){let e=(d+a-i)%7;e<0&&(e+=7),6-e>=c&&i+7-d>a&&(u=1,r++)}return{week:u,year:r}}function Vo(e,t,n,r,o){if(t!==o.year){if(e*(t-o.year)>0)return!0}else if(n!==o.month){if(e*(n-o.month)>0)return!0}else if(r!==o.day&&e*(r-o.day)>0)return!0;return!1}const Xo={};function Qo(e){if(!e.startsWith("M"))throw new RangeError(`Invalid month code: ${e}.  Month codes must start with M.`);const t=+e.slice(1);if(Number.isNaN(t))throw new RangeError(`Invalid month code: ${e}`);return t}function ei(e,t=!1){return`M${`${e}`.padStart(2,"0")}${t?"L":""}`}function ti(e,t=void 0,n=12){let{month:r,monthCode:o}=e;if(void 0===o){if(void 0===r)throw new TypeError("Either month or monthCode are required");"reject"===t&&Nr(r,1,n),"constrain"===t&&(r=jr(r,1,n)),o=ei(r)}else{const e=Qo(o);if(o!==ei(e))throw new RangeError(`Invalid month code: ${o}`);if(void 0!==r&&r!==e)throw new RangeError(`monthCode ${o} and month ${r} must match if both are present`);if(r=e,r<1||r>n)throw new RangeError(`Invalid monthCode: ${o}`)}return{...e,month:r,monthCode:o}}Xo.iso8601={resolveFields(e,t){if(("date"===t||"year-month"===t)&&void 0===e.year)throw new TypeError("year is required");if(("date"===t||"month-day"===t)&&void 0===e.day)throw new TypeError("day is required");Object.assign(e,ti(e))},dateToISO:(e,t)=>St(e.year,e.month,e.day,t),monthDayToISOReferenceDate(e,t){const{month:n,day:r}=St(e.year??1972,e.month,e.day,t);return{month:n,day:r,year:1972}},extraFields:()=>[],fieldKeysToIgnore(e){const t=new Set;for(let n=0;n<e.length;n++){const r=e[n];t.add(r),"month"===r?t.add("monthCode"):"monthCode"===r&&t.add("month")}return Go(t)},dateAdd(e,{years:t=0,months:n=0,weeks:r=0,days:o=0},i){let{year:a,month:s,day:c}=e;return a+=t,s+=n,({year:a,month:s}=Cr(a,s)),({year:a,month:s,day:c}=St(a,s,c,i)),c+=o+7*r,Or(a,s,c)},dateUntil(e,t,n){const r=-Ro(e,t);if(0===r)return{years:0,months:0,weeks:0,days:0};let o,i=0,a=0;if("year"===n||"month"===n){let s=t.year-e.year;for(0!==s&&(s-=r);!Vo(r,e.year+s,e.month,e.day,t);)i=s,s+=r;let c=r;for(o=Cr(e.year+i,e.month+c);!Vo(r,o.year,o.month,e.day,t);)a=c,c+=r,o=Cr(o.year,o.month+r);"month"===n&&(a+=12*i,i=0)}o=Cr(e.year+i,e.month+a);const s=kr(o.year,o.month,e.day);let c=0,d=Gr(t.year,t.month-1,t.day)-Gr(s.year,s.month-1,s.day);return"week"===n&&(c=Math.trunc(d/7),d%=7),{years:i,months:a,weeks:c,days:d}},isoToDate({year:e,month:t,day:n},r){const o={era:void 0,eraYear:void 0,year:e,month:t,day:n,daysInWeek:7,monthsInYear:12};if(r.monthCode&&(o.monthCode=ei(t)),r.dayOfWeek){const r=t+(t<3?10:-2),i=e-(t<3?1:0),a=Math.floor(i/100),s=i-100*a,c=(n+Math.floor(2.6*r-.2)+(s+Math.floor(s/4))+(Math.floor(a/4)-2*a))%7;o.dayOfWeek=c+(c<=0?7:0)}if(r.dayOfYear){let r=n;for(let n=t-1;n>0;n--)r+=Tr(e,n);o.dayOfYear=r}return r.weekOfYear&&(o.weekOfYear=Ko("iso8601",{year:e,month:t,day:n})),r.daysInMonth&&(o.daysInMonth=Tr(e,t)),(r.daysInYear||r.inLeapYear)&&(o.inLeapYear=Dr(e),o.daysInYear=o.inLeapYear?366:365),o},getFirstDayOfWeek:()=>1,getMinimalDaysInFirstWeek:()=>4};class OneObjectCache{constructor(e){if(this.map=new Map,this.calls=0,this.hits=0,this.misses=0,void 0!==e){let t=0;for(const n of e.map.entries()){if(++t>OneObjectCache.MAX_CACHE_ENTRIES)break;this.map.set(...n)}}}get(e){const t=this.map.get(e);return t&&(this.hits++,this.report()),this.calls++,t}set(e,t){this.map.set(e,t),this.misses++,this.report()}report(){}setObject(e){if(OneObjectCache.objectMap.get(e))throw new RangeError("object already cached");OneObjectCache.objectMap.set(e,this),this.report()}static getCacheForObject(e){let t=OneObjectCache.objectMap.get(e);return t||(t=new OneObjectCache,OneObjectCache.objectMap.set(e,t)),t}}function ni({isoYear:e,isoMonth:t,isoDay:n}){return`${Jn(e)}-${Gn(t)}-${Gn(n)}T00:00Z`}function ri(e,t){return{years:e.year-t.year,months:e.month-t.month,days:e.day-t.day}}OneObjectCache.objectMap=new WeakMap,OneObjectCache.MAX_CACHE_ENTRIES=1e3;class HelperBase{constructor(){this.eras=[],this.hasEra=!1,this.erasBeginMidYear=!1}getFormatter(){return void 0===this.formatter&&(this.formatter=new Intl.DateTimeFormat(`en-US-u-ca-${this.id}`,{day:"numeric",month:"numeric",year:"numeric",era:"short",timeZone:"UTC"})),this.formatter}getCalendarParts(e){let t=this.getFormatter(),n=new Date(e);if("-271821-04-19T00:00Z"===e){const e=t.resolvedOptions();t=new Intl.DateTimeFormat(e.locale,{...e,timeZone:"Etc/GMT+1"}),n=new Date("-271821-04-20T00:00Z")}try{return t.formatToParts(n)}catch(t){throw new RangeError(`Invalid ISO date: ${e}`)}}isoToCalendarDate(e,t){const{year:n,month:r,day:o}=e,i=JSON.stringify({func:"isoToCalendarDate",isoYear:n,isoMonth:r,isoDay:o,id:this.id}),a=t.get(i);if(a)return a;const s=ni({isoYear:n,isoMonth:r,isoDay:o}),c=this.getCalendarParts(s),d={};for(let e=0;e<c.length;e++){const{type:t,value:n}=c[e];if("year"!==t&&"relatedYear"!==t||(this.hasEra?d.eraYear=+n:d.year=+n),"month"===t){const e=/^([0-9]*)(.*?)$/.exec(n);if(!e||3!=e.length||!e[1]&&!e[2])throw new RangeError(`Unexpected month: ${n}`);if(d.month=e[1]?+e[1]:1,d.month<1)throw new RangeError(`Invalid month ${n} from ${s}[u-ca-${this.id}] (probably due to https://bugs.chromium.org/p/v8/issues/detail?id=10527)`);if(d.month>13)throw new RangeError(`Invalid month ${n} from ${s}[u-ca-${this.id}] (probably due to https://bugs.chromium.org/p/v8/issues/detail?id=10529)`);e[2]&&(d.monthExtra=e[2])}"day"===t&&(d.day=+n),this.hasEra&&"era"===t&&null!=n&&""!==n&&(d.era=n.split(" (")[0].normalize("NFD").replace(/[^-0-9 \p{L}]/gu,"").replace(/ /g,"-").toLowerCase())}if(this.hasEra&&void 0===d.eraYear)throw new RangeError(`Intl.DateTimeFormat.formatToParts lacks relatedYear in ${this.id} calendar. Try Node 14+ or modern browsers.`);if(this.hasEra){const e=this.eras.find((e=>d.era===e.genericName));e&&(d.era=e.code)}if(this.reviseIntlEra){const{era:t,eraYear:n}=this.reviseIntlEra(d,e);d.era=t,d.eraYear=n}this.checkIcuBugs&&this.checkIcuBugs(e);const h=this.adjustCalendarDate(d,t,"constrain",!0);if(void 0===h.year)throw new RangeError(`Missing year converting ${JSON.stringify(e)}`);if(void 0===h.month)throw new RangeError(`Missing month converting ${JSON.stringify(e)}`);if(void 0===h.day)throw new RangeError(`Missing day converting ${JSON.stringify(e)}`);return t.set(i,h),["constrain","reject"].forEach((n=>{const r=JSON.stringify({func:"calendarToIsoDate",year:h.year,month:h.month,day:h.day,overflow:n,id:this.id});t.set(r,e)})),h}validateCalendarDate(e){const{month:t,year:n,day:r,eraYear:o,monthCode:i,monthExtra:a}=e;if(void 0!==a)throw new RangeError("Unexpected `monthExtra` value");if(void 0===n&&void 0===o)throw new TypeError("year or eraYear is required");if(void 0===t&&void 0===i)throw new TypeError("month or monthCode is required");if(void 0===r)throw new RangeError("Missing day");if(void 0!==i){if("string"!=typeof i)throw new RangeError("monthCode must be a string, not "+typeof i);if(!/^M([01]?\d)(L?)$/.test(i))throw new RangeError(`Invalid monthCode: ${i}`)}if(this.hasEra&&void 0===e.era!=(void 0===e.eraYear))throw new TypeError("properties era and eraYear must be provided together")}adjustCalendarDate(e,t=void 0,n="constrain",r=!1){if("lunisolar"===this.calendarType)throw new RangeError("Override required for lunisolar calendars");let o=e;this.validateCalendarDate(o);const i=this.monthsInYear(o,t);let{month:a,monthCode:s}=o;return({month:a,monthCode:s}=ti(o,n,i)),{...o,month:a,monthCode:s}}regulateMonthDayNaive(e,t,n){const r=this.monthsInYear(e,n);let{month:o,day:i}=e;return"reject"===t?(Nr(o,1,r),Nr(i,1,this.maximumMonthLength(e))):(o=jr(o,1,r),i=jr(i,1,this.maximumMonthLength({...e,month:o}))),{...e,month:o,day:i}}calendarToIsoDate(e,t="constrain",n){const r=e;let o=this.adjustCalendarDate(e,n,t,!1);o=this.regulateMonthDayNaive(o,t,n);const{year:i,month:a,day:s}=o,c=JSON.stringify({func:"calendarToIsoDate",year:i,month:a,day:s,overflow:t,id:this.id});let d,h=n.get(c);if(h)return h;if(void 0!==r.year&&void 0!==r.month&&void 0!==r.day&&(r.year!==o.year||r.month!==o.month||r.day!==o.day)&&(d=JSON.stringify({func:"calendarToIsoDate",year:r.year,month:r.month,day:r.day,overflow:t,id:this.id}),h=n.get(d),h))return h;let u=this.estimateIsoDate({year:i,month:a,day:s});const l=e=>{let r=this.addDaysIso(u,e);if(o.day>this.minimumMonthLength(o)){let e=this.isoToCalendarDate(r,n);for(;e.month!==a||e.year!==i;){if("reject"===t)throw new RangeError(`day ${s} does not exist in month ${a} of year ${i}`);r=this.addDaysIso(r,-1),e=this.isoToCalendarDate(r,n)}}return r};let m=0,f=this.isoToCalendarDate(u,n),y=ri(o,f);if(0!==y.years||0!==y.months||0!==y.days){const e=365*y.years+30*y.months+y.days;u=this.addDaysIso(u,e),f=this.isoToCalendarDate(u,n),y=ri(o,f),0===y.years&&0===y.months?u=l(y.days):m=this.compareCalendarDates(o,f)}let p=8;for(;m;){u=this.addDaysIso(u,m*p);const e=f;f=this.isoToCalendarDate(u,n);const i=m;if(m=this.compareCalendarDates(o,f),m)if(y=ri(o,f),0===y.years&&0===y.months)u=l(y.days),m=0;else if(i&&m!==i)if(p>1)p/=2;else{if("reject"===t)throw new RangeError(`Can't find ISO date from calendar date: ${JSON.stringify({...r})}`);this.compareCalendarDates(f,e)>0&&(u=this.addDaysIso(u,-1)),m=0}}if(n.set(c,u),d&&n.set(d,u),void 0===o.year||void 0===o.month||void 0===o.day||void 0===o.monthCode||this.hasEra&&(void 0===o.era||void 0===o.eraYear))throw new RangeError("Unexpected missing property");return u}compareCalendarDates(e,t){return e.year!==t.year?Bo(e.year-t.year):e.month!==t.month?Bo(e.month-t.month):e.day!==t.day?Bo(e.day-t.day):0}regulateDate(e,t="constrain",n){const r=this.calendarToIsoDate(e,t,n);return this.isoToCalendarDate(r,n)}addDaysIso(e,t){return Or(e.year,e.month,e.day+t)}addDaysCalendar(e,t,n){const r=this.calendarToIsoDate(e,"constrain",n),o=this.addDaysIso(r,t);return this.isoToCalendarDate(o,n)}addMonthsCalendar(e,t,n,r){let o=e;const{day:i}=o;for(let e=0,n=Math.abs(t);e<n;e++){const{month:e}=o,n=o,a=t<0?-Math.max(i,this.daysInPreviousMonth(o,r)):this.daysInMonth(o,r),s=this.calendarToIsoDate(o,"constrain",r);let c=this.addDaysIso(s,a);if(o=this.isoToCalendarDate(c,r),t>0){const t=this.monthsInYear(n,r);for(;o.month-1!=e%t;)c=this.addDaysIso(c,-1),o=this.isoToCalendarDate(c,r)}o.day!==i&&(o=this.regulateDate({...o,day:i},"constrain",r))}if("reject"===n&&o.day!==i)throw new RangeError(`Day ${i} does not exist in resulting calendar month`);return o}addCalendar(e,{years:t=0,months:n=0,weeks:r=0,days:o=0},i,a){const{year:s,day:c,monthCode:d}=e,h=this.adjustCalendarDate({year:s+t,monthCode:d,day:c},a),u=this.addMonthsCalendar(h,n,i,a),l=o+7*r;return this.addDaysCalendar(u,l,a)}untilCalendar(e,t,n,r){let o=0,i=0,a=0,s=0;switch(n){case"day":o=this.calendarDaysUntil(e,t,r);break;case"week":{const n=this.calendarDaysUntil(e,t,r);o=n%7,i=(n-o)/7;break}case"month":case"year":{const i=this.compareCalendarDates(t,e);if(!i)return{years:0,months:0,weeks:0,days:0};const c=t.year-e.year,d=t.day-e.day;if("year"===n&&c){let n=0;t.monthCode>e.monthCode&&(n=1),t.monthCode<e.monthCode&&(n=-1),n||(n=Math.sign(d)),s=n*i<0?c-i:c}let h,u=s?this.addCalendar(e,{years:s},"constrain",r):e;do{a+=i,h=u,u=this.addMonthsCalendar(h,i,"constrain",r),u.day!==e.day&&(u=this.regulateDate({...u,day:e.day},"constrain",r))}while(this.compareCalendarDates(t,u)*i>=0);a-=i,o=this.calendarDaysUntil(h,t,r);break}}return{years:s,months:a,weeks:i,days:o}}daysInMonth(e,t){const{day:n}=e,r=this.maximumMonthLength(e),o=this.minimumMonthLength(e);if(o===r)return o;const i=n<=r-o?r:o,a=this.calendarToIsoDate(e,"constrain",t),s=this.addDaysIso(a,i),c=this.isoToCalendarDate(s,t),d=this.addDaysIso(s,-c.day);return this.isoToCalendarDate(d,t).day}daysInPreviousMonth(e,t){const{day:n,month:r,year:o}=e;let i={year:r>1?o:o-1,month:r,day:1};const a=r>1?r-1:this.monthsInYear(i,t);i={...i,month:a};const s=this.minimumMonthLength(i),c=this.maximumMonthLength(i);if(s===c)return c;const d=this.calendarToIsoDate(e,"constrain",t),h=this.addDaysIso(d,-n);return this.isoToCalendarDate(h,t).day}startOfCalendarYear(e){return{year:e.year,month:1,monthCode:"M01",day:1}}startOfCalendarMonth(e){return{year:e.year,month:e.month,day:1}}calendarDaysUntil(e,t,n){const r=this.calendarToIsoDate(e,"constrain",n),o=this.calendarToIsoDate(t,"constrain",n);return Gr(o.year,o.month-1,o.day)-Gr(r.year,r.month-1,r.day)}monthDaySearchStartYear(e,t){return 1972}monthDayFromFields(e,t,n){let r,o,i,a,s,{era:c,eraYear:d,year:h,month:u,monthCode:l,day:m}=e;if(void 0!==u&&void 0===h&&(!this.hasEra||void 0===c||void 0===d))throw new TypeError("when month is present, year (or era and eraYear) are required");(void 0===l||void 0!==h||this.hasEra&&void 0!==d)&&({monthCode:l,day:m}=this.isoToCalendarDate(this.calendarToIsoDate(e,t,n),n));const f={year:this.monthDaySearchStartYear(l,m),month:12,day:31},y=this.isoToCalendarDate(f,n),p=y.monthCode>l||y.monthCode===l&&y.day>=m?y.year:y.year-1;for(let e=0;e<20;e++){const c=this.adjustCalendarDate({day:m,monthCode:l,year:p-e},n),d=this.calendarToIsoDate(c,"constrain",n),h=this.isoToCalendarDate(d,n);if(({year:r,month:o,day:i}=d),h.monthCode===l&&h.day===m)return{month:o,day:i,year:r};if("constrain"===t){const e=this.maxLengthOfMonthCodeInAnyYear(h.monthCode);if(h.monthCode===l&&h.day===e&&m>e)return{month:o,day:i,year:r};(void 0===a||h.monthCode===a.monthCode&&h.day>a.day)&&(a=h,s=d)}}if("constrain"===t&&void 0!==s)return s;throw new RangeError(`No recent ${this.id} year with monthCode ${l} and day ${m}`)}getFirstDayOfWeek(){}getMinimalDaysInFirstWeek(){}}class HebrewHelper extends HelperBase{constructor(){super(...arguments),this.id="hebrew",this.calendarType="lunisolar",this.months={Tishri:{leap:1,regular:1,monthCode:"M01",days:30},Heshvan:{leap:2,regular:2,monthCode:"M02",days:{min:29,max:30}},Kislev:{leap:3,regular:3,monthCode:"M03",days:{min:29,max:30}},Tevet:{leap:4,regular:4,monthCode:"M04",days:29},Shevat:{leap:5,regular:5,monthCode:"M05",days:30},Adar:{leap:void 0,regular:6,monthCode:"M06",days:29},"Adar I":{leap:6,regular:void 0,monthCode:"M05L",days:30},"Adar II":{leap:7,regular:void 0,monthCode:"M06",days:29},Nisan:{leap:8,regular:7,monthCode:"M07",days:30},Iyar:{leap:9,regular:8,monthCode:"M08",days:29},Sivan:{leap:10,regular:9,monthCode:"M09",days:30},Tamuz:{leap:11,regular:10,monthCode:"M10",days:29},Av:{leap:12,regular:11,monthCode:"M11",days:30},Elul:{leap:13,regular:12,monthCode:"M12",days:29}}}inLeapYear(e){const{year:t}=e;return(7*t+1)%19<7}monthsInYear(e){return this.inLeapYear(e)?13:12}minimumMonthLength(e){return this.minMaxMonthLength(e,"min")}maximumMonthLength(e){return this.minMaxMonthLength(e,"max")}minMaxMonthLength(e,t){const{month:n,year:r}=e,o=this.getMonthCode(r,n),i=Object.entries(this.months).find((e=>e[1].monthCode===o));if(void 0===i)throw new RangeError(`unmatched Hebrew month: ${n}`);const a=i[1].days;return"number"==typeof a?a:a[t]}maxLengthOfMonthCodeInAnyYear(e){return["M04","M06","M08","M10","M12"].includes(e)?29:30}estimateIsoDate(e){const{year:t}=e;return{year:t-3760,month:1,day:1}}getMonthCode(e,t){return this.inLeapYear({year:e})?6===t?ei(5,!0):ei(t<6?t:t-1):ei(t)}adjustCalendarDate(e,t,n="constrain",r=!1){let{year:o,month:i,monthCode:a,day:s,monthExtra:c}=e;if(void 0===o)throw new TypeError("Missing property: year");if(r){if(c){const e=this.months[c];if(!e)throw new RangeError(`Unrecognized month from formatToParts: ${c}`);i=this.inLeapYear({year:o})?e.leap:e.regular}return a=this.getMonthCode(o,i),{year:o,month:i,day:s,monthCode:a}}if(this.validateCalendarDate(e),void 0===i)if(a.endsWith("L")){if("M05L"!==a)throw new RangeError(`Hebrew leap month must have monthCode M05L, not ${a}`);if(i=6,!this.inLeapYear({year:o})){if("reject"===n)throw new RangeError(`Hebrew monthCode M05L is invalid in year ${o} which is not a leap year`);i=6,a="M06"}}else{i=Qo(a),this.inLeapYear({year:o})&&i>=6&&i++;const e=this.monthsInYear({year:o});if(i<1||i>e)throw new RangeError(`Invalid monthCode: ${a}`)}else if("reject"===n?(Nr(i,1,this.monthsInYear({year:o})),Nr(s,1,this.maximumMonthLength({year:o,month:i}))):(i=jr(i,1,this.monthsInYear({year:o})),s=jr(s,1,this.maximumMonthLength({year:o,month:i}))),void 0===a)a=this.getMonthCode(o,i);else if(this.getMonthCode(o,i)!==a)throw new RangeError(`monthCode ${a} doesn't correspond to month ${i} in Hebrew year ${o}`);return{...e,day:s,month:i,monthCode:a,year:o}}}class IslamicBaseHelper extends HelperBase{constructor(){super(...arguments),this.calendarType="lunar",this.DAYS_PER_ISLAMIC_YEAR=354+11/30,this.DAYS_PER_ISO_YEAR=365.2425}inLeapYear(e,t){const n={year:e.year,month:1,monthCode:"M01",day:1},r={year:e.year+1,month:1,monthCode:"M01",day:1};return 355===this.calendarDaysUntil(n,r,t)}monthsInYear(){return 12}minimumMonthLength(){return 29}maximumMonthLength(){return 30}maxLengthOfMonthCodeInAnyYear(){return 30}estimateIsoDate(e){const{year:t}=this.adjustCalendarDate(e);return{year:Math.floor(t*this.DAYS_PER_ISLAMIC_YEAR/this.DAYS_PER_ISO_YEAR)+622,month:1,day:1}}}class IslamicHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic"}}class IslamicUmalquraHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-umalqura"}}class IslamicTblaHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-tbla"}}class IslamicCivilHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-civil"}}class IslamicRgsaHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamic-rgsa"}}class IslamicCcHelper extends IslamicBaseHelper{constructor(){super(...arguments),this.id="islamicc"}}class PersianHelper extends HelperBase{constructor(){super(...arguments),this.id="persian",this.calendarType="solar"}inLeapYear(e,t){return 30===this.daysInMonth({year:e.year,month:12,day:1},t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 12===t?29:t<=6?31:30}maximumMonthLength(e){const{month:t}=e;return 12===t?30:t<=6?31:30}maxLengthOfMonthCodeInAnyYear(e){return Qo(e)<=6?31:30}estimateIsoDate(e){const{year:t}=this.adjustCalendarDate(e);return{year:t+621,month:1,day:1}}}class IndianHelper extends HelperBase{constructor(){super(...arguments),this.id="indian",this.calendarType="solar",this.months={1:{length:30,month:3,day:22,leap:{length:31,month:3,day:21}},2:{length:31,month:4,day:21},3:{length:31,month:5,day:22},4:{length:31,month:6,day:22},5:{length:31,month:7,day:23},6:{length:31,month:8,day:23},7:{length:30,month:9,day:23},8:{length:30,month:10,day:23},9:{length:30,month:11,day:22},10:{length:30,month:12,day:22},11:{length:30,month:1,nextYear:!0,day:21},12:{length:30,month:2,nextYear:!0,day:20}},this.vulnerableToBceBug="10/11/-79 Saka"!==new Date("0000-01-01T00:00Z").toLocaleDateString("en-US-u-ca-indian",{timeZone:"UTC"})}inLeapYear(e){return oi(e.year+78)}monthsInYear(){return 12}minimumMonthLength(e){return this.getMonthInfo(e).length}maximumMonthLength(e){return this.getMonthInfo(e).length}maxLengthOfMonthCodeInAnyYear(e){const t=Qo(e);let n=this.months[t];return n=n.leap??n,n.length}getMonthInfo(e){const{month:t}=e;let n=this.months[t];if(void 0===n)throw new RangeError(`Invalid month: ${t}`);return this.inLeapYear(e)&&n.leap&&(n=n.leap),n}estimateIsoDate(e){const t=this.adjustCalendarDate(e),n=this.getMonthInfo(t);return Or(t.year+78+(n.nextYear?1:0),n.month,n.day+t.day-1)}checkIcuBugs(e){if(this.vulnerableToBceBug&&e.year<1)throw new RangeError(`calendar '${this.id}' is broken for ISO dates before 0001-01-01 (see https://bugs.chromium.org/p/v8/issues/detail?id=10529)`)}}function oi(e){return e%4==0&&(e%100!=0||e%400==0)}class GregorianBaseHelperFixedEpoch extends HelperBase{constructor(e,t){super(),this.calendarType="solar",this.id=e,this.isoEpoch=t}inLeapYear(e){const{year:t}=this.estimateIsoDate({month:1,day:1,year:e.year});return oi(t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 2===t?this.inLeapYear(e)?29:28:[4,6,9,11].indexOf(t)>=0?30:31}maximumMonthLength(e){return this.minimumMonthLength(e)}maxLengthOfMonthCodeInAnyYear(e){return[31,29,31,30,31,30,31,31,30,31,30,31][Qo(e)-1]}estimateIsoDate(e){const t=this.adjustCalendarDate(e);return St(t.year+this.isoEpoch.year,t.month+this.isoEpoch.month,t.day+this.isoEpoch.day,"constrain")}}class GregorianBaseHelper extends HelperBase{constructor(e,t){super(),this.hasEra=!0,this.calendarType="solar",this.id=e;const{eras:n,anchorEra:r}=function(e){let t,n=e;if(0===n.length)throw new RangeError("Invalid era data: eras are required");if(1===n.length&&n[0].reverseOf)throw new RangeError("Invalid era data: anchor era cannot count years backwards");if(1===n.length&&!n[0].code)throw new RangeError("Invalid era data: at least one named era is required");if(n.filter((e=>null!=e.reverseOf)).length>1)throw new RangeError("Invalid era data: only one era can count years backwards");n.forEach((e=>{if(e.isAnchor||!e.anchorEpoch&&!e.reverseOf){if(t)throw new RangeError("Invalid era data: cannot have multiple anchor eras");t=e,e.anchorEpoch={year:e.hasYearZero?0:1}}else if(!e.code)throw new RangeError("If era name is blank, it must be the anchor era")})),n=n.filter((e=>e.code)),n.forEach((e=>{const{reverseOf:t}=e;if(t){const r=n.find((e=>e.code===t));if(void 0===r)throw new RangeError(`Invalid era data: unmatched reverseOf era: ${t}`);e.reverseOf=r,e.anchorEpoch=r.anchorEpoch,e.isoEpoch=r.isoEpoch}void 0===e.anchorEpoch.month&&(e.anchorEpoch.month=1),void 0===e.anchorEpoch.day&&(e.anchorEpoch.day=1)})),n.sort(((e,t)=>{if(e.reverseOf)return 1;if(t.reverseOf)return-1;if(!e.isoEpoch||!t.isoEpoch)throw new RangeError("Invalid era data: missing ISO epoch");return t.isoEpoch.year-e.isoEpoch.year}));const r=n[n.length-1].reverseOf;if(r&&r!==n[n.length-2])throw new RangeError("Invalid era data: invalid reverse-sign era");return n.forEach(((e,t)=>{e.genericName="era"+(n.length-1-t)})),{eras:n,anchorEra:t||n[0]}}(t);this.anchorEra=r,this.eras=n}inLeapYear(e){const{year:t}=this.estimateIsoDate({month:1,day:1,year:e.year});return oi(t)}monthsInYear(){return 12}minimumMonthLength(e){const{month:t}=e;return 2===t?this.inLeapYear(e)?29:28:[4,6,9,11].indexOf(t)>=0?30:31}maximumMonthLength(e){return this.minimumMonthLength(e)}maxLengthOfMonthCodeInAnyYear(e){return[31,29,31,30,31,30,31,31,30,31,30,31][Qo(e)-1]}completeEraYear(e){const t=(t,n,r)=>{const o=e[t];if(null!=o&&o!=n&&!(r||[]).includes(o)){const e=r?.[0];throw new RangeError(`Input ${t} ${o} doesn't match calculated value ${e?`${n} (also called ${e})`:n}`)}},n=t=>{let n;const r={...e,year:t},o=this.eras.find(((e,o)=>{if(o===this.eras.length-1){if(e.reverseOf){if(t>0)throw new RangeError(`Signed year ${t} is invalid for era ${e.code}`);return n=e.anchorEpoch.year-t,!0}return n=t-e.anchorEpoch.year+(e.hasYearZero?0:1),!0}return this.compareCalendarDates(r,e.anchorEpoch)>=0&&(n=t-e.anchorEpoch.year+(e.hasYearZero?0:1),!0)}));if(!o)throw new RangeError(`Year ${t} was not matched by any era`);return{eraYear:n,era:o.code,eraNames:o.names}};let{year:r,eraYear:o,era:i}=e;if(null!=r){const e=n(r);({eraYear:o,era:i}=e),t("era",i,e?.eraNames),t("eraYear",o)}else{if(null==o)throw new RangeError("Either year or eraYear and era are required");{if(void 0===i)throw new RangeError("era and eraYear must be provided together");const e=this.eras.find((({code:e,names:t=[]})=>e===i||t.includes(i)));if(!e)throw new RangeError(`Era ${i} (ISO year ${o}) was not matched by any era`);r=e.reverseOf?e.anchorEpoch.year-o:o+e.anchorEpoch.year-(e.hasYearZero?0:1),t("year",r),({eraYear:o,era:i}=n(r))}}return{...e,year:r,eraYear:o,era:i}}adjustCalendarDate(e,t,n="constrain"){let r=e;const{month:o,monthCode:i}=r;return void 0===o&&(r={...r,month:Qo(i)}),this.validateCalendarDate(r),r=this.completeEraYear(r),super.adjustCalendarDate(r,t,n)}estimateIsoDate(e){const t=this.adjustCalendarDate(e),{year:n,month:r,day:o}=t,{anchorEra:i}=this;return St(n+i.isoEpoch.year-(i.hasYearZero?0:1),r,o,"constrain")}}class SameMonthDayAsGregorianBaseHelper extends GregorianBaseHelper{constructor(e,t){super(e,t)}isoToCalendarDate(e){const{year:t,month:n,day:r}=e,o=ei(n),i=t-this.anchorEra.isoEpoch.year+1;return this.completeEraYear({year:i,month:n,monthCode:o,day:r})}}const ii={inLeapYear(e){const{year:t}=e;return(t+1)%4==0},monthsInYear:()=>13,minimumMonthLength(e){const{month:t}=e;return 13===t?this.inLeapYear(e)?6:5:30},maximumMonthLength(e){return this.minimumMonthLength(e)},maxLengthOfMonthCodeInAnyYear:e=>"M13"===e?6:30};class OrthodoxBaseHelperFixedEpoch extends GregorianBaseHelperFixedEpoch{constructor(e,t){super(e,t),this.inLeapYear=ii.inLeapYear,this.monthsInYear=ii.monthsInYear,this.minimumMonthLength=ii.minimumMonthLength,this.maximumMonthLength=ii.maximumMonthLength,this.maxLengthOfMonthCodeInAnyYear=ii.maxLengthOfMonthCodeInAnyYear}}class OrthodoxBaseHelper extends GregorianBaseHelper{constructor(e,t){super(e,t),this.inLeapYear=ii.inLeapYear,this.monthsInYear=ii.monthsInYear,this.minimumMonthLength=ii.minimumMonthLength,this.maximumMonthLength=ii.maximumMonthLength,this.maxLengthOfMonthCodeInAnyYear=ii.maxLengthOfMonthCodeInAnyYear}}class EthioaaHelper extends OrthodoxBaseHelperFixedEpoch{constructor(){super("ethioaa",{year:-5492,month:7,day:17})}}class CopticHelper extends OrthodoxBaseHelper{constructor(){super("coptic",[{code:"coptic",isoEpoch:{year:284,month:8,day:29}},{code:"coptic-inverse",reverseOf:"coptic"}])}}class EthiopicHelper extends OrthodoxBaseHelper{constructor(){super("ethiopic",[{code:"ethioaa",names:["ethiopic-amete-alem","mundi"],isoEpoch:{year:-5492,month:7,day:17}},{code:"ethiopic",names:["incar"],isoEpoch:{year:8,month:8,day:27},anchorEpoch:{year:5501}}])}}class RocHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("roc",[{code:"roc",names:["minguo"],isoEpoch:{year:1912,month:1,day:1}},{code:"roc-inverse",names:["before-roc"],reverseOf:"roc"}])}}class BuddhistHelper extends GregorianBaseHelperFixedEpoch{constructor(){super("buddhist",{year:-543,month:1,day:1})}}class GregoryHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("gregory",[{code:"gregory",names:["ad","ce"],isoEpoch:{year:1,month:1,day:1}},{code:"gregory-inverse",names:["be","bce"],reverseOf:"gregory"}])}reviseIntlEra(e){let{era:t,eraYear:n}=e;return"b"===t&&(t="gregory-inverse"),"a"===t&&(t="gregory"),{era:t,eraYear:n}}getFirstDayOfWeek(){return 1}getMinimalDaysInFirstWeek(){return 1}}class JapaneseHelper extends SameMonthDayAsGregorianBaseHelper{constructor(){super("japanese",[{code:"reiwa",isoEpoch:{year:2019,month:5,day:1},anchorEpoch:{year:2019,month:5,day:1}},{code:"heisei",isoEpoch:{year:1989,month:1,day:8},anchorEpoch:{year:1989,month:1,day:8}},{code:"showa",isoEpoch:{year:1926,month:12,day:25},anchorEpoch:{year:1926,month:12,day:25}},{code:"taisho",isoEpoch:{year:1912,month:7,day:30},anchorEpoch:{year:1912,month:7,day:30}},{code:"meiji",isoEpoch:{year:1868,month:9,day:8},anchorEpoch:{year:1868,month:9,day:8}},{code:"japanese",names:["japanese","gregory","ad","ce"],isoEpoch:{year:1,month:1,day:1}},{code:"japanese-inverse",names:["japanese-inverse","gregory-inverse","bc","bce"],reverseOf:"japanese"}]),this.erasBeginMidYear=!0}reviseIntlEra(e,t){const{era:n,eraYear:r}=e,{year:o}=t;return this.eras.find((e=>e.code===n))?{era:n,eraYear:r}:o<1?{era:"japanese-inverse",eraYear:1-o}:{era:"japanese",eraYear:o}}}class ChineseBaseHelper extends HelperBase{constructor(){super(...arguments),this.calendarType="lunisolar"}inLeapYear(e,t){const n=this.getMonthList(e.year,t);return 13===Object.entries(n).length}monthsInYear(e,t){return this.inLeapYear(e,t)?13:12}minimumMonthLength(){return 29}maximumMonthLength(){return 30}maxLengthOfMonthCodeInAnyYear(e){return["M01L","M09L","M10L","M11L","M12L"].includes(e)?29:30}monthDaySearchStartYear(e,t){const n={M01L:[1651,1651],M02L:[1947,1765],M03L:[1966,1955],M04L:[1963,1944],M05L:[1971,1952],M06L:[1960,1941],M07L:[1968,1938],M08L:[1957,1718],M09L:[1832,1832],M10L:[1870,1870],M11L:[1814,1814],M12L:[1890,1890]}[e]??[1972,1972];return t<30?n[0]:n[1]}getMonthList(e,t){if(void 0===e)throw new TypeError("Missing year");const n=JSON.stringify({func:"getMonthList",calendarYear:e,id:this.id}),r=t.get(n);if(r)return r;const o=this.getFormatter(),i=(e,t)=>{const n=ni({isoYear:e,isoMonth:2,isoDay:1}),r=new Date(n);r.setUTCDate(t+1);const i=o.formatToParts(r),a=i.find((e=>"month"===e.type)).value,s=+i.find((e=>"day"===e.type)).value,c=i.find((e=>"relatedYear"===e.type));let d;if(void 0===c)throw new RangeError(`Intl.DateTimeFormat.formatToParts lacks relatedYear in ${this.id} calendar. Try Node 14+ or modern browsers.`);return d=+c.value,{calendarMonthString:a,calendarDay:s,calendarYearToVerify:d}};let a=17,{calendarMonthString:s,calendarDay:c,calendarYearToVerify:d}=i(e,a);"1"!==s&&(a+=29,({calendarMonthString:s,calendarDay:c}=i(e,a))),a-=c-5;const h={};let u,l,m=1,f=!1;do{({calendarMonthString:s,calendarDay:c,calendarYearToVerify:d}=i(e,a)),u&&(h[l].daysInMonth=u+30-c),d!==e?f=!0:(h[s]={monthIndex:m++},a+=30),u=c,l=s}while(!f);return h[l].daysInMonth=u+30-c,t.set(n,h),h}estimateIsoDate(e){const{year:t,month:n}=e;return{year:t,month:n>=12?12:n+1,day:1}}adjustCalendarDate(e,t,n="constrain",r=!1){let{year:o,month:i,monthExtra:a,day:s,monthCode:c}=e;if(void 0===o)throw new TypeError("Missing property: year");if(r){if(a&&"bis"!==a)throw new RangeError(`Unexpected leap month suffix: ${a}`);const e=ei(i,void 0!==a),n=`${i}${a||""}`,r=this.getMonthList(o,t)[n];if(void 0===r)throw new RangeError(`Unmatched month ${n} in Chinese year ${o}`);return i=r.monthIndex,{year:o,month:i,day:s,monthCode:e}}if(this.validateCalendarDate(e),void 0===i){const e=this.getMonthList(o,t);let r=c.replace(/^M|L$/g,(e=>"L"===e?"bis":""));"0"===r[0]&&(r=r.slice(1));let a=e[r];if(i=a&&a.monthIndex,void 0===i&&c.endsWith("L")&&"M13L"!=c&&"constrain"===n){const t=+c.replace(/^M0?|L$/g,"");a=e[t],a&&(i=a.monthIndex,c=ei(t))}if(void 0===i)throw new RangeError(`Unmatched month ${c} in Chinese year ${o}`)}else if(void 0===c){const e=this.getMonthList(o,t),r=Object.entries(e),a=r.length;"reject"===n?(Nr(i,1,a),Nr(s,1,this.maximumMonthLength())):(i=jr(i,1,a),s=jr(s,1,this.maximumMonthLength()));const d=r.find((e=>e[1].monthIndex===i));if(void 0===d)throw new RangeError(`Invalid month ${i} in Chinese year ${o}`);c=ei(+d[0].replace("bis",""),-1!==d[0].indexOf("bis"))}else{const e=this.getMonthList(o,t);let n=c.replace(/^M|L$/g,(e=>"L"===e?"bis":""));"0"===n[0]&&(n=n.slice(1));const r=e[n];if(!r)throw new RangeError(`Unmatched monthCode ${c} in Chinese year ${o}`);if(i!==r.monthIndex)throw new RangeError(`monthCode ${c} doesn't correspond to month ${i} in Chinese year ${o}`)}return{...e,year:o,month:i,monthCode:c,day:s}}}class ChineseHelper extends ChineseBaseHelper{constructor(){super(...arguments),this.id="chinese"}}class DangiHelper extends ChineseBaseHelper{constructor(){super(...arguments),this.id="dangi"}}class NonIsoCalendar{constructor(e){this.helper=e}extraFields(e){return this.helper.hasEra&&e.includes("year")?["era","eraYear"]:[]}resolveFields(e){if("lunisolar"!==this.helper.calendarType){const t=new OneObjectCache;ti(e,void 0,this.helper.monthsInYear({year:e.year??1972},t))}}dateToISO(e,t){const n=new OneObjectCache,r=this.helper.calendarToIsoDate(e,t,n);return n.setObject(r),r}monthDayToISOReferenceDate(e,t){const n=new OneObjectCache,r=this.helper.monthDayFromFields(e,t,n);return n.setObject(r),r}fieldKeysToIgnore(e){const t=new Set;for(let n=0;n<e.length;n++){const r=e[n];switch(t.add(r),r){case"era":t.add("eraYear"),t.add("year");break;case"eraYear":t.add("era"),t.add("year");break;case"year":t.add("era"),t.add("eraYear");break;case"month":t.add("monthCode"),this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"));break;case"monthCode":t.add("month"),this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"));break;case"day":this.helper.erasBeginMidYear&&(t.add("era"),t.add("eraYear"))}}return Go(t)}dateAdd(e,{years:t,months:n,weeks:r,days:o},i){const a=OneObjectCache.getCacheForObject(e),s=this.helper.isoToCalendarDate(e,a),c=this.helper.addCalendar(s,{years:t,months:n,weeks:r,days:o},i,a),d=this.helper.calendarToIsoDate(c,"constrain",a);return OneObjectCache.getCacheForObject(d)||new OneObjectCache(a).setObject(d),d}dateUntil(e,t,n){const r=OneObjectCache.getCacheForObject(e),o=OneObjectCache.getCacheForObject(t),i=this.helper.isoToCalendarDate(e,r),a=this.helper.isoToCalendarDate(t,o);return this.helper.untilCalendar(i,a,n,r)}isoToDate(e,t){const n=OneObjectCache.getCacheForObject(e),r=this.helper.isoToCalendarDate(e,n);if(t.dayOfWeek&&(r.dayOfWeek=Xo.iso8601.isoToDate(e,{dayOfWeek:!0}).dayOfWeek),t.dayOfYear){const e=this.helper.startOfCalendarYear(r),t=this.helper.calendarDaysUntil(e,r,n);r.dayOfYear=t+1}if(t.weekOfYear&&(r.weekOfYear=Ko(this.helper.id,e)),r.daysInWeek=7,t.daysInMonth&&(r.daysInMonth=this.helper.daysInMonth(r,n)),t.daysInYear){const e=this.helper.startOfCalendarYear(r),t=this.helper.addCalendar(e,{years:1},"constrain",n);r.daysInYear=this.helper.calendarDaysUntil(e,t,n)}return t.monthsInYear&&(r.monthsInYear=this.helper.monthsInYear(r,n)),t.inLeapYear&&(r.inLeapYear=this.helper.inLeapYear(r,n)),r}getFirstDayOfWeek(){return this.helper.getFirstDayOfWeek()}getMinimalDaysInFirstWeek(){return this.helper.getMinimalDaysInFirstWeek()}}for(const e of[HebrewHelper,PersianHelper,EthiopicHelper,EthioaaHelper,CopticHelper,ChineseHelper,DangiHelper,RocHelper,IndianHelper,BuddhistHelper,GregoryHelper,JapaneseHelper,IslamicHelper,IslamicUmalquraHelper,IslamicTblaHelper,IslamicCivilHelper,IslamicRgsaHelper,IslamicCcHelper]){const t=new e;Xo[t.id]=new NonIsoCalendar(t)}se("calendarImpl",(function(e){return Xo[e]}));const ai=Intl.DateTimeFormat;function si(e,t){let n=re(e,t);return"function"==typeof n&&(n=new ai(re(e,G),n(re(e,K))),function(e,t,n){const r=Q(e);if(void 0===r)throw new TypeError("Missing slots for the given container");if(void 0===r[t])throw new TypeError(`tried to reset ${t} which was not set`);r[t]=n}(e,t,n)),n}function ci(e){return ne(e,q)}class DateTimeFormatImpl{constructor(e=void 0,t=void 0){!function(e,t,n){const r=void 0!==n;let o;if(r){const e=["localeMatcher","calendar","numberingSystem","hour12","hourCycle","timeZone","weekday","era","year","month","day","dayPeriod","hour","minute","second","fractionalSecondDigits","timeZoneName","formatMatcher","dateStyle","timeStyle"];o=function(e){if(null==e)throw new TypeError(`Expected object not ${e}`);return Object(e)}(n);const t=Object.create(null);for(let n=0;n<e.length;n++){const r=e[n];Object.prototype.hasOwnProperty.call(o,r)&&(t[r]=o[r])}o=t}else o=Object.create(null);const i=new ai(t,o),a=i.resolvedOptions();if(te(e),r){const t=Object.assign(Object.create(null),a);for(const e in t)Object.prototype.hasOwnProperty.call(o,e)||delete t[e];t.hour12=o.hour12,t.hourCycle=o.hourCycle,oe(e,K,t)}else oe(e,K,o);oe(e,G,a.locale),oe(e,q,i),oe(e,W,a.timeZone),oe(e,J,a.calendar),oe(e,B,vi),oe(e,Z,gi),oe(e,F,wi),oe(e,H,pi),oe(e,z,bi),oe(e,A,Di);const s=r?o.timeZone:void 0;if(void 0===s)oe(e,_,a.timeZone);else{const t=We(s);if(t.startsWith("−"))throw new RangeError("Unicode minus (U+2212) is not supported in time zone offsets");oe(e,_,Bn(t))}}(this,e,t)}get format(){vt(this,ci);const e=ui.bind(this);return Object.defineProperties(e,{length:{value:1,enumerable:!1,writable:!1,configurable:!0},name:{value:"",enumerable:!1,writable:!1,configurable:!0}}),e}formatRange(e,t){return vt(this,ci),mi.call(this,e,t)}formatToParts(e,...t){return vt(this,ci),li.call(this,e,...t)}formatRangeToParts(e,t){return vt(this,ci),fi.call(this,e,t)}resolvedOptions(){return vt(this,ci),hi.call(this)}}"formatToParts"in ai.prototype||delete DateTimeFormatImpl.prototype.formatToParts,"formatRangeToParts"in ai.prototype||delete DateTimeFormatImpl.prototype.formatRangeToParts;const di=function(e=void 0,t=void 0){return new DateTimeFormatImpl(e,t)};function hi(){const e=re(this,q).resolvedOptions();return e.timeZone=re(this,_),e}function ui(e,...t){let n,r,o=$i(e,this);return o.formatter?(n=o.formatter,r=[No(o.epochNs,"floor")]):(n=re(this,q),r=[e,...t]),n.format(...r)}function li(e,...t){let n,r,o=$i(e,this);return o.formatter?(n=o.formatter,r=[No(o.epochNs,"floor")]):(n=re(this,q),r=[e,...t]),n.formatToParts(...r)}function mi(e,t){if(void 0===e||void 0===t)throw new TypeError("Intl.DateTimeFormat.formatRange requires two values");const n=Ci(e),r=Ci(t);let o,i=[n,r];if(Ii(n)!==Ii(r))throw new TypeError("Intl.DateTimeFormat.formatRange accepts two values of the same type");if(Ii(n)){if(!Oi(n,r))throw new TypeError("Intl.DateTimeFormat.formatRange accepts two values of the same type");const{epochNs:e,formatter:t}=$i(n,this),{epochNs:a,formatter:s}=$i(r,this);t&&(o=t,i=[No(e,"floor"),No(a,"floor")])}return o||(o=re(this,q)),o.formatRange(...i)}function fi(e,t){if(void 0===e||void 0===t)throw new TypeError("Intl.DateTimeFormat.formatRange requires two values");const n=Ci(e),r=Ci(t);let o,i=[n,r];if(Ii(n)!==Ii(r))throw new TypeError("Intl.DateTimeFormat.formatRangeToParts accepts two values of the same type");if(Ii(n)){if(!Oi(n,r))throw new TypeError("Intl.DateTimeFormat.formatRangeToParts accepts two values of the same type");const{epochNs:e,formatter:t}=$i(n,this),{epochNs:a,formatter:s}=$i(r,this);t&&(o=t,i=[No(e,"floor"),No(a,"floor")])}return o||(o=re(this,q)),o.formatRangeToParts(...i)}function yi(e={},t={}){const n=Object.assign({},e),r=["year","month","day","hour","minute","second","weekday","dayPeriod","timeZoneName","dateStyle","timeStyle"];for(let e=0;e<r.length;e++){const o=r[e];n[o]=o in t?t[o]:n[o],!1!==n[o]&&void 0!==n[o]||delete n[o]}return n}function pi(e){const t=yi(e,{year:!1,month:!1,day:!1,weekday:!1,timeZoneName:!1,dateStyle:!1});if("long"!==t.timeStyle&&"full"!==t.timeStyle||(delete t.timeStyle,Object.assign(t,{hour:"numeric",minute:"2-digit",second:"2-digit"})),!Mi(t)){if(Ei(e))throw new TypeError(`cannot format Temporal.PlainTime with options [${Object.keys(e)}]`);Object.assign(t,{hour:"numeric",minute:"numeric",second:"numeric"})}return t}function gi(e){const t={short:{year:"2-digit",month:"numeric"},medium:{year:"numeric",month:"short"},long:{year:"numeric",month:"long"},full:{year:"numeric",month:"long"}},n=yi(e,{day:!1,hour:!1,minute:!1,second:!1,weekday:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if("dateStyle"in n&&n.dateStyle){const e=n.dateStyle;delete n.dateStyle,Object.assign(n,t[e])}if(!("year"in n||"month"in n||"era"in n)){if(Ei(e))throw new TypeError(`cannot format PlainYearMonth with options [${Object.keys(e)}]`);Object.assign(n,{year:"numeric",month:"numeric"})}return n}function wi(e){const t={short:{month:"numeric",day:"numeric"},medium:{month:"short",day:"numeric"},long:{month:"long",day:"numeric"},full:{month:"long",day:"numeric"}},n=yi(e,{year:!1,hour:!1,minute:!1,second:!1,weekday:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if("dateStyle"in n&&n.dateStyle){const e=n.dateStyle;delete n.dateStyle,Object.assign(n,t[e])}if(!("month"in n)&&!("day"in n)){if(Ei(e))throw new TypeError(`cannot format PlainMonthDay with options [${Object.keys(e)}]`);Object.assign(n,{month:"numeric",day:"numeric"})}return n}function vi(e){const t=yi(e,{hour:!1,minute:!1,second:!1,dayPeriod:!1,timeZoneName:!1,timeStyle:!1});if(!Ti(t)){if(Ei(e))throw new TypeError(`cannot format PlainDate with options [${Object.keys(e)}]`);Object.assign(t,{year:"numeric",month:"numeric",day:"numeric"})}return t}function bi(e){const t=yi(e,{timeZoneName:!1});if(("long"===t.timeStyle||"full"===t.timeStyle)&&(delete t.timeStyle,Object.assign(t,{hour:"numeric",minute:"2-digit",second:"2-digit"}),t.dateStyle)){const e={short:{year:"numeric",month:"numeric",day:"numeric"},medium:{year:"numeric",month:"short",day:"numeric"},long:{year:"numeric",month:"long",day:"numeric"},full:{year:"numeric",month:"long",day:"numeric",weekday:"long"}};Object.assign(t,e[t.dateStyle]),delete t.dateStyle}if(!Mi(t)&&!Ti(t)){if(Ei(e))throw new TypeError(`cannot format PlainDateTime with options [${Object.keys(e)}]`);Object.assign(t,{year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"})}return t}function Di(e){let t=e;return Mi(t)||Ti(t)||(t=Object.assign({},t,{year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"})),t}function Ti(e){return"year"in e||"month"in e||"day"in e||"weekday"in e||"dateStyle"in e||"era"in e}function Mi(e){return"hour"in e||"minute"in e||"second"in e||"timeStyle"in e||"dayPeriod"in e||"fractionalSecondDigits"in e}function Ei(e){return Ti(e)||Mi(e)||"dateStyle"in e||"timeStyle"in e||"timeZoneName"in e}function Ii(e){return mt(e)||ft(e)||yt(e)||wt(e)||pt(e)||gt(e)||ut(e)}function Ci(e){return Ii(e)?e:qe(e)}function Oi(e,t){return!(!Ii(e)||!Ii(t)||ft(e)&&!ft(t)||mt(e)&&!mt(t)||yt(e)&&!yt(t)||wt(e)&&!wt(t)||pt(e)&&!pt(t)||gt(e)&&!gt(t)||ut(e)&&!ut(t))}function $i(e,t){if(ft(e)){const n={isoDate:{year:1970,month:1,day:1},time:re(e,M)};return{epochNs:An(re(t,W),n,"compatible"),formatter:si(t,H)}}if(pt(e)){const n=re(e,E),r=re(t,J);if(n!==r)throw new RangeError(`cannot format PlainYearMonth with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,Z)}}if(gt(e)){const n=re(e,E),r=re(t,J);if(n!==r)throw new RangeError(`cannot format PlainMonthDay with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,F)}}if(mt(e)){const n=re(e,E),r=re(t,J);if("iso8601"!==n&&n!==r)throw new RangeError(`cannot format PlainDate with calendar ${n} in locale with calendar ${r}`);const o=xt(re(e,D),{deltaDays:0,hour:12,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0});return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,B)}}if(yt(e)){const n=re(e,E),r=re(t,J);if("iso8601"!==n&&n!==r)throw new RangeError(`cannot format PlainDateTime with calendar ${n} in locale with calendar ${r}`);const o=re(e,T);return{epochNs:An(re(t,W),o,"compatible"),formatter:si(t,z)}}if(wt(e))throw new TypeError("Temporal.ZonedDateTime not supported in DateTimeFormat methods. Use toLocaleString() instead.");return ut(e)?{epochNs:re(e,b),formatter:si(t,A)}:{}}function Yi(e){const t=Object.create(null);return t.years=re(e,Y),t.months=re(e,R),t.weeks=re(e,S),t.days=re(e,j),t.hours=re(e,k),t.minutes=re(e,N),t.seconds=re(e,x),t.milliseconds=re(e,L),t.microseconds=re(e,P),t.nanoseconds=re(e,U),t}DateTimeFormatImpl.prototype.constructor=di,Object.defineProperty(di,"prototype",{value:DateTimeFormatImpl.prototype,writable:!1,enumerable:!1,configurable:!1}),di.supportedLocalesOf=ai.supportedLocalesOf,ae(di,"Intl.DateTimeFormat");const{format:Ri,formatToParts:Si}=Intl.DurationFormat?.prototype??Object.create(null);function ji(e){Intl.DurationFormat.prototype.resolvedOptions.call(this);const t=Yi(sn(e));return Ri.call(this,t)}Intl.DurationFormat?.prototype&&(Intl.DurationFormat.prototype.format=ji,Intl.DurationFormat.prototype.formatToParts=function(e){Intl.DurationFormat.prototype.resolvedOptions.call(this);const t=Yi(sn(e));return Si.call(this,t)});var ki=Object.freeze({__proto__:null,DateTimeFormat:di,ModifiedIntlDurationFormatPrototypeFormat:ji});class Instant{constructor(e){if(arguments.length<1)throw new TypeError("missing argument: epochNanoseconds is required");In(this,Lo(e))}get epochMilliseconds(){return vt(this,ut),No(re(this,b),"floor")}get epochNanoseconds(){return vt(this,ut),ko(jsbi_cjs.BigInt(re(this,b)))}add(e){return vt(this,ut),wo("add",this,e)}subtract(e){return vt(this,ut),wo("subtract",this,e)}until(e,t=void 0){return vt(this,ut),so("until",this,e,t)}since(e,t=void 0){return vt(this,ut),so("since",this,e,t)}round(e){if(vt(this,ut),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt);return Ht(n,{hour:24,minute:1440,second:86400,millisecond:864e5,microsecond:864e8,nanosecond:864e11}[o],!0),Cn(Io(re(this,b),n,o,r))}equals(t){vt(this,ut);const n=cn(t),r=re(this,b),o=re(n,b);return jsbi_cjs.equal(jsbi_cjs.BigInt(r),jsbi_cjs.BigInt(o))}toString(e=void 0){vt(this,ut);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o)throw new RangeError('smallestUnit must be a time unit other than "hour"');let i=t.timeZone;void 0!==i&&(i=Bn(i));const{precision:a,unit:s,increment:c}=At(o,n);return Xn(Cn(Io(re(this,b),c,s,r)),i,a)}toJSON(){return vt(this,ut),Xn(this,void 0,"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,ut),new di(e,t).format(this)}valueOf(){qo("Instant")}toZonedDateTimeISO(e){vt(this,ut);const t=Bn(e);return $n(re(this,b),t,"iso8601")}static fromEpochMilliseconds(e){return Cn(xo(qe(e)))}static fromEpochNanoseconds(e){return Cn(Lo(e))}static from(e){return cn(e)}static compare(t,n){const r=cn(t),o=cn(n),i=re(r,b),a=re(o,b);return jsbi_cjs.lessThan(i,a)?-1:jsbi_cjs.greaterThan(i,a)?1:0}}ae(Instant,"Temporal.Instant");class PlainDate{constructor(e,t,n,r="iso8601"){const o=_e(e),i=_e(t),a=_e(n),s=zo(void 0===r?"iso8601":Ve(r));xr(o,i,a),yn(this,{year:o,month:i,day:a},s)}get calendarId(){return vt(this,mt),re(this,E)}get era(){return Ni(this,"era")}get eraYear(){return Ni(this,"eraYear")}get year(){return Ni(this,"year")}get month(){return Ni(this,"month")}get monthCode(){return Ni(this,"monthCode")}get day(){return Ni(this,"day")}get dayOfWeek(){return Ni(this,"dayOfWeek")}get dayOfYear(){return Ni(this,"dayOfYear")}get weekOfYear(){return Ni(this,"weekOfYear")?.week}get yearOfWeek(){return Ni(this,"weekOfYear")?.year}get daysInWeek(){return Ni(this,"daysInWeek")}get daysInMonth(){return Ni(this,"daysInMonth")}get daysInYear(){return Ni(this,"daysInYear")}get monthsInYear(){return Ni(this,"monthsInYear")}get inLeapYear(){return Ni(this,"inLeapYear")}with(e,t=void 0){if(vt(this,mt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D));return r=Rn(n,r,tn(n,e,["year","month","monthCode","day"],[],"partial")),pn(Ln(n,r,Lt(Zo(t))),n)}withCalendar(e){vt(this,mt);const t=kn(e);return pn(re(this,D),t)}add(e,t=void 0){return vt(this,mt),vo("add",this,e,t)}subtract(e,t=void 0){return vt(this,mt),vo("subtract",this,e,t)}until(e,t=void 0){return vt(this,mt),co("until",this,e,t)}since(e,t=void 0){return vt(this,mt),co("since",this,e,t)}equals(e){vt(this,mt);const t=rn(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,mt),er(this,Zt(Zo(e)))}toJSON(){return vt(this,mt),er(this)}toLocaleString(e=void 0,t=void 0){return vt(this,mt),new di(e,t).format(this)}valueOf(){qo("PlainDate")}toPlainDateTime(e=void 0){vt(this,mt);const t=un(e);return wn(xt(re(this,D),t),re(this,E))}toZonedDateTime(e){let t,n;if(vt(this,mt),Ae(e)){const r=e.timeZone;void 0===r?t=Bn(e):(t=Bn(r),n=e.plainTime)}else t=Bn(e);const r=re(this,D);let o;return void 0===n?o=_n(t,r):(n=hn(n),o=An(t,xt(r,re(n,M)),"compatible")),$n(o,t,re(this,E))}toPlainYearMonth(){vt(this,mt);const e=re(this,E);return En(Pn(e,en(e,re(this,D)),"constrain"),e)}toPlainMonthDay(){vt(this,mt);const e=re(this,E);return bn(Un(e,en(e,re(this,D)),"constrain"),e)}static from(e,t=void 0){return rn(e,t)}static compare(e,t){const n=rn(e),r=rn(t);return Ro(re(n,D),re(r,D))}}function Ni(e,t){vt(e,mt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}ae(PlainDate,"Temporal.PlainDate");class PlainDateTime{constructor(e,t,n,r=0,o=0,i=0,a=0,s=0,c=0,d="iso8601"){const h=_e(e),u=_e(t),l=_e(n),m=void 0===r?0:_e(r),f=void 0===o?0:_e(o),y=void 0===i?0:_e(i),p=void 0===a?0:_e(a),g=void 0===s?0:_e(s),w=void 0===c?0:_e(c),v=zo(void 0===d?"iso8601":Ve(d));Ur(h,u,l,m,f,y,p,g,w),gn(this,{isoDate:{year:h,month:u,day:l},time:{hour:m,minute:f,second:y,millisecond:p,microsecond:g,nanosecond:w}},v)}get calendarId(){return vt(this,yt),re(this,E)}get year(){return xi(this,"year")}get month(){return xi(this,"month")}get monthCode(){return xi(this,"monthCode")}get day(){return xi(this,"day")}get hour(){return Li(this,"hour")}get minute(){return Li(this,"minute")}get second(){return Li(this,"second")}get millisecond(){return Li(this,"millisecond")}get microsecond(){return Li(this,"microsecond")}get nanosecond(){return Li(this,"nanosecond")}get era(){return xi(this,"era")}get eraYear(){return xi(this,"eraYear")}get dayOfWeek(){return xi(this,"dayOfWeek")}get dayOfYear(){return xi(this,"dayOfYear")}get weekOfYear(){return xi(this,"weekOfYear")?.week}get yearOfWeek(){return xi(this,"weekOfYear")?.year}get daysInWeek(){return xi(this,"daysInWeek")}get daysInYear(){return xi(this,"daysInYear")}get daysInMonth(){return xi(this,"daysInMonth")}get monthsInYear(){return xi(this,"monthsInYear")}get inLeapYear(){return xi(this,"inLeapYear")}with(e,t=void 0){if(vt(this,yt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E),r=re(this,T);let o={...en(n,r.isoDate),...r.time};return o=Rn(n,o,tn(n,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond"],"partial")),wn(on(n,o,Lt(Zo(t))),n)}withPlainTime(e=void 0){vt(this,yt);const t=un(e);return wn(xt(re(this,T).isoDate,t),re(this,E))}withCalendar(e){vt(this,yt);const t=kn(e);return wn(re(this,T),t)}add(e,t=void 0){return vt(this,yt),bo("add",this,e,t)}subtract(e,t=void 0){return vt(this,yt),bo("subtract",this,e,t)}until(e,t=void 0){return vt(this,yt),ho("until",this,e,t)}since(e,t=void 0){return vt(this,yt),ho("since",this,e,t)}round(e){if(vt(this,yt),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt,["day"]),i={day:1,hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[o];Ht(n,i,1===i);const a=re(this,T);return wn(1===n&&"nanosecond"===o?a:Co(a,n,o,r),re(this,E))}equals(e){vt(this,yt);const t=an(e);return 0===jo(re(this,T),re(t,T))&&xn(re(this,E),re(t,E))}toString(e=void 0){vt(this,yt);const t=Zo(e),n=Zt(t),r=zt(t),o=Ut(t,"trunc"),i=Wt(t,"smallestUnit","time",void 0);if("hour"===i)throw new RangeError('smallestUnit must be a time unit other than "hour"');const{precision:a,unit:s,increment:c}=At(i,r),d=Co(re(this,T),c,s,o);return Br(d),nr(d,re(this,E),a,n)}toJSON(){return vt(this,yt),nr(re(this,T),re(this,E),"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,yt),new di(e,t).format(this)}valueOf(){qo("PlainDateTime")}toZonedDateTime(e,t=void 0){vt(this,yt);const n=Bn(e),r=Pt(Zo(t));return $n(An(n,re(this,T),r),n,re(this,E))}toPlainDate(){return vt(this,yt),pn(re(this,T).isoDate,re(this,E))}toPlainTime(){return vt(this,yt),Tn(re(this,T).time)}static from(e,t=void 0){return an(e,t)}static compare(e,t){const n=an(e),r=an(t);return jo(re(n,T),re(r,T))}}function xi(e,t){vt(e,yt);const n=re(e,T).isoDate;return Qt(e).isoToDate(n,{[t]:!0})[t]}function Li(e,t){return vt(e,yt),re(e,T).time[t]}ae(PlainDateTime,"Temporal.PlainDateTime");class Duration{constructor(e=0,t=0,n=0,r=0,o=0,i=0,a=0,s=0,c=0,d=0){const h=void 0===e?0:Ge(e),u=void 0===t?0:Ge(t),l=void 0===n?0:Ge(n),m=void 0===r?0:Ge(r),f=void 0===o?0:Ge(o),y=void 0===i?0:Ge(i),p=void 0===a?0:Ge(a),g=void 0===s?0:Ge(s),w=void 0===c?0:Ge(c),v=void 0===d?0:Ge(d);zr(h,u,l,m,f,y,p,g,w,v),te(this),oe(this,Y,h),oe(this,R,u),oe(this,S,l),oe(this,j,m),oe(this,k,f),oe(this,N,y),oe(this,x,p),oe(this,L,g),oe(this,P,w),oe(this,U,v)}get years(){return vt(this,lt),re(this,Y)}get months(){return vt(this,lt),re(this,R)}get weeks(){return vt(this,lt),re(this,S)}get days(){return vt(this,lt),re(this,j)}get hours(){return vt(this,lt),re(this,k)}get minutes(){return vt(this,lt),re(this,N)}get seconds(){return vt(this,lt),re(this,x)}get milliseconds(){return vt(this,lt),re(this,L)}get microseconds(){return vt(this,lt),re(this,P)}get nanoseconds(){return vt(this,lt),re(this,U)}get sign(){return vt(this,lt),Mr(this)}get blank(){return vt(this,lt),0===Mr(this)}with(e){vt(this,lt);const t=kt(e),{years:n=re(this,Y),months:r=re(this,R),weeks:o=re(this,S),days:i=re(this,j),hours:a=re(this,k),minutes:s=re(this,N),seconds:c=re(this,x),milliseconds:d=re(this,L),microseconds:h=re(this,P),nanoseconds:u=re(this,U)}=t;return new Duration(n,r,o,i,a,s,c,d,h,u)}negated(){return vt(this,lt),Sr(this)}abs(){return vt(this,lt),new Duration(Math.abs(re(this,Y)),Math.abs(re(this,R)),Math.abs(re(this,S)),Math.abs(re(this,j)),Math.abs(re(this,k)),Math.abs(re(this,N)),Math.abs(re(this,x)),Math.abs(re(this,L)),Math.abs(re(this,P)),Math.abs(re(this,U)))}add(e){return vt(this,lt),go("add",this,e)}subtract(e){return vt(this,lt),go("subtract",this,e)}round(e){if(vt(this,lt),void 0===e)throw new TypeError("options parameter is required");const t=Jt(this),n="string"==typeof e?Fo("smallestUnit",e):Zo(e);let r=Wt(n,"largestUnit","datetime",void 0,["auto"]),{plainRelativeTo:o,zonedRelativeTo:i}=_t(n);const a=Ft(n),s=Ut(n,"halfExpand");let c=Wt(n,"smallestUnit","datetime",void 0),d=!0;c||(d=!1,c="nanosecond");const h=Gt(t,c);let u=!0;if(r||(u=!1,r=h),"auto"===r&&(r=h),!d&&!u)throw new RangeError("at least one of smallestUnit or largestUnit is required");if(Gt(r,c)!==r)throw new RangeError(`largestUnit ${r} cannot be smaller than smallestUnit ${c}`);const l={hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[c];if(void 0!==l&&Ht(a,l,!1),a>1&&"date"===Vt(c)&&r!==c)throw new RangeError("For calendar units with roundingIncrement > 1, use largestUnit = smallestUnit");if(i){let e=Ar(this);const t=re(i,$),n=re(i,E),o=re(i,b);return e=io(o,po(o,t,n,e),t,n,r,a,c,s),"date"===Vt(r)&&(r="hour"),_r(e,r)}if(o){let e=qr(this);const t=fo({deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},e.time),n=re(o,D),i=re(o,E),d=Sn(i,n,Nt(e.date,t.deltaDays),"constrain");return e=oo(xt(n,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),xt(d,t),i,r,a,c,s),_r(e,r)}if(Kt(t))throw new RangeError(`a starting point is required for ${t}s balancing`);if(Kt(r))throw new RangeError(`a starting point is required for ${r}s balancing`);let m=qr(this);if("day"===c){const{quotient:e,remainder:t}=m.time.divmod(Se);let n=m.date.days+e+Yo(t,"day");n=Eo(n,a,s),m=Jr({years:0,months:0,weeks:0,days:n},TimeDuration.ZERO)}else m=Jr({years:0,months:0,weeks:0,days:0},$o(m.time,a,c,s));return _r(m,r)}total(t){if(vt(this,lt),void 0===t)throw new TypeError("options argument is required");const n="string"==typeof t?Fo("unit",t):Zo(t);let{plainRelativeTo:r,zonedRelativeTo:o}=_t(n);const i=Wt(n,"unit","datetime",qt);if(o){const e=Ar(this),t=re(o,$),n=re(o,E),r=re(o,b);return function(e,t,n,r,o){return"time"===Vt(o)?Yo(TimeDuration.fromEpochNsDiff(t,e),o):ro(eo(e,t,n,r,o),t,zn(n,e),n,r,o)}(r,po(r,t,n,e),t,n,i)}if(r){const t=qr(this);let n=fo({deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0},t.time);const o=re(r,D),a=re(r,E),s=Sn(a,o,Nt(t.date,n.deltaDays),"constrain");return function(t,n,r,o){if(0==jo(t,n))return 0;Br(t),Br(n);const i=Qr(t,n,r,o);return"nanosecond"===o?jsbi_cjs.toNumber(i.time.totalNs):ro(i,pr(n),t,null,r,o)}(xt(o,{deltaDays:0,hour:0,minute:0,second:0,millisecond:0,microsecond:0,nanosecond:0}),xt(s,n),a,i)}const a=Jt(this);if(Kt(a))throw new RangeError(`a starting point is required for ${a}s total`);if(Kt(i))throw new RangeError(`a starting point is required for ${i}s total`);return Yo(qr(this).time,i)}toString(e=void 0){vt(this,lt);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o||"minute"===o)throw new RangeError('smallestUnit must be a time unit other than "hours" or "minutes"');const{precision:i,unit:a,increment:s}=At(o,n);if("nanosecond"===a&&1===s)return Qn(this,i);const c=Jt(this);let d=Ar(this);const h=$o(d.time,s,a,r);return d=Jr(d.date,h),Qn(_r(d,Gt(c,"second")),i)}toJSON(){return vt(this,lt),Qn(this,"auto")}toLocaleString(e=void 0,t=void 0){if(vt(this,lt),"function"==typeof Intl.DurationFormat){const n=new Intl.DurationFormat(e,t);return ji.call(n,this)}return console.warn("Temporal.Duration.prototype.toLocaleString() requires Intl.DurationFormat."),Qn(this,"auto")}valueOf(){qo("Duration")}static from(e){return sn(e)}static compare(t,n,r=void 0){const o=sn(t),i=sn(n),a=Zo(r),{plainRelativeTo:s,zonedRelativeTo:c}=_t(a);if(re(o,Y)===re(i,Y)&&re(o,R)===re(i,R)&&re(o,S)===re(i,S)&&re(o,j)===re(i,j)&&re(o,k)===re(i,k)&&re(o,N)===re(i,N)&&re(o,x)===re(i,x)&&re(o,L)===re(i,L)&&re(o,P)===re(i,P)&&re(o,U)===re(i,U))return 0;const d=Jt(o),h=Jt(i),u=Ar(o),l=Ar(i);if(c&&("date"===Vt(d)||"date"===Vt(h))){const t=re(c,$),n=re(c,E),r=re(c,b),o=po(r,t,n,u),i=po(r,t,n,l);return Bo(jsbi_cjs.toNumber(jsbi_cjs.subtract(o,i)))}let m=u.date.days,f=l.date.days;if(Kt(d)||Kt(h)){if(!s)throw new RangeError("A starting point is required for years, months, or weeks comparison");m=Rr(u.date,s),f=Rr(l.date,s)}const y=u.time.add24HourDays(m),p=l.time.add24HourDays(f);return y.cmp(p)}}ae(Duration,"Temporal.Duration");class PlainMonthDay{constructor(e,t,n="iso8601",r=1972){const o=_e(e),i=_e(t),a=zo(void 0===n?"iso8601":Ve(n)),s=_e(r);xr(s,o,i),vn(this,{year:s,month:o,day:i},a)}get monthCode(){return Pi(this,"monthCode")}get day(){return Pi(this,"day")}get calendarId(){return vt(this,gt),re(this,E)}with(e,t=void 0){if(vt(this,gt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D),"month-day");return r=Rn(n,r,tn(n,e,["year","month","monthCode","day"],[],"partial")),bn(Un(n,r,Lt(Zo(t))),n)}equals(e){vt(this,gt);const t=dn(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,gt),rr(this,Zt(Zo(e)))}toJSON(){return vt(this,gt),rr(this)}toLocaleString(e=void 0,t=void 0){return vt(this,gt),new di(e,t).format(this)}valueOf(){qo("PlainMonthDay")}toPlainDate(e){if(vt(this,gt),!Ae(e))throw new TypeError("argument should be an object");const t=re(this,E);return pn(Ln(t,Rn(t,en(t,re(this,D),"month-day"),tn(t,e,["year"],[],[])),"constrain"),t)}static from(e,t=void 0){return dn(e,t)}}function Pi(e,t){vt(e,gt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}function Ui(e){return zn(e,Po())}ae(PlainMonthDay,"Temporal.PlainMonthDay");const Bi={instant:()=>Cn(Po()),plainDateTimeISO:(e=Uo())=>wn(Ui(Bn(e)),"iso8601"),plainDateISO:(e=Uo())=>pn(Ui(Bn(e)).isoDate,"iso8601"),plainTimeISO:(e=Uo())=>Tn(Ui(Bn(e)).time),timeZoneId:()=>Uo(),zonedDateTimeISO:(e=Uo())=>{const t=Bn(e);return $n(Po(),t,"iso8601")},[Symbol.toStringTag]:"Temporal.Now"};Object.defineProperty(Bi,Symbol.toStringTag,{value:"Temporal.Now",writable:!1,enumerable:!1,configurable:!0});class PlainTime{constructor(e=0,t=0,n=0,r=0,o=0,i=0){const a=void 0===e?0:_e(e),s=void 0===t?0:_e(t),c=void 0===n?0:_e(n),d=void 0===r?0:_e(r),h=void 0===o?0:_e(o),u=void 0===i?0:_e(i);Pr(a,s,c,d,h,u),Dn(this,{hour:a,minute:s,second:c,millisecond:d,microsecond:h,nanosecond:u})}get hour(){return vt(this,ft),re(this,M).hour}get minute(){return vt(this,ft),re(this,M).minute}get second(){return vt(this,ft),re(this,M).second}get millisecond(){return vt(this,ft),re(this,M).millisecond}get microsecond(){return vt(this,ft),re(this,M).microsecond}get nanosecond(){return vt(this,ft),re(this,M).nanosecond}with(e,t=void 0){if(vt(this,ft),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=nn(e,"partial"),r=nn(this);let{hour:o,minute:i,second:a,millisecond:s,microsecond:c,nanosecond:d}=Object.assign(r,n);const h=Lt(Zo(t));return({hour:o,minute:i,second:a,millisecond:s,microsecond:c,nanosecond:d}=jt(o,i,a,s,c,d,h)),new PlainTime(o,i,a,s,c,d)}add(e){return vt(this,ft),Do("add",this,e)}subtract(e){return vt(this,ft),Do("subtract",this,e)}until(e,t=void 0){return vt(this,ft),uo("until",this,e,t)}since(e,t=void 0){return vt(this,ft),uo("since",this,e,t)}round(e){if(vt(this,ft),void 0===e)throw new TypeError("options parameter is required");const t="string"==typeof e?Fo("smallestUnit",e):Zo(e),n=Ft(t),r=Ut(t,"halfExpand"),o=Wt(t,"smallestUnit","time",qt);return Ht(n,{hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[o],!1),Tn(Oo(re(this,M),n,o,r))}equals(e){vt(this,ft);const t=hn(e);return 0===So(re(this,M),re(t,M))}toString(e=void 0){vt(this,ft);const t=Zo(e),n=zt(t),r=Ut(t,"trunc"),o=Wt(t,"smallestUnit","time",void 0);if("hour"===o)throw new RangeError('smallestUnit must be a time unit other than "hour"');const{precision:i,unit:a,increment:s}=At(o,n);return index_esm_tr(Oo(re(this,M),s,a,r),i)}toJSON(){return vt(this,ft),index_esm_tr(re(this,M),"auto")}toLocaleString(e=void 0,t=void 0){return vt(this,ft),new di(e,t).format(this)}valueOf(){qo("PlainTime")}static from(e,t=void 0){return hn(e,t)}static compare(e,t){const n=hn(e),r=hn(t);return So(re(n,M),re(r,M))}}ae(PlainTime,"Temporal.PlainTime");class PlainYearMonth{constructor(e,t,n="iso8601",r=1){const o=_e(e),i=_e(t),a=zo(void 0===n?"iso8601":Ve(n)),s=_e(r);xr(o,i,s),Mn(this,{year:o,month:i,day:s},a)}get year(){return Zi(this,"year")}get month(){return Zi(this,"month")}get monthCode(){return Zi(this,"monthCode")}get calendarId(){return vt(this,pt),re(this,E)}get era(){return Zi(this,"era")}get eraYear(){return Zi(this,"eraYear")}get daysInMonth(){return Zi(this,"daysInMonth")}get daysInYear(){return Zi(this,"daysInYear")}get monthsInYear(){return Zi(this,"monthsInYear")}get inLeapYear(){return Zi(this,"inLeapYear")}with(e,t=void 0){if(vt(this,pt),!Ae(e))throw new TypeError("invalid argument");bt(e);const n=re(this,E);let r=en(n,re(this,D),"year-month");return r=Rn(n,r,tn(n,e,["year","month","monthCode"],[],"partial")),En(Pn(n,r,Lt(Zo(t))),n)}add(e,t=void 0){return vt(this,pt),To("add",this,e,t)}subtract(e,t=void 0){return vt(this,pt),To("subtract",this,e,t)}until(e,t=void 0){return vt(this,pt),lo("until",this,e,t)}since(e,t=void 0){return vt(this,pt),lo("since",this,e,t)}equals(e){vt(this,pt);const t=ln(e);return 0===Ro(re(this,D),re(t,D))&&xn(re(this,E),re(t,E))}toString(e=void 0){return vt(this,pt),or(this,Zt(Zo(e)))}toJSON(){return vt(this,pt),or(this)}toLocaleString(e=void 0,t=void 0){return vt(this,pt),new di(e,t).format(this)}valueOf(){qo("PlainYearMonth")}toPlainDate(e){if(vt(this,pt),!Ae(e))throw new TypeError("argument should be an object");const t=re(this,E);return pn(Ln(t,Rn(t,en(t,re(this,D),"year-month"),tn(t,e,["day"],[],[])),"constrain"),t)}static from(e,t=void 0){return ln(e,t)}static compare(e,t){const n=ln(e),r=ln(t);return Ro(re(n,D),re(r,D))}}function Zi(e,t){vt(e,pt);const n=re(e,D);return Qt(e).isoToDate(n,{[t]:!0})[t]}ae(PlainYearMonth,"Temporal.PlainYearMonth");const Fi=di.prototype.resolvedOptions;class ZonedDateTime{constructor(e,t,n="iso8601"){if(arguments.length<1)throw new TypeError("missing argument: epochNanoseconds is required");const r=Lo(e);let o=Ve(t);const{tzName:i,offsetMinutes:a}=Rt(o);if(void 0===a){const e=hr(i);if(!e)throw new RangeError(`unknown time zone ${i}`);o=e.identifier}else o=mr(a);On(this,r,o,zo(void 0===n?"iso8601":Ve(n)))}get calendarId(){return vt(this,wt),re(this,E)}get timeZoneId(){return vt(this,wt),re(this,$)}get year(){return zi(this,"year")}get month(){return zi(this,"month")}get monthCode(){return zi(this,"monthCode")}get day(){return zi(this,"day")}get hour(){return Ai(this,"hour")}get minute(){return Ai(this,"minute")}get second(){return Ai(this,"second")}get millisecond(){return Ai(this,"millisecond")}get microsecond(){return Ai(this,"microsecond")}get nanosecond(){return Ai(this,"nanosecond")}get era(){return zi(this,"era")}get eraYear(){return zi(this,"eraYear")}get epochMilliseconds(){return vt(this,wt),No(re(this,b),"floor")}get epochNanoseconds(){return vt(this,wt),ko(re(this,b))}get dayOfWeek(){return zi(this,"dayOfWeek")}get dayOfYear(){return zi(this,"dayOfYear")}get weekOfYear(){return zi(this,"weekOfYear")?.week}get yearOfWeek(){return zi(this,"weekOfYear")?.year}get hoursInDay(){vt(this,wt);const e=re(this,$),t=Hi(this).isoDate,n=Or(t.year,t.month,t.day+1),r=_n(e,t),o=_n(e,n);return Yo(TimeDuration.fromEpochNsDiff(o,r),"hour")}get daysInWeek(){return zi(this,"daysInWeek")}get daysInMonth(){return zi(this,"daysInMonth")}get daysInYear(){return zi(this,"daysInYear")}get monthsInYear(){return zi(this,"monthsInYear")}get inLeapYear(){return zi(this,"inLeapYear")}get offset(){return vt(this,wt),Hn(Fn(re(this,$),re(this,b)))}get offsetNanoseconds(){return vt(this,wt),Fn(re(this,$),re(this,b))}with(e,t=void 0){if(vt(this,wt),!Ae(e))throw new TypeError("invalid zoned-date-time-like");bt(e);const n=re(this,E),r=re(this,$),o=Fn(r,re(this,b)),i=Hi(this);let a={...en(n,i.isoDate),...i.time,offset:Hn(o)};a=Rn(n,a,tn(n,e,["year","month","monthCode","day"],["hour","minute","second","millisecond","microsecond","nanosecond","offset"],"partial"));const s=Zo(t),c=Pt(s),d=Bt(s,"prefer"),h=on(n,a,Lt(s)),u=sr(a.offset);return $n(mn(h.isoDate,h.time,"option",u,r,c,d,!1),r,n)}withPlainTime(e=void 0){vt(this,wt);const t=re(this,$),n=re(this,E),r=Hi(this).isoDate;let o;return o=void 0===e?_n(t,r):An(t,xt(r,re(hn(e),M)),"compatible"),$n(o,t,n)}withTimeZone(e){vt(this,wt);const t=Bn(e);return $n(re(this,b),t,re(this,E))}withCalendar(e){vt(this,wt);const t=kn(e);return $n(re(this,b),re(this,$),t)}add(e,t=void 0){return vt(this,wt),Mo("add",this,e,t)}subtract(e,t=void 0){return vt(this,wt),Mo("subtract",this,e,t)}until(e,t=void 0){return vt(this,wt),mo("until",this,e,t)}since(e,t=void 0){return vt(this,wt),mo("since",this,e,t)}round(t){if(vt(this,wt),void 0===t)throw new TypeError("options parameter is required");const n="string"==typeof t?Fo("smallestUnit",t):Zo(t),r=Ft(n),o=Ut(n,"halfExpand"),i=Wt(n,"smallestUnit","time",qt,["day"]),a={day:1,hour:24,minute:60,second:60,millisecond:1e3,microsecond:1e3,nanosecond:1e3}[i];if(Ht(r,a,1===a),"nanosecond"===i&&1===r)return $n(re(this,b),re(this,$),re(this,E));const s=re(this,$),c=re(this,b),d=Hi(this);let h;if("day"===i){const t=d.isoDate,n=Or(t.year,t.month,t.day+1),r=_n(s,t),i=_n(s,n),a=jsbi_cjs.subtract(i,r);h=TimeDuration.fromEpochNsDiff(c,r).round(a,o).addToEpochNs(r)}else{const e=Co(d,r,i,o),t=Fn(s,c);h=mn(e.isoDate,e.time,"option",t,s,"compatible","prefer",!1)}return $n(h,s,re(this,E))}equals(t){vt(this,wt);const n=fn(t),r=re(this,b),o=re(n,b);return!!jsbi_cjs.equal(jsbi_cjs.BigInt(r),jsbi_cjs.BigInt(o))&&!!Zn(re(this,$),re(n,$))&&xn(re(this,E),re(n,E))}toString(e=void 0){vt(this,wt);const t=Zo(e),n=Zt(t),r=zt(t),o=function(e){return Ho(e,"offset",["auto","never"],"auto")}(t),i=Ut(t,"trunc"),a=Wt(t,"smallestUnit","time",void 0);if("hour"===a)throw new RangeError('smallestUnit must be a time unit other than "hour"');const s=function(e){return Ho(e,"timeZoneName",["auto","never","critical"],"auto")}(t),{precision:c,unit:d,increment:h}=At(a,r);return ir(this,c,n,s,o,{unit:d,increment:h,roundingMode:i})}toLocaleString(e=void 0,t=void 0){vt(this,wt);const n=Zo(t),r=Object.create(null);if(function(e,t,n,r){if(null==t)return;const o=Reflect.ownKeys(t);for(let i=0;i<o.length;i++){const a=o[i];if(!n.some((e=>Object.is(e,a)))&&Object.prototype.propertyIsEnumerable.call(t,a)){const n=t[a];r,e[a]=n}}}(r,n,["timeZone"]),void 0!==n.timeZone)throw new TypeError("ZonedDateTime toLocaleString does not accept a timeZone option");if(void 0===r.year&&void 0===r.month&&void 0===r.day&&void 0===r.era&&void 0===r.weekday&&void 0===r.dateStyle&&void 0===r.hour&&void 0===r.minute&&void 0===r.second&&void 0===r.fractionalSecondDigits&&void 0===r.timeStyle&&void 0===r.dayPeriod&&void 0===r.timeZoneName&&(r.timeZoneName="short"),r.timeZone=re(this,$),ar(r.timeZone))throw new RangeError("toLocaleString does not currently support offset time zones");const o=new di(e,r),i=Fi.call(o).calendar,a=re(this,E);if("iso8601"!==a&&"iso8601"!==i&&!xn(i,a))throw new RangeError(`cannot format ZonedDateTime with calendar ${a} in locale with calendar ${i}`);return o.format(Cn(re(this,b)))}toJSON(){return vt(this,wt),ir(this,"auto")}valueOf(){qo("ZonedDateTime")}startOfDay(){vt(this,wt);const e=re(this,$);return $n(_n(e,Hi(this).isoDate),e,re(this,E))}getTimeZoneTransition(e){vt(this,wt);const t=re(this,$);if(void 0===e)throw new TypeError("options parameter is required");const n=Ho("string"==typeof e?Fo("direction",e):Zo(e),"direction",["next","previous"],qt);if(void 0===n)throw new TypeError("direction option is required");if(ar(t)||"UTC"===t)return null;const r=re(this,b),o="next"===n?wr(t,r):vr(t,r);return null===o?null:$n(o,t,re(this,E))}toInstant(){return vt(this,wt),Cn(re(this,b))}toPlainDate(){return vt(this,wt),pn(Hi(this).isoDate,re(this,E))}toPlainTime(){return vt(this,wt),Tn(Hi(this).time)}toPlainDateTime(){return vt(this,wt),wn(Hi(this),re(this,E))}static from(e,t=void 0){return fn(e,t)}static compare(t,n){const r=fn(t),o=fn(n),i=re(r,b),a=re(o,b);return jsbi_cjs.lessThan(jsbi_cjs.BigInt(i),jsbi_cjs.BigInt(a))?-1:jsbi_cjs.greaterThan(jsbi_cjs.BigInt(i),jsbi_cjs.BigInt(a))?1:0}}function Hi(e){return zn(re(e,$),re(e,b))}function zi(e,t){vt(e,wt);const n=Hi(e).isoDate;return Qt(e).isoToDate(n,{[t]:!0})[t]}function Ai(e,t){return vt(e,wt),Hi(e).time[t]}ae(ZonedDateTime,"Temporal.ZonedDateTime");var qi=Object.freeze({__proto__:null,Duration,Instant,Now:Bi,PlainDate,PlainDateTime,PlainMonthDay,PlainTime,PlainYearMonth,ZonedDateTime});const Wi=class LegacyDateImpl{toTemporalInstant(){return Cn(xo(Date.prototype.valueOf.call(this)))}}.prototype.toTemporalInstant,_i=[Instant,PlainDate,PlainDateTime,Duration,PlainMonthDay,PlainTime,PlainYearMonth,ZonedDateTime];for(const e of _i){const t=Object.getOwnPropertyDescriptor(e,"prototype");(t.configurable||t.enumerable||t.writable)&&(t.configurable=!1,t.enumerable=!1,t.writable=!1,Object.defineProperty(e,"prototype",t))}
 //# sourceMappingURL=index.esm.js.map
 
 ;// CONCATENATED MODULE: ./src/main.ts
