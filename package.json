@@ -34,5 +34,5 @@
     "format": "prettier --write .",
     "lint": "eslint"
   },
-  "version": "0.3.2"
+  "version": "0.3.3"
 }
