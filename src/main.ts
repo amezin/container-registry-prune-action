@@ -307,7 +307,7 @@ function parseDuration(value: string) {
 
 async function main() {
     const token = core.getInput('github-token', { required: true });
-    const dryRun = core.getBooleanInput('dry-run', { required: true });
+    let dryRun = core.getBooleanInput('dry-run', { required: true });
     const ownerName = core.getInput('owner', { required: true });
     const packageName = core.getInput('name', { required: true });
 
@@ -437,6 +437,15 @@ async function main() {
     const deleted: PackageVersion[] = [];
 
     try {
+        if (!dryRun && retained.size === 0) {
+            core.warning(
+                'All versions will be deleted. This is most likely incorrect. ' +
+                    'If necessary, just delete the entire package manually.'
+            );
+
+            dryRun = true;
+        }
+
         for (const [name, version] of versions.entries()) {
             if (retained.has(name)) {
                 continue;

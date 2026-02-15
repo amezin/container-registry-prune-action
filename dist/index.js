@@ -54185,7 +54185,7 @@ function parseDuration(value) {
 }
 async function main() {
     const token = getInput('github-token', { required: true });
-    const dryRun = getBooleanInput('dry-run', { required: true });
+    let dryRun = getBooleanInput('dry-run', { required: true });
     const ownerName = getInput('owner', { required: true });
     const packageName = getInput('name', { required: true });
     const matchingTagRetentionDuration = parseDuration(getInput('matching-tags-retention-duration', {
@@ -54270,6 +54270,11 @@ async function main() {
     }
     const deleted = [];
     try {
+        if (!dryRun && retained.size === 0) {
+            warning('All versions will be deleted. This is most likely incorrect. ' +
+                'If necessary, just delete the entire package manually.');
+            dryRun = true;
+        }
         for (const [name, version] of versions.entries()) {
             if (retained.has(name)) {
                 continue;
