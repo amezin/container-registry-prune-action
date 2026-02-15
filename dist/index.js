@@ -30379,6 +30379,18 @@ __webpack_unused_export__ = defaultContentType
 /******/ }
 /******/ 
 /************************************************************************/
+/******/ /* webpack/runtime/compat get default export */
+/******/ (() => {
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__nccwpck_require__.n = (module) => {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			() => (module['default']) :
+/******/ 			() => (module);
+/******/ 		__nccwpck_require__.d(getter, { a: getter });
+/******/ 		return getter;
+/******/ 	};
+/******/ })();
+/******/ 
 /******/ /* webpack/runtime/create fake namespace object */
 /******/ (() => {
 /******/ 	var getProto = Object.getPrototypeOf ? (obj) => (Object.getPrototypeOf(obj)) : (obj) => (obj.__proto__);
@@ -30727,6 +30739,9 @@ __nccwpck_require__.d(classic_schemas_namespaceObject, {
   xor: () => (xor)
 });
 
+// EXTERNAL MODULE: external "node:assert"
+var external_node_assert_ = __nccwpck_require__(4589);
+var external_node_assert_default = /*#__PURE__*/__nccwpck_require__.n(external_node_assert_);
 // EXTERNAL MODULE: external "node:util"
 var external_node_util_ = __nccwpck_require__(7975);
 ;// CONCATENATED MODULE: external "os"
@@ -53974,6 +53989,7 @@ config(locales_en());
 
 
 
+
 class Package {
     github;
     owner;
@@ -54242,24 +54258,27 @@ async function main() {
         versions.set(name, version);
         manifests.set(name, await docker.fetchManifest(name));
     }
+    for (const [digest, manifest] of manifests.entries()) {
+        if (!isIndex(manifest)) {
+            continue;
+        }
+        for (const childManifestDescriptor of manifest.manifests) {
+            if (!manifests.has(childManifestDescriptor.digest)) {
+                throw new Error(`Manifest ${JSON.stringify(childManifestDescriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`);
+            }
+        }
+    }
     function retain(name) {
         if (retained.has(name)) {
             return;
         }
         info(`Retaining ${JSON.stringify(name)}`);
         const manifest = manifests.get(name);
-        if (!manifest) {
-            throw new Error(`Missing manifest: ${name}`);
-        }
+        external_node_assert_default()(manifest);
         retained.add(name);
         if (isIndex(manifest)) {
-            const childManifests = manifest.manifests;
-            for (const childManifestDescriptor of childManifests) {
-                const { digest } = childManifestDescriptor;
-                if (!digest) {
-                    throw new Error(`Missing digest in descriptor of child manifest of ${name}`);
-                }
-                retain(digest);
+            for (const childManifestDescriptor of manifest.manifests) {
+                retain(childManifestDescriptor.digest);
             }
         }
     }

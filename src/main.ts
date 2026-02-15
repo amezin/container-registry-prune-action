@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import { inspect } from 'node:util';
 
 import * as core from '@actions/core';
@@ -396,6 +397,20 @@ async function main() {
         manifests.set(name, await docker.fetchManifest(name));
     }
 
+    for (const [digest, manifest] of manifests.entries()) {
+        if (!isIndex(manifest)) {
+            continue;
+        }
+
+        for (const childManifestDescriptor of manifest.manifests) {
+            if (!manifests.has(childManifestDescriptor.digest)) {
+                throw new Error(
+                    `Manifest ${JSON.stringify(childManifestDescriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`
+                );
+            }
+        }
+    }
+
     function retain(name: string) {
         if (retained.has(name)) {
             return;
@@ -405,25 +420,12 @@ async function main() {
 
         const manifest = manifests.get(name);
 
-        if (!manifest) {
-            throw new Error(`Missing manifest: ${name}`);
-        }
-
+        assert(manifest);
         retained.add(name);
 
         if (isIndex(manifest)) {
-            const childManifests = manifest.manifests;
-
-            for (const childManifestDescriptor of childManifests) {
-                const { digest } = childManifestDescriptor;
-
-                if (!digest) {
-                    throw new Error(
-                        `Missing digest in descriptor of child manifest of ${name}`
-                    );
-                }
-
-                retain(digest);
+            for (const childManifestDescriptor of manifest.manifests) {
+                retain(childManifestDescriptor.digest);
             }
         }
     }
