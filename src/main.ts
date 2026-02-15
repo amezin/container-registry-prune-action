@@ -335,18 +335,26 @@ async function main() {
         untaggedRetentionDuration
     );
 
-    core.info(
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Deleting images with matching tags not updated after ${policy.matchingTagRetentionDeadline}`
-    );
-    core.info(
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Deleting images with mismatching tags not updated after ${policy.mismatchingTagRetentionDeadline}`
-    );
-    core.info(
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Deleting untagged images not updated after ${policy.untaggedRetentionDuration}`
-    );
+    if (policy.matchingTagRetentionDeadline) {
+        core.info(
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Deleting images with matching tags not updated after ${policy.matchingTagRetentionDeadline}`
+        );
+    }
+
+    if (policy.mismatchingTagRetentionDeadline) {
+        core.info(
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Deleting images with mismatching tags not updated after ${policy.mismatchingTagRetentionDeadline}`
+        );
+    }
+
+    if (policy.untaggedRetentionDeadline) {
+        core.info(
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Deleting untagged images not updated after ${policy.untaggedRetentionDeadline}`
+        );
+    }
 
     const github = getOctokit(token);
     const pkg = await getPackage(github, ownerName, packageName);
@@ -371,6 +379,8 @@ async function main() {
         if (retained.has(name)) {
             return;
         }
+
+        core.info(`Retaining ${JSON.stringify(name)}`);
 
         const manifest = manifests.get(name);
 
@@ -413,8 +423,13 @@ async function main() {
                 continue;
             }
 
-            if (!dryRun) {
+            if (dryRun) {
+                core.notice(
+                    `Would delete ${JSON.stringify(version, null, ' ')}`
+                );
+            } else {
                 await pkg.deleteVersion(version.id);
+                core.notice(`Deleted ${JSON.stringify(version, null, ' ')}`);
             }
 
             deleted.push(version);

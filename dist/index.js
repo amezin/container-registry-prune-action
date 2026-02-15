@@ -30470,7 +30470,7 @@ function utils_toCommandValue(input) {
  * @returns The command properties to send with the actual annotation command
  * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
  */
-function utils_toCommandProperties(annotationProperties) {
+function toCommandProperties(annotationProperties) {
     if (!Object.keys(annotationProperties).length) {
         return {};
     }
@@ -33283,7 +33283,7 @@ function core_debug(message) {
  * @param properties optional properties to add to the annotation.
  */
 function core_error(message, properties = {}) {
-    command_issueCommand('error', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('error', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Adds a warning issue
@@ -33291,7 +33291,7 @@ function core_error(message, properties = {}) {
  * @param properties optional properties to add to the annotation.
  */
 function warning(message, properties = {}) {
-    command_issueCommand('warning', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Adds a notice issue
@@ -33299,7 +33299,7 @@ function warning(message, properties = {}) {
  * @param properties optional properties to add to the annotation.
  */
 function notice(message, properties = {}) {
-    issueCommand('notice', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('notice', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Writes info to log with console.log.
@@ -40188,15 +40188,21 @@ async function main() {
         }
     }
     const policy = new RetentionPolicy(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration);
-    info(
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    `Deleting images with matching tags not updated after ${policy.matchingTagRetentionDeadline}`);
-    info(
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    `Deleting images with mismatching tags not updated after ${policy.mismatchingTagRetentionDeadline}`);
-    info(
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    `Deleting untagged images not updated after ${policy.untaggedRetentionDuration}`);
+    if (policy.matchingTagRetentionDeadline) {
+        info(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `Deleting images with matching tags not updated after ${policy.matchingTagRetentionDeadline}`);
+    }
+    if (policy.mismatchingTagRetentionDeadline) {
+        info(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `Deleting images with mismatching tags not updated after ${policy.mismatchingTagRetentionDeadline}`);
+    }
+    if (policy.untaggedRetentionDeadline) {
+        info(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `Deleting untagged images not updated after ${policy.untaggedRetentionDeadline}`);
+    }
     const github = main_getOctokit(token);
     const pkg = await getPackage(github, ownerName, packageName);
     const docker = new DockerRepository(token, ownerName, packageName);
@@ -40215,6 +40221,7 @@ async function main() {
         if (retained.has(name)) {
             return;
         }
+        info(`Retaining ${JSON.stringify(name)}`);
         const manifest = manifests.get(name);
         if (!manifest) {
             throw new Error(`Missing manifest: ${name}`);
@@ -40243,8 +40250,12 @@ async function main() {
             if (retained.has(name)) {
                 continue;
             }
-            if (!dryRun) {
+            if (dryRun) {
+                notice(`Would delete ${JSON.stringify(version, null, ' ')}`);
+            }
+            else {
                 await pkg.deleteVersion(version.id);
+                notice(`Deleted ${JSON.stringify(version, null, ' ')}`);
             }
             deleted.push(version);
         }
