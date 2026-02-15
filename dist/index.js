@@ -30379,6 +30379,64 @@ __webpack_unused_export__ = defaultContentType
 /******/ }
 /******/ 
 /************************************************************************/
+/******/ /* webpack/runtime/create fake namespace object */
+/******/ (() => {
+/******/ 	var getProto = Object.getPrototypeOf ? (obj) => (Object.getPrototypeOf(obj)) : (obj) => (obj.__proto__);
+/******/ 	var leafPrototypes;
+/******/ 	// create a fake namespace object
+/******/ 	// mode & 1: value is a module id, require it
+/******/ 	// mode & 2: merge all properties of value into the ns
+/******/ 	// mode & 4: return value when already ns object
+/******/ 	// mode & 16: return value when it's Promise-like
+/******/ 	// mode & 8|1: behave like require
+/******/ 	__nccwpck_require__.t = function(value, mode) {
+/******/ 		if(mode & 1) value = this(value);
+/******/ 		if(mode & 8) return value;
+/******/ 		if(typeof value === 'object' && value) {
+/******/ 			if((mode & 4) && value.__esModule) return value;
+/******/ 			if((mode & 16) && typeof value.then === 'function') return value;
+/******/ 		}
+/******/ 		var ns = Object.create(null);
+/******/ 		__nccwpck_require__.r(ns);
+/******/ 		var def = {};
+/******/ 		leafPrototypes = leafPrototypes || [null, getProto({}), getProto([]), getProto(getProto)];
+/******/ 		for(var current = mode & 2 && value; typeof current == 'object' && !~leafPrototypes.indexOf(current); current = getProto(current)) {
+/******/ 			Object.getOwnPropertyNames(current).forEach((key) => (def[key] = () => (value[key])));
+/******/ 		}
+/******/ 		def['default'] = () => (value);
+/******/ 		__nccwpck_require__.d(ns, def);
+/******/ 		return ns;
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+/******/ 	// define getter functions for harmony exports
+/******/ 	__nccwpck_require__.d = (exports, definition) => {
+/******/ 		for(var key in definition) {
+/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 			}
+/******/ 		}
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/make namespace object */
+/******/ (() => {
+/******/ 	// define __esModule on exports
+/******/ 	__nccwpck_require__.r = (exports) => {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
+/******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/ })();
+/******/ 
 /******/ /* webpack/runtime/compat */
 /******/ 
 /******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
@@ -30561,8 +30619,10 @@ function file_command_prepareKeyValueMessage(key, value) {
 const external_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("path");
 // EXTERNAL MODULE: external "http"
 var external_http_ = __nccwpck_require__(8611);
+var external_http_namespaceObject = /*#__PURE__*/__nccwpck_require__.t(external_http_, 2);
 // EXTERNAL MODULE: external "https"
 var external_https_ = __nccwpck_require__(5692);
+var external_https_namespaceObject = /*#__PURE__*/__nccwpck_require__.t(external_https_, 2);
 ;// CONCATENATED MODULE: ./node_modules/@actions/http-client/lib/proxy.js
 function getProxyUrl(reqUrl) {
     const usingSsl = reqUrl.protocol === 'https:';
@@ -30655,7 +30715,7 @@ class DecodedURL extends URL {
 }
 //# sourceMappingURL=proxy.js.map
 // EXTERNAL MODULE: ./node_modules/tunnel/index.js
-var node_modules_tunnel = __nccwpck_require__(770);
+var tunnel = __nccwpck_require__(770);
 // EXTERNAL MODULE: ./node_modules/undici/index.js
 var undici = __nccwpck_require__(6752);
 ;// CONCATENATED MODULE: ./node_modules/@actions/http-client/lib/index.js
@@ -30733,7 +30793,7 @@ const HttpResponseRetryCodes = [
     HttpCodes.ServiceUnavailable,
     HttpCodes.GatewayTimeout
 ];
-const RetryableHttpVerbs = (/* unused pure expression or super */ null && (['OPTIONS', 'GET', 'DELETE', 'HEAD']));
+const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
 const ExponentialBackoffCeiling = 10;
 const ExponentialBackoffTimeSlice = 5;
 class HttpClientError extends Error {
@@ -31082,7 +31142,7 @@ class lib_HttpClient {
     }
     getAgentDispatcher(serverUrl) {
         const parsedUrl = new URL(serverUrl);
-        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const proxyUrl = getProxyUrl(parsedUrl);
         const useProxy = proxyUrl && proxyUrl.hostname;
         if (!useProxy) {
             return;
@@ -31093,7 +31153,7 @@ class lib_HttpClient {
         const info = {};
         info.parsedUrl = requestUrl;
         const usingSsl = info.parsedUrl.protocol === 'https:';
-        info.httpModule = usingSsl ? https : http;
+        info.httpModule = usingSsl ? external_https_namespaceObject : external_http_namespaceObject;
         const defaultPort = usingSsl ? 443 : 80;
         info.options = {};
         info.options.host = info.parsedUrl.hostname;
@@ -31192,7 +31252,7 @@ class lib_HttpClient {
     }
     _getAgent(parsedUrl) {
         let agent;
-        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const proxyUrl = getProxyUrl(parsedUrl);
         const useProxy = proxyUrl && proxyUrl.hostname;
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
@@ -31207,7 +31267,7 @@ class lib_HttpClient {
         const usingSsl = parsedUrl.protocol === 'https:';
         let maxSockets = 100;
         if (this.requestOptions) {
-            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+            maxSockets = this.requestOptions.maxSockets || external_http_.globalAgent.maxSockets;
         }
         // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
         if (proxyUrl && proxyUrl.hostname) {
@@ -31232,7 +31292,7 @@ class lib_HttpClient {
         // if tunneling agent isn't assigned create a new agent
         if (!agent) {
             const options = { keepAlive: this._keepAlive, maxSockets };
-            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
+            agent = usingSsl ? new external_https_.Agent(options) : new external_http_.Agent(options);
             this._agent = agent;
         }
         if (usingSsl && this._ignoreSslError) {
@@ -31255,7 +31315,7 @@ class lib_HttpClient {
             return proxyAgent;
         }
         const usingSsl = parsedUrl.protocol === 'https:';
-        proxyAgent = new ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
+        proxyAgent = new undici.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
             token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
         })));
         this._proxyAgentDispatcher = proxyAgent;
@@ -33245,7 +33305,7 @@ function notice(message, properties = {}) {
  * Writes info to log with console.log.
  * @param message info message
  */
-function core_info(message) {
+function info(message) {
     process.stdout.write(message + external_os_namespaceObject.EOL);
 }
 /**
@@ -37736,7 +37796,7 @@ const log = {
         core_debug(external_node_util_.format(...args));
     },
     info: (...args) => {
-        core_info(external_node_util_.format(...args));
+        info(external_node_util_.format(...args));
     },
     warn: (...args) => {
         warning(external_node_util_.format(...args));
@@ -37761,14 +37821,14 @@ function requestLog(octokit) {
     octokit.hook.wrap('request', (request, options) => {
         if (isDebug()) {
             startGroup(requestDescription(octokit, options));
-            core_info(external_node_util_.inspect(options));
+            info(external_node_util_.inspect(options));
             endGroup();
         }
         const start = Date.now();
         return request(options)
             .then(response => {
             startGroup(responseDescription(octokit, options, response, start));
-            core_info(external_node_util_.inspect({ request: options, response }));
+            info(external_node_util_.inspect({ request: options, response }));
             endGroup();
             return response;
         })
@@ -37777,7 +37837,7 @@ function requestLog(octokit) {
                 const { response } = error;
                 core_error(responseDescription(octokit, options, response, start));
                 startGroup('Details');
-                core_info(external_node_util_.inspect({
+                info(external_node_util_.inspect({
                     request: options,
                     response,
                 }));
@@ -39907,6 +39967,8 @@ const t=jsbi_cjs.BigInt(0),n=jsbi_cjs.BigInt(1),r=jsbi_cjs.BigInt(2),o=jsbi_cjs.
 
 
 
+
+
 class Package {
     github;
     owner;
@@ -39915,6 +39977,22 @@ class Package {
         this.github = github;
         this.owner = owner;
         this.name = name;
+    }
+    async getAllVersions() {
+        const versions = [];
+        for await (const response of this.listVersions()) {
+            versions.push(...response.data);
+        }
+        return versions;
+    }
+    async getAllVersionsStable() {
+        const a = await this.getAllVersions();
+        const b = await this.getAllVersions();
+        if (a.length === b.length &&
+            a.every((value, index) => value.id === b[index]?.id)) {
+            return b;
+        }
+        throw new Error('Possible concurrent modification detected, pagination results may be incorrect');
     }
 }
 class UserPackage extends Package {
@@ -39971,39 +40049,102 @@ class RetentionPolicy {
     matchingTagRetentionDuration;
     mismatchingTagRetentionDuration;
     untaggedRetentionDuration;
+    now;
+    matchingTagRetentionDeadline;
+    mismatchingTagRetentionDeadline;
+    untaggedRetentionDeadline;
     constructor(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration) {
         this.tagPatterns = tagPatterns;
         this.matchingTagRetentionDuration = matchingTagRetentionDuration;
         this.mismatchingTagRetentionDuration = mismatchingTagRetentionDuration;
         this.untaggedRetentionDuration = untaggedRetentionDuration;
+        this.now = qi.Now.zonedDateTimeISO();
+        this.matchingTagRetentionDeadline = matchingTagRetentionDuration
+            ? this.now.subtract(matchingTagRetentionDuration).toInstant()
+            : null;
+        this.mismatchingTagRetentionDeadline = mismatchingTagRetentionDuration
+            ? this.now.subtract(mismatchingTagRetentionDuration).toInstant()
+            : null;
+        this.untaggedRetentionDeadline = untaggedRetentionDuration
+            ? this.now.subtract(untaggedRetentionDuration).toInstant()
+            : null;
     }
     isMatchingTag(tag) {
         const match = this.tagPatterns.find(pattern => pattern.match(tag));
         return match && !match.negate;
     }
-    getRetentionDuration(version, relativeTo) {
+    getRetentionDeadline(version) {
         const metadata = version.metadata?.container;
         if (!metadata) {
             throw new Error('Missing container metadata');
         }
         const { tags } = metadata;
         if (tags.length === 0) {
-            return this.untaggedRetentionDuration;
+            return this.untaggedRetentionDeadline;
         }
         const matching = tags.filter(tag => this.isMatchingTag(tag));
         if (matching.length === 0) {
-            return this.mismatchingTagRetentionDuration;
+            return this.mismatchingTagRetentionDeadline;
         }
         if (tags.length === matching.length) {
-            return this.matchingTagRetentionDuration;
+            return this.matchingTagRetentionDeadline;
         }
-        if (!this.matchingTagRetentionDuration ||
-            !this.mismatchingTagRetentionDuration) {
+        if (!this.matchingTagRetentionDeadline ||
+            !this.mismatchingTagRetentionDeadline) {
             return null;
         }
-        return qi.Duration.compare(this.matchingTagRetentionDuration.negated(), this.mismatchingTagRetentionDuration.negated(), { relativeTo }) === 1
-            ? this.mismatchingTagRetentionDuration
-            : this.matchingTagRetentionDuration;
+        return qi.Instant.compare(this.matchingTagRetentionDeadline, this.mismatchingTagRetentionDeadline) === -1
+            ? this.matchingTagRetentionDeadline
+            : this.mismatchingTagRetentionDeadline;
+    }
+    isOutdated(version) {
+        const deadline = this.getRetentionDeadline(version);
+        if (!deadline) {
+            return false;
+        }
+        const updated = qi.Instant.from(version.updated_at);
+        return qi.Instant.compare(updated, deadline) === -1;
+    }
+}
+const indexTypes = [
+    'application/vnd.docker.distribution.manifest.list.v2+json',
+    'application/vnd.oci.image.index.v1+json',
+];
+const manifestTypes = [
+    ...indexTypes,
+    'application/vnd.docker.distribution.manifest.v2+json',
+    'application/vnd.oci.image.manifest.v1+json',
+];
+class DockerRepository {
+    token;
+    namespace;
+    repository;
+    auth;
+    client;
+    constructor(token, namespace, repository) {
+        this.token = token;
+        this.namespace = namespace;
+        this.repository = repository;
+        this.auth = new auth_BearerCredentialHandler(Buffer.from(token).toString('base64'));
+        this.client = new lib_HttpClient(undefined, [this.auth], {
+            keepAlive: true,
+            allowRetries: true,
+            maxRetries: 5,
+        });
+    }
+    async fetchManifest(reference) {
+        const url = `https://ghcr.io/v2/${this.namespace}/${this.repository}/manifests/${reference}`;
+        const headers = { [Headers.Accept]: manifestTypes };
+        const response = await this.client.getJson(url, headers);
+        const { result } = response;
+        if (!result) {
+            throw new Error(`Manifest not found: ${JSON.stringify(url)}`);
+        }
+        const { mediaType } = result;
+        if (!mediaType || !manifestTypes.includes(mediaType)) {
+            throw new Error(`Unknown mediaType: ${JSON.stringify(mediaType)}`);
+        }
+        return result;
     }
 }
 function parseDuration(value) {
@@ -40016,41 +40157,6 @@ function parseDuration(value) {
     catch (ex) {
         throw new Error(`Can't parse ${JSON.stringify(value)} as duration: ${String(ex)}`);
     }
-}
-async function processVersion(pkg, version, policy, dryRun) {
-    const info = {
-        name: version.name,
-        url: version.url,
-        html_url: version.html_url,
-        updated_at: version.updated_at,
-    };
-    try {
-        const tz = 'UTC';
-        const now = qi.Now.zonedDateTimeISO(tz);
-        const retentionDuration = policy.getRetentionDuration(version, now);
-        const updated = qi.Instant.from(version.updated_at).toZonedDateTimeISO(tz);
-        Object.assign(info, { retentionDuration, age: updated.until(now) });
-        if (retentionDuration &&
-            qi.ZonedDateTime.compare(updated, now.subtract(retentionDuration)) === -1) {
-            if (dryRun) {
-                notice(`Would delete ${JSON.stringify(info, null, ' ')}`);
-            }
-            else {
-                await pkg.deleteVersion(version.id);
-                notice(`Deleted ${JSON.stringify(info, null, ' ')}`);
-            }
-            return true;
-        }
-        core_info(`Keeping ${JSON.stringify(info, null, ' ')}`);
-    }
-    catch (error) {
-        core_error(`Processing ${JSON.stringify(info, null, ' ')} failed: ${(0,external_node_util_.inspect)(error)}`);
-        throw error;
-    }
-    finally {
-        core_debug(JSON.stringify(version, null, ' '));
-    }
-    return false;
 }
 async function main() {
     const token = getInput('github-token', { required: true });
@@ -40082,21 +40188,76 @@ async function main() {
         }
     }
     const policy = new RetentionPolicy(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration);
+    if (policy.matchingTagRetentionDeadline) {
+        info(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `Deleting images with matching tags not updated after ${policy.matchingTagRetentionDeadline}`);
+    }
+    if (policy.mismatchingTagRetentionDeadline) {
+        info(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `Deleting images with mismatching tags not updated after ${policy.mismatchingTagRetentionDeadline}`);
+    }
+    if (policy.untaggedRetentionDeadline) {
+        info(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `Deleting untagged images not updated after ${policy.untaggedRetentionDeadline}`);
+    }
     const github = main_getOctokit(token);
     const pkg = await getPackage(github, ownerName, packageName);
+    const docker = new DockerRepository(token, ownerName, packageName);
+    const versions = new Map();
+    const manifests = new Map();
+    const retained = new Set();
+    for (const version of await pkg.getAllVersionsStable()) {
+        const { name } = version;
+        if (versions.has(name)) {
+            throw new Error(`Duplicate name: ${JSON.stringify(name)}`);
+        }
+        versions.set(name, version);
+        manifests.set(name, await docker.fetchManifest(name));
+    }
+    function retain(name) {
+        if (retained.has(name)) {
+            return;
+        }
+        info(`Retaining ${JSON.stringify(name)}`);
+        const manifest = manifests.get(name);
+        if (!manifest) {
+            throw new Error(`Missing manifest: ${name}`);
+        }
+        retained.add(name);
+        const { mediaType } = manifest;
+        if (mediaType && indexTypes.includes(mediaType)) {
+            const childManifests = manifest.manifests ?? [];
+            for (const childManifestDescriptor of childManifests) {
+                const { digest } = childManifestDescriptor;
+                if (!digest) {
+                    throw new Error(`Missing digest in descriptor of child manifest of ${name}`);
+                }
+                retain(digest);
+            }
+        }
+    }
+    for (const [name, version] of versions.entries()) {
+        if (!policy.isOutdated(version)) {
+            retain(name);
+        }
+    }
     const deleted = [];
     try {
-        for await (const response of pkg.listVersions()) {
-            const results = await Promise.allSettled(response.data.map(version => processVersion(pkg, version, policy, dryRun).then(value => {
-                if (value) {
-                    deleted.push(version);
-                }
-            })));
-            for (const result of results) {
-                if (result.status === 'rejected') {
-                    throw result.reason;
-                }
+        for (const [name, version] of versions.entries()) {
+            if (retained.has(name)) {
+                continue;
             }
+            if (dryRun) {
+                notice(`Would delete ${JSON.stringify(version, null, ' ')}`);
+            }
+            else {
+                await pkg.deleteVersion(version.id);
+                notice(`Deleted ${JSON.stringify(version, null, ' ')}`);
+            }
+            deleted.push(version);
         }
     }
     finally {

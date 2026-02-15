@@ -1,20 +1,21 @@
 import { inspect } from 'node:util';
 
 import * as core from '@actions/core';
-import { getOctokit } from '@amezin/js-actions-octokit';
+import { Headers, HttpClient } from '@actions/http-client';
+import { BearerCredentialHandler } from '@actions/http-client/lib/auth';
+import { type RequestHandler } from '@actions/http-client/lib/interfaces';
+import { getOctokit, type GitHub } from '@amezin/js-actions-octokit';
 import { type RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
 import { type OctokitResponse } from '@octokit/types';
-
 import { Minimatch, type MinimatchOptions } from 'minimatch';
 import { Temporal } from '@js-temporal/polyfill';
 
-type Octokit = ReturnType<typeof getOctokit>;
 type PackageVersion =
     RestEndpointMethodTypes['packages']['getPackageVersionForAuthenticatedUser']['response']['data'];
 
 abstract class Package {
     constructor(
-        readonly github: Octokit,
+        readonly github: GitHub,
         readonly owner: string,
         readonly name: string
     ) {}
@@ -22,6 +23,32 @@ abstract class Package {
     abstract listVersions(): AsyncIterable<OctokitResponse<PackageVersion[]>>;
 
     abstract deleteVersion(id: number): Promise<OctokitResponse<never>>;
+
+    async getAllVersions(): Promise<PackageVersion[]> {
+        const versions: PackageVersion[] = [];
+
+        for await (const response of this.listVersions()) {
+            versions.push(...response.data);
+        }
+
+        return versions;
+    }
+
+    async getAllVersionsStable(): Promise<PackageVersion[]> {
+        const a = await this.getAllVersions();
+        const b = await this.getAllVersions();
+
+        if (
+            a.length === b.length &&
+            a.every((value, index) => value.id === b[index]?.id)
+        ) {
+            return b;
+        }
+
+        throw new Error(
+            'Possible concurrent modification detected, pagination results may be incorrect'
+        );
+    }
 }
 
 class UserPackage extends Package {
@@ -73,7 +100,7 @@ class OrgPackage extends Package {
 }
 
 async function getPackage(
-    github: Octokit,
+    github: GitHub,
     ownerName: string,
     packageName: string
 ) {
@@ -98,12 +125,31 @@ async function getPackage(
 }
 
 class RetentionPolicy {
+    readonly now: Temporal.ZonedDateTime;
+    readonly matchingTagRetentionDeadline: Temporal.Instant | null;
+    readonly mismatchingTagRetentionDeadline: Temporal.Instant | null;
+    readonly untaggedRetentionDeadline: Temporal.Instant | null;
+
     constructor(
         readonly tagPatterns: Minimatch[],
         readonly matchingTagRetentionDuration: Temporal.Duration | null,
         readonly mismatchingTagRetentionDuration: Temporal.Duration | null,
         readonly untaggedRetentionDuration: Temporal.Duration | null
-    ) {}
+    ) {
+        this.now = Temporal.Now.zonedDateTimeISO();
+
+        this.matchingTagRetentionDeadline = matchingTagRetentionDuration
+            ? this.now.subtract(matchingTagRetentionDuration).toInstant()
+            : null;
+
+        this.mismatchingTagRetentionDeadline = mismatchingTagRetentionDuration
+            ? this.now.subtract(mismatchingTagRetentionDuration).toInstant()
+            : null;
+
+        this.untaggedRetentionDeadline = untaggedRetentionDuration
+            ? this.now.subtract(untaggedRetentionDuration).toInstant()
+            : null;
+    }
 
     isMatchingTag(tag: string) {
         const match = this.tagPatterns.find(pattern => pattern.match(tag));
@@ -111,10 +157,7 @@ class RetentionPolicy {
         return match && !match.negate;
     }
 
-    getRetentionDuration(
-        version: PackageVersion,
-        relativeTo: Temporal.ZonedDateTimeLike
-    ) {
+    getRetentionDeadline(version: PackageVersion) {
         const metadata = version.metadata?.container;
 
         if (!metadata) {
@@ -124,33 +167,104 @@ class RetentionPolicy {
         const { tags } = metadata;
 
         if (tags.length === 0) {
-            return this.untaggedRetentionDuration;
+            return this.untaggedRetentionDeadline;
         }
 
         const matching = tags.filter(tag => this.isMatchingTag(tag));
 
         if (matching.length === 0) {
-            return this.mismatchingTagRetentionDuration;
+            return this.mismatchingTagRetentionDeadline;
         }
 
         if (tags.length === matching.length) {
-            return this.matchingTagRetentionDuration;
+            return this.matchingTagRetentionDeadline;
         }
 
         if (
-            !this.matchingTagRetentionDuration ||
-            !this.mismatchingTagRetentionDuration
+            !this.matchingTagRetentionDeadline ||
+            !this.mismatchingTagRetentionDeadline
         ) {
             return null;
         }
 
-        return Temporal.Duration.compare(
-            this.matchingTagRetentionDuration.negated(),
-            this.mismatchingTagRetentionDuration.negated(),
-            { relativeTo }
-        ) === 1
-            ? this.mismatchingTagRetentionDuration
-            : this.matchingTagRetentionDuration;
+        return Temporal.Instant.compare(
+            this.matchingTagRetentionDeadline,
+            this.mismatchingTagRetentionDeadline
+        ) === -1
+            ? this.matchingTagRetentionDeadline
+            : this.mismatchingTagRetentionDeadline;
+    }
+
+    isOutdated(version: PackageVersion) {
+        const deadline = this.getRetentionDeadline(version);
+
+        if (!deadline) {
+            return false;
+        }
+
+        const updated = Temporal.Instant.from(version.updated_at);
+
+        return Temporal.Instant.compare(updated, deadline) === -1;
+    }
+}
+
+const indexTypes = [
+    'application/vnd.docker.distribution.manifest.list.v2+json',
+    'application/vnd.oci.image.index.v1+json',
+];
+
+const manifestTypes = [
+    ...indexTypes,
+    'application/vnd.docker.distribution.manifest.v2+json',
+    'application/vnd.oci.image.manifest.v1+json',
+];
+
+type Descriptor = {
+    mediaType?: string;
+    digest?: string;
+};
+
+type Manifest = {
+    mediaType?: string;
+    manifests?: Descriptor[];
+};
+
+class DockerRepository {
+    readonly auth: RequestHandler;
+    readonly client: HttpClient;
+
+    constructor(
+        readonly token: string,
+        readonly namespace: string,
+        readonly repository: string
+    ) {
+        this.auth = new BearerCredentialHandler(
+            Buffer.from(token).toString('base64')
+        );
+        this.client = new HttpClient(undefined, [this.auth], {
+            keepAlive: true,
+            allowRetries: true,
+            maxRetries: 5,
+        });
+    }
+
+    async fetchManifest(reference: string): Promise<Manifest> {
+        const url = `https://ghcr.io/v2/${this.namespace}/${this.repository}/manifests/${reference}`;
+        const headers = { [Headers.Accept]: manifestTypes };
+        const response = await this.client.getJson<Manifest>(url, headers);
+        const { result } = response;
+
+        if (!result) {
+            throw new Error(`Manifest not found: ${JSON.stringify(url)}`);
+        }
+
+        const { mediaType } = result;
+
+        if (!mediaType || !manifestTypes.includes(mediaType)) {
+            throw new Error(`Unknown mediaType: ${JSON.stringify(mediaType)}`);
+        }
+
+        return result;
     }
 }
 
@@ -168,60 +282,6 @@ function parseDuration(value: string) {
             `Can't parse ${JSON.stringify(value)} as duration: ${String(ex)}`
         );
     }
-}
-
-async function processVersion(
-    pkg: Package,
-    version: PackageVersion,
-    policy: RetentionPolicy,
-    dryRun: boolean
-) {
-    const info = {
-        name: version.name,
-        url: version.url,
-        html_url: version.html_url,
-        updated_at: version.updated_at,
-    };
-
-    try {
-        const tz = 'UTC';
-        const now = Temporal.Now.zonedDateTimeISO(tz);
-        const retentionDuration = policy.getRetentionDuration(version, now);
-        const updated = Temporal.Instant.from(
-            version.updated_at
-        ).toZonedDateTimeISO(tz);
-
-        Object.assign(info, { retentionDuration, age: updated.until(now) });
-
-        if (
-            retentionDuration &&
-            Temporal.ZonedDateTime.compare(
-                updated,
-                now.subtract(retentionDuration)
-            ) === -1
-        ) {
-            if (dryRun) {
-                core.notice(`Would delete ${JSON.stringify(info, null, ' ')}`);
-            } else {
-                await pkg.deleteVersion(version.id);
-                core.notice(`Deleted ${JSON.stringify(info, null, ' ')}`);
-            }
-
-            return true;
-        }
-
-        core.info(`Keeping ${JSON.stringify(info, null, ' ')}`);
-    } catch (error) {
-        core.error(
-            `Processing ${JSON.stringify(info, null, ' ')} failed: ${inspect(error)}`
-        );
-
-        throw error;
-    } finally {
-        core.debug(JSON.stringify(version, null, ' '));
-    }
-
-    return false;
 }
 
 async function main() {
@@ -275,27 +335,104 @@ async function main() {
         untaggedRetentionDuration
     );
 
+    if (policy.matchingTagRetentionDeadline) {
+        core.info(
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Deleting images with matching tags not updated after ${policy.matchingTagRetentionDeadline}`
+        );
+    }
+
+    if (policy.mismatchingTagRetentionDeadline) {
+        core.info(
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Deleting images with mismatching tags not updated after ${policy.mismatchingTagRetentionDeadline}`
+        );
+    }
+
+    if (policy.untaggedRetentionDeadline) {
+        core.info(
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Deleting untagged images not updated after ${policy.untaggedRetentionDeadline}`
+        );
+    }
+
     const github = getOctokit(token);
     const pkg = await getPackage(github, ownerName, packageName);
+    const docker = new DockerRepository(token, ownerName, packageName);
+
+    const versions = new Map<string, PackageVersion>();
+    const manifests = new Map<string, Manifest>();
+    const retained = new Set<string>();
+
+    for (const version of await pkg.getAllVersionsStable()) {
+        const { name } = version;
+
+        if (versions.has(name)) {
+            throw new Error(`Duplicate name: ${JSON.stringify(name)}`);
+        }
+
+        versions.set(name, version);
+        manifests.set(name, await docker.fetchManifest(name));
+    }
+
+    function retain(name: string) {
+        if (retained.has(name)) {
+            return;
+        }
+
+        core.info(`Retaining ${JSON.stringify(name)}`);
+
+        const manifest = manifests.get(name);
+
+        if (!manifest) {
+            throw new Error(`Missing manifest: ${name}`);
+        }
+
+        retained.add(name);
+
+        const { mediaType } = manifest;
+
+        if (mediaType && indexTypes.includes(mediaType)) {
+            const childManifests = manifest.manifests ?? [];
+
+            for (const childManifestDescriptor of childManifests) {
+                const { digest } = childManifestDescriptor;
+
+                if (!digest) {
+                    throw new Error(
+                        `Missing digest in descriptor of child manifest of ${name}`
+                    );
+                }
+
+                retain(digest);
+            }
+        }
+    }
+
+    for (const [name, version] of versions.entries()) {
+        if (!policy.isOutdated(version)) {
+            retain(name);
+        }
+    }
+
     const deleted: PackageVersion[] = [];
 
     try {
-        for await (const response of pkg.listVersions()) {
-            const results = await Promise.allSettled(
-                response.data.map(version =>
-                    processVersion(pkg, version, policy, dryRun).then(value => {
-                        if (value) {
-                            deleted.push(version);
-                        }
-                    })
-                )
-            );
-
-            for (const result of results) {
-                if (result.status === 'rejected') {
-                    throw result.reason;
-                }
+        for (const [name, version] of versions.entries()) {
+            if (retained.has(name)) {
+                continue;
             }
+
+            if (dryRun) {
+                core.notice(
+                    `Would delete ${JSON.stringify(version, null, ' ')}`
+                );
+            } else {
+                await pkg.deleteVersion(version.id);
+                core.notice(`Deleted ${JSON.stringify(version, null, ' ')}`);
+            }
+
+            deleted.push(version);
         }
     } finally {
         core.setOutput('deleted-count', deleted.length);
