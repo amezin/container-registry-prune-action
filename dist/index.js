@@ -54136,7 +54136,7 @@ const ManifestMediaType = schemas_enum([
     'application/vnd.oci.image.manifest.v1+json',
 ]);
 const Descriptor = looseObject({
-    mediaType: schemas_string(),
+    mediaType: union([ManifestMediaType, IndexMediaType]),
     digest: schemas_string(),
 });
 const Manifest = looseObject({
@@ -54147,8 +54147,11 @@ const Index = looseObject({
     manifests: array(Descriptor),
 });
 const ManifestOrIndex = discriminatedUnion('mediaType', [Manifest, Index]);
+function isIndexMediaType(mediaType) {
+    return IndexMediaType.safeParse(mediaType).success;
+}
 function isIndex(manifestOrIndex) {
-    return IndexMediaType.safeParse(manifestOrIndex.mediaType).success;
+    return isIndexMediaType(manifestOrIndex.mediaType);
 }
 class DockerRepository {
     token;
@@ -54249,55 +54252,70 @@ async function main() {
     const docker = new DockerRepository(token, ownerName, packageName);
     const versions = new Map();
     const manifests = new Map();
-    const retained = new Set();
+    const indexes = new Map();
     for (const version of await pkg.getAllVersionsStable()) {
         const { name } = version;
         if (versions.has(name)) {
             throw new Error(`Duplicate name: ${JSON.stringify(name)}`);
         }
         versions.set(name, version);
-        manifests.set(name, await docker.fetchManifest(name));
-    }
-    for (const [digest, manifest] of manifests.entries()) {
-        if (!isIndex(manifest)) {
-            continue;
+        const manifest = await docker.fetchManifest(name);
+        if (isIndex(manifest)) {
+            indexes.set(name, manifest);
         }
-        for (const childManifestDescriptor of manifest.manifests) {
-            if (!manifests.has(childManifestDescriptor.digest)) {
-                throw new Error(`Manifest ${JSON.stringify(childManifestDescriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`);
+        else {
+            manifests.set(name, manifest);
+        }
+    }
+    for (const [digest, index] of indexes.entries()) {
+        for (const descriptor of index.manifests) {
+            if (isIndexMediaType(descriptor.mediaType)) {
+                if (!indexes.has(descriptor.digest)) {
+                    throw new Error(`Index ${JSON.stringify(descriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`);
+                }
+            }
+            else if (!manifests.has(descriptor.digest)) {
+                throw new Error(`Manifest ${JSON.stringify(descriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`);
             }
         }
     }
-    function retain(name) {
-        if (retained.has(name)) {
+    const visited = new Set();
+    function visit(name, visitor) {
+        if (visited.has(name)) {
             return;
         }
-        info(`Retaining ${JSON.stringify(name)}`);
-        const manifest = manifests.get(name);
-        external_node_assert_default()(manifest);
-        retained.add(name);
-        if (isIndex(manifest)) {
-            for (const childManifestDescriptor of manifest.manifests) {
-                retain(childManifestDescriptor.digest);
+        visited.add(name);
+        const index = indexes.get(name);
+        if (index) {
+            for (const descriptor of index.manifests) {
+                visit(descriptor.digest, visitor);
             }
         }
+        visitor(name);
     }
     for (const [name, version] of versions.entries()) {
         if (!policy.isOutdated(version)) {
-            retain(name);
+            visit(name, n => {
+                info(`Keeping ${JSON.stringify(n)}`);
+            });
         }
     }
     const deleted = [];
+    const deleteQueue = [];
+    for (const name of versions.keys()) {
+        visit(name, n => deleteQueue.push(n));
+    }
+    // At this point, leaves are first in the queue. They should be last instead.
+    deleteQueue.reverse();
     try {
-        if (!dryRun && retained.size === 0) {
+        if (!dryRun && deleteQueue.length === versions.size) {
             warning('All versions will be deleted. This is most likely incorrect. ' +
                 'If necessary, just delete the entire package manually.');
             dryRun = true;
         }
-        for (const [name, version] of versions.entries()) {
-            if (retained.has(name)) {
-                continue;
-            }
+        for (const name of deleteQueue) {
+            const version = versions.get(name);
+            external_node_assert_default()(version);
             if (dryRun) {
                 notice(`Would delete ${JSON.stringify(version, null, ' ')}`);
             }

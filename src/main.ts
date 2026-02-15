@@ -221,7 +221,7 @@ const ManifestMediaType = z.enum([
 ]);
 
 const Descriptor = z.looseObject({
-    mediaType: z.string(),
+    mediaType: z.union([ManifestMediaType, IndexMediaType]),
     digest: z.string(),
 });
 
@@ -236,11 +236,21 @@ const Index = z.looseObject({
 
 const ManifestOrIndex = z.discriminatedUnion('mediaType', [Manifest, Index]);
 
+type Manifest = z.infer<typeof Manifest>;
 type Index = z.infer<typeof Index>;
 type ManifestOrIndex = z.infer<typeof ManifestOrIndex>;
 
+type IndexMediaType = z.infer<typeof IndexMediaType>;
+type ManifestMediaType = z.infer<typeof ManifestMediaType>;
+
+function isIndexMediaType(
+    mediaType: IndexMediaType | ManifestMediaType
+): mediaType is IndexMediaType {
+    return IndexMediaType.safeParse(mediaType).success;
+}
+
 function isIndex(manifestOrIndex: ManifestOrIndex): manifestOrIndex is Index {
-    return IndexMediaType.safeParse(manifestOrIndex.mediaType).success;
+    return isIndexMediaType(manifestOrIndex.mediaType);
 }
 
 class DockerRepository {
@@ -383,8 +393,8 @@ async function main() {
     const docker = new DockerRepository(token, ownerName, packageName);
 
     const versions = new Map<string, PackageVersion>();
-    const manifests = new Map<string, ManifestOrIndex>();
-    const retained = new Set<string>();
+    const manifests = new Map<string, Manifest>();
+    const indexes = new Map<string, Index>();
 
     for (const version of await pkg.getAllVersionsStable()) {
         const { name } = version;
@@ -394,52 +404,72 @@ async function main() {
         }
 
         versions.set(name, version);
-        manifests.set(name, await docker.fetchManifest(name));
+
+        const manifest = await docker.fetchManifest(name);
+
+        if (isIndex(manifest)) {
+            indexes.set(name, manifest);
+        } else {
+            manifests.set(name, manifest);
+        }
     }
 
-    for (const [digest, manifest] of manifests.entries()) {
-        if (!isIndex(manifest)) {
-            continue;
-        }
-
-        for (const childManifestDescriptor of manifest.manifests) {
-            if (!manifests.has(childManifestDescriptor.digest)) {
+    for (const [digest, index] of indexes.entries()) {
+        for (const descriptor of index.manifests) {
+            if (isIndexMediaType(descriptor.mediaType)) {
+                if (!indexes.has(descriptor.digest)) {
+                    throw new Error(
+                        `Index ${JSON.stringify(descriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`
+                    );
+                }
+            } else if (!manifests.has(descriptor.digest)) {
                 throw new Error(
-                    `Manifest ${JSON.stringify(childManifestDescriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`
+                    `Manifest ${JSON.stringify(descriptor.digest)} referenced from ${JSON.stringify(digest)} is missing`
                 );
             }
         }
     }
 
-    function retain(name: string) {
-        if (retained.has(name)) {
+    const visited = new Set<string>();
+
+    function visit(name: string, visitor: (name: string) => void) {
+        if (visited.has(name)) {
             return;
         }
 
-        core.info(`Retaining ${JSON.stringify(name)}`);
+        visited.add(name);
 
-        const manifest = manifests.get(name);
+        const index = indexes.get(name);
 
-        assert(manifest);
-        retained.add(name);
-
-        if (isIndex(manifest)) {
-            for (const childManifestDescriptor of manifest.manifests) {
-                retain(childManifestDescriptor.digest);
+        if (index) {
+            for (const descriptor of index.manifests) {
+                visit(descriptor.digest, visitor);
             }
         }
+
+        visitor(name);
     }
 
     for (const [name, version] of versions.entries()) {
         if (!policy.isOutdated(version)) {
-            retain(name);
+            visit(name, n => {
+                core.info(`Keeping ${JSON.stringify(n)}`);
+            });
         }
     }
 
     const deleted: PackageVersion[] = [];
+    const deleteQueue: string[] = [];
+
+    for (const name of versions.keys()) {
+        visit(name, n => deleteQueue.push(n));
+    }
+
+    // At this point, leaves are first in the queue. They should be last instead.
+    deleteQueue.reverse();
 
     try {
-        if (!dryRun && retained.size === 0) {
+        if (!dryRun && deleteQueue.length === versions.size) {
             core.warning(
                 'All versions will be deleted. This is most likely incorrect. ' +
                     'If necessary, just delete the entire package manually.'
@@ -448,10 +478,10 @@ async function main() {
             dryRun = true;
         }
 
-        for (const [name, version] of versions.entries()) {
-            if (retained.has(name)) {
-                continue;
-            }
+        for (const name of deleteQueue) {
+            const version = versions.get(name);
+
+            assert(version);
 
             if (dryRun) {
                 core.notice(
