@@ -22,7 +22,7 @@
     "@js-temporal/polyfill": "0.5.1",
     "@octokit/plugin-rest-endpoint-methods": "17.0.0",
     "@octokit/types": "16.0.0",
-    "minimatch": "10.1.2",
+    "minimatch": "10.2.0",
     "zod": "4.3.6"
   },
   "devDependencies": {
