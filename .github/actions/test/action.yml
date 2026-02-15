@@ -47,13 +47,13 @@ runs:
         untagged-retention-duration: ${{ inputs.untagged-retention-duration }}
         dry-run: ${{ inputs.dry-run }}
 
-    - run: diff -u <(echo "$EXPECTED_DELETIONS" | grep -v -e '^$' | sort | uniq) <(echo "$DELETED" | jq -r '.[].name' | grep -v -e '^$' | sort | uniq)
+    - run: diff -u <(echo "$EXPECTED_DELETIONS" | grep -v -e '^$') <(echo "$DELETED" | jq -r '.[].name' | grep -v -e '^$')
       shell: bash
       env:
         DELETED: ${{ steps.run-action.outputs.deleted-json }}
         EXPECTED_DELETIONS: ${{ inputs.expected-deletions }}
 
-    - run: test "$N_DELETED" -eq "$(echo "$EXPECTED_DELETIONS" | grep -v -e '^$' | sort | uniq | wc -l)"
+    - run: test "$N_DELETED" -eq "$(echo "$EXPECTED_DELETIONS" | grep -v -e '^$' | wc -l)"
       shell: bash
       env:
         N_DELETED: ${{ steps.run-action.outputs.deleted-count }}
