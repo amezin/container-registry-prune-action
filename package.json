@@ -16,7 +16,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@actions/core": "3.0.0",
+    "@actions/core": "3.0.1",
     "@actions/http-client": "4.0.1",
     "@amezin/js-actions-octokit": "5.0.0",
     "@js-temporal/polyfill": "0.5.1",
