@@ -33502,6 +33502,19 @@ function getProxyFetch(destinationUrl) {
 function getApiBaseUrl() {
     return process.env['GITHUB_API_URL'] || 'https://api.github.com';
 }
+function getUserAgentWithOrchestrationId(baseUserAgent) {
+    var _a;
+    const orchId = (_a = process.env['ACTIONS_ORCHESTRATION_ID']) === null || _a === void 0 ? void 0 : _a.trim();
+    if (orchId) {
+        const sanitizedId = orchId.replace(/[^a-z0-9_.-]/gi, '_');
+        const tag = `actions_orchestration_id/${sanitizedId}`;
+        if (baseUserAgent === null || baseUserAgent === void 0 ? void 0 : baseUserAgent.includes(tag))
+            return baseUserAgent;
+        const ua = baseUserAgent ? `${baseUserAgent} ` : '';
+        return `${ua}${tag}`;
+    }
+    return baseUserAgent;
+}
 //# sourceMappingURL=utils.js.map
 ;// CONCATENATED MODULE: ./node_modules/universal-user-agent/index.js
 function getUserAgent() {
@@ -37456,6 +37469,7 @@ const defaults = {
     }
 };
 const GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
+
 /**
  * Convience function to correctly format Octokit Options to pass into the constructor.
  *
@@ -37468,6 +37482,11 @@ function getOctokitOptions(token, options) {
     const auth = getAuthString(token, opts);
     if (auth) {
         opts.auth = auth;
+    }
+    // Orchestration ID
+    const userAgent = getUserAgentWithOrchestrationId(opts.userAgent);
+    if (userAgent) {
+        opts.userAgent = userAgent;
     }
     return opts;
 }
@@ -37494,8 +37513,11 @@ var light = __nccwpck_require__(3251);
 var plugin_retry_dist_bundle_VERSION = "0.0.0-development";
 
 // pkg/dist-src/error-request.js
+function isRequestError(error) {
+  return error.request !== void 0;
+}
 async function errorRequest(state, octokit, error, options) {
-  if (!error.request || !error.request.request) {
+  if (!isRequestError(error) || !error?.request.request) {
     throw error;
   }
   if (error.status >= 400 && !state.doNotRetry.includes(error.status)) {
@@ -37512,8 +37534,8 @@ async function errorRequest(state, octokit, error, options) {
 async function wrapRequest(state, octokit, request, options) {
   const limiter = new light();
   limiter.on("failed", function(error, info) {
-    const maxRetries = ~~error.request.request.retries;
-    const after = ~~error.request.request.retryAfter;
+    const maxRetries = ~~error.request.request?.retries;
+    const after = ~~error.request.request?.retryAfter;
     options.request.retryCount = info.retryCount + 1;
     if (maxRetries > info.retryCount) {
       return after * state.retryAfterBaseValue;
@@ -37525,7 +37547,7 @@ async function wrapRequest(state, octokit, request, options) {
   );
 }
 async function requestWithGraphqlErrorHandling(state, octokit, request, options) {
-  const response = await request(request, options);
+  const response = await request(options);
   if (response.data && response.data.errors && response.data.errors.length > 0 && /Something went wrong while executing your query/.test(
     response.data.errors[0].message
   )) {
@@ -37549,11 +37571,7 @@ function retry(octokit, octokitOptions) {
     },
     octokitOptions.retry
   );
-  if (state.enabled) {
-    octokit.hook.error("request", errorRequest.bind(null, state, octokit));
-    octokit.hook.wrap("request", wrapRequest.bind(null, state, octokit));
-  }
-  return {
+  const retryPlugin = {
     retry: {
       retryRequest: (error, retries, retryAfter) => {
         error.request.request = Object.assign({}, error.request.request, {
@@ -37564,6 +37582,11 @@ function retry(octokit, octokitOptions) {
       }
     }
   };
+  if (state.enabled) {
+    octokit.hook.error("request", errorRequest.bind(null, state, retryPlugin));
+    octokit.hook.wrap("request", wrapRequest.bind(null, state, retryPlugin));
+  }
+  return retryPlugin;
 }
 retry.VERSION = plugin_retry_dist_bundle_VERSION;
 
@@ -37804,7 +37827,7 @@ throttling.triggersNotification = triggersNotification;
 
 
 const defaultHeaders = {
-    'X-GitHub-Api-Version': '2022-11-28',
+    'X-GitHub-Api-Version': '2026-03-10',
 };
 const log = {
     debug: (...args) => {
@@ -48275,7 +48298,9 @@ function parseDuration(value) {
         return qi.Duration.from(/^[Pp+-]/.test(value) ? value : `P${value}`);
     }
     catch (ex) {
-        throw new Error(`Can't parse ${JSON.stringify(value)} as duration: ${String(ex)}`);
+        throw new Error(`Can't parse ${JSON.stringify(value)} as duration`, {
+            cause: ex,
+        });
     }
 }
 async function main() {

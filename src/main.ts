@@ -310,9 +310,9 @@ function parseDuration(value: string) {
             /^[Pp+-]/.test(value) ? value : `P${value}`
         );
     } catch (ex) {
-        throw new Error(
-            `Can't parse ${JSON.stringify(value)} as duration: ${String(ex)}`
-        );
+        throw new Error(`Can't parse ${JSON.stringify(value)} as duration`, {
+            cause: ex,
+        });
     }
 }
 
