@@ -1,14 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "es2022",
-    "module": "node16",
-    "moduleResolution": "node16",
-    "rootDir": "./src",
-    "strict": true,
-    "noImplicitOverride": true,
-    "noImplicitReturns": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noUncheckedIndexedAccess": true,
-    "esModuleInterop": true
-  }
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@amezin/js-actions-octokit/tsconfig.base.json",
+  "include": ["./src"]
 }
