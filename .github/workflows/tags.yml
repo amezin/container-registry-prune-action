@@ -5,8 +5,40 @@ on:
     tags:
       - v[0-9]+.[0-9]+.[0-9]+
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  tag:
-    uses: amezin/js-actions-common/.github/workflows/shared-tags.yml@133c877fe0cc59c485c5dcb1699f6f5dfa7d9745 # v5.1.3
+  update:
+    runs-on: ubuntu-slim
+
     permissions:
       contents: write
+
+    steps:
+      - id: parse
+        run: |
+          MINOR="$(echo "$GITHUB_REF_NAME" | grep -oE '^v[0-9]+\.[0-9]+')"
+          echo "minor=$MINOR" | tee -a "$GITHUB_OUTPUT"
+
+          MAJOR="$(echo "$GITHUB_REF_NAME" | grep -oE '^v[0-9]+')"
+          echo "major=$MAJOR" | tee -a "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: true
+
+      - run: |
+          git tag -f "$MINOR"
+          git push origin "$MINOR" --force
+
+        env:
+          MINOR: ${{ steps.parse.outputs.minor }}
+
+      - run: |
+          git tag -f "$MAJOR"
+          git push origin "$MAJOR" --force
+
+        env:
+          MAJOR: ${{ steps.parse.outputs.major }}

@@ -1,5 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "@amezin/js-actions-octokit/tsconfig.base.json",
-  "include": ["./src"]
+  "extends": [
+    "@tsconfig/strictest/tsconfig.json",
+    "@tsconfig/node24/tsconfig.json"
+  ],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "resolveJsonModule": true
+  }
 }

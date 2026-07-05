@@ -5,12 +5,14 @@ import * as core from '@actions/core';
 import { Headers, HttpClient } from '@actions/http-client';
 import { BearerCredentialHandler } from '@actions/http-client/lib/auth';
 import { type RequestHandler } from '@actions/http-client/lib/interfaces';
-import { getOctokit, type GitHub } from '@amezin/js-actions-octokit';
 import { type RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
 import { type OctokitResponse } from '@octokit/types';
 import { Minimatch, type MinimatchOptions } from 'minimatch';
 import { Temporal } from '@js-temporal/polyfill';
 import * as z from 'zod';
+
+import { getOctokit, type GitHub } from './octokit.js';
+import packageJson from '../package.json' with { type: 'json' };
 
 type PackageVersion =
     RestEndpointMethodTypes['packages']['getPackageVersionForAuthenticatedUser']['response']['data'];
@@ -388,7 +390,10 @@ async function main() {
         );
     }
 
-    const github = getOctokit(token);
+    const github = getOctokit(token, {
+        userAgent: `${packageJson.name}/v${packageJson.version}`,
+    });
+
     const pkg = await getPackage(github, ownerName, packageName);
     const docker = new DockerRepository(token, ownerName, packageName);
 

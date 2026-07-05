@@ -1,5 +1,5 @@
 {
-  "name": "container-registry-prune-action",
+  "name": "@amezin/container-registry-prune-action",
   "private": true,
   "description": "Remove outdated container images from GitHub Container Registry",
   "homepage": "https://github.com/amezin/container-registry-prune-action#readme",
@@ -12,29 +12,46 @@
   },
   "license": "MIT",
   "engines": {
-    "node": "^24.0.0"
+    "node": ">=24"
   },
   "type": "module",
   "dependencies": {
     "@actions/core": "3.0.1",
     "@actions/http-client": "4.0.1",
-    "@amezin/js-actions-octokit": "5.1.3",
+    "@actions/github": "9.1.1",
     "@js-temporal/polyfill": "0.5.1",
+    "@octokit/core": "7.0.6",
+    "@octokit/plugin-retry": "8.1.0",
+    "@octokit/plugin-throttling": "11.0.3",
+    "@octokit/request-error": "7.1.0",
     "@octokit/plugin-rest-endpoint-methods": "17.0.0",
     "@octokit/types": "16.0.0",
     "minimatch": "10.2.5",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@amezin/eslint-config-js-actions": "5.1.3",
+    "@eslint/js": "10.0.1",
+    "@eslint/json": "2.0.1",
+    "@eslint/markdown": "8.0.3",
+    "@octokit/types": "16.0.0",
+    "@tsconfig/node24": "24.0.4",
+    "@tsconfig/strictest": "2.0.8",
     "@types/node": "24.13.2",
-    "@vercel/ncc": "0.44.0",
-    "typescript": "6.0.3"
+    "@vercel/ncc": "0.44.1",
+    "eslint": "10.6.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "5.5.6",
+    "eslint-plugin-yml": "3.5.0",
+    "globals": "17.7.0",
+    "prettier": "3.9.4",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.62.1"
   },
   "scripts": {
     "build": "ncc build --source-map --license dependencies.txt src/main.ts",
     "format": "prettier --write .",
-    "lint": "eslint"
+    "lint": "eslint",
+    "version": "npm run build"
   },
   "version": "0.4.3"
 }

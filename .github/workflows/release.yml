@@ -1,0 +1,82 @@
+name: release
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  need-release:
+    runs-on: ubuntu-slim
+
+    permissions:
+      contents: read
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.tag.outputs.tag }}
+      latest: ${{ steps.latest.outputs.latest }}
+      need-release: >-
+        ${{
+          !contains(fromJSON(steps.existing-tags.outputs.refs), format('refs/tags/{0}', steps.tag.outputs.tag)) &&
+          steps.latest.outputs.latest != steps.tag.outputs.tag
+        }}
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - id: version
+        run: |
+          VERSION="$(jq -r .version package.json)"
+          echo "version=$VERSION" | tee "$GITHUB_OUTPUT"
+
+      - id: tag
+        run: |
+          TAG="v${VERSION}"
+          echo "tag=$TAG" | tee "$GITHUB_OUTPUT"
+
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - id: existing-tags
+        run: |
+          EXISTING="$(gh api "/repos/{owner}/{repo}/git/matching-refs/tags/$PREFIX" | jq -c '[.[].ref]')"
+          echo "refs=$EXISTING" | tee "$GITHUB_OUTPUT"
+
+        env:
+          PREFIX: ${{ steps.tag.outputs.tag }}
+
+      - id: latest
+        run: |
+          LATEST="$(gh release list --limit 1 --json tagName -q '.[].tagName')"
+          echo "latest=$LATEST" | tee "$GITHUB_OUTPUT"
+
+  create:
+    runs-on: ubuntu-slim
+    needs: need-release
+    if: ${{ fromJSON(needs.need-release.outputs.need-release) && github.ref_name == github.event.repository.default_branch }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - run: gh release create "$TAG" --target "$GITHUB_SHA" --generate-notes --fail-on-no-commits --notes-start-tag "$LATEST" --draft
+        env:
+          TAG: ${{ needs.need-release.outputs.tag }}
+          LATEST: ${{ needs.need-release.outputs.latest }}
