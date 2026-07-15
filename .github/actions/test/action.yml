@@ -8,6 +8,10 @@ inputs:
     description: >-
       Package name
 
+  reference-time:
+    description: >-
+      `reference-time` input
+
   tag-patterns:
     description: >-
       `tag-patterns` input
@@ -24,12 +28,6 @@ inputs:
     description: >-
       `untagged-retention-duration` input
 
-  dry-run:
-    required: true
-    default: 'true'
-    description: >-
-      `dry-run` input, default value flipped
-
   expected-deletions:
     description: >-
       Image digests expected to be deleted, one per line
@@ -41,19 +39,26 @@ runs:
       uses: ./.
       with:
         name: ${{ inputs.name }}
+        reference-time: ${{ inputs.reference-time }}
         tag-patterns: ${{ inputs.tag-patterns }}
         matching-tags-retention-duration: ${{ inputs.matching-tags-retention-duration }}
         mismatching-tags-retention-duration: ${{ inputs.mismatching-tags-retention-duration }}
         untagged-retention-duration: ${{ inputs.untagged-retention-duration }}
-        dry-run: ${{ inputs.dry-run }}
+        dry-run: true
 
-    - run: diff -u <(echo "$EXPECTED_DELETIONS" | grep -v -e '^$') <(echo "$DELETED" | jq -r '.[].name' | grep -v -e '^$')
+    - run: >-
+        diff -u
+        --label expected <(grep -v -e '^$' <<<"$EXPECTED_DELETIONS" | sort)
+        --label actual <(jq -r '.[].name' <<<"$DELETED" | sort)
       shell: bash
       env:
         DELETED: ${{ steps.run-action.outputs.deleted-json }}
         EXPECTED_DELETIONS: ${{ inputs.expected-deletions }}
 
-    - run: test "$N_DELETED" -eq "$(echo "$EXPECTED_DELETIONS" | grep -v -e '^$' | wc -l)"
+    - run: >-
+        diff -u
+        --label expected <(grep -v -e '^$' <<<"$EXPECTED_DELETIONS" | wc -l)
+        --label actual <(echo "$N_DELETED")
       shell: bash
       env:
         N_DELETED: ${{ steps.run-action.outputs.deleted-count }}

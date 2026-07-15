@@ -48678,12 +48678,12 @@ class RetentionPolicy {
     matchingTagRetentionDeadline;
     mismatchingTagRetentionDeadline;
     untaggedRetentionDeadline;
-    constructor(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration) {
+    constructor(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration, now) {
         this.tagPatterns = tagPatterns;
         this.matchingTagRetentionDuration = matchingTagRetentionDuration;
         this.mismatchingTagRetentionDuration = mismatchingTagRetentionDuration;
         this.untaggedRetentionDuration = untaggedRetentionDuration;
-        this.now = qi.Now.zonedDateTimeISO();
+        this.now = now;
         this.matchingTagRetentionDeadline = matchingTagRetentionDuration
             ? this.now.subtract(matchingTagRetentionDuration).toInstant()
             : null;
@@ -48822,6 +48822,12 @@ async function main() {
     const untaggedRetentionDuration = parseDuration(getInput('untagged-retention-duration', {
         required: false,
     }));
+    const referenceTime = getInput('reference-time', {
+        required: false,
+    });
+    const now = referenceTime
+        ? qi.Instant.from(referenceTime).toZonedDateTimeISO('UTC')
+        : qi.Now.zonedDateTimeISO();
     const minimatchOptions = {
         platform: 'linux',
         dot: true,
@@ -48837,7 +48843,7 @@ async function main() {
             tagPatterns.push(new Minimatch('**', minimatchOptions));
         }
     }
-    const policy = new RetentionPolicy(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration);
+    const policy = new RetentionPolicy(tagPatterns, matchingTagRetentionDuration, mismatchingTagRetentionDuration, untaggedRetentionDuration, now);
     if (policy.matchingTagRetentionDeadline) {
         info(
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

@@ -43,6 +43,11 @@ inputs:
       If more than this amount of time elapsed since last update of the image, the image will be deleted.
       If not set, untagged images won't be deleted.
 
+  reference-time:
+    description: >-
+      Current date and time (ISO 8601) used as the reference "now" when computing retention deadlines.
+      If not specified, the actual current time is used.
+
   github-token:
     required: true
     default: ${{ github.token }}

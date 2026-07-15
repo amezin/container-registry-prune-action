@@ -104,15 +104,20 @@ jobs:
 
       - run: actionlint -verbose -color
 
-  test:
-    needs: dist-check
+  build-fixture:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     env:
-      PACKAGE_NAME: ${{ github.event.repository.name }}/test-${{ github.run_id }}
+      # Test images are published under this package name (the `test-v1` suffix
+      # is the manually-bumped version). They are (re)built on push to main, on
+      # schedule, and via workflow_dispatch — which can run from any branch
+      # without merging it, so updated images can be published from a feature
+      # branch. Bump the suffix here, then in the "test" job to match.
+      PACKAGE_NAME: ${{ github.event.repository.name }}/test-v1
+      PUSH: ${{ github.event_name != 'pull_request' }}
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -121,23 +126,30 @@ jobs:
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
-      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      - if: fromJSON(env.PUSH)
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ github.token }}
 
-      - run: echo "$GITHUB_TOKEN" | skopeo login -u "$GITHUB_REPOSITORY_OWNER" --password-stdin ghcr.io
+      - if: fromJSON(env.PUSH)
+        continue-on-error: true
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method DELETE "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME//\//%2F}"
 
       - id: meta1
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}
           tags: |
             type=raw,value=latest
             type=raw,value=tag2
+          annotations: |
+            org.opencontainers.image.description=build1-annotation
 
       - id: build1
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -147,138 +159,26 @@ jobs:
           labels: ${{ steps.meta1.outputs.labels }}
           annotations: ${{ steps.meta1.outputs.annotations }}
           cache-to: type=inline
-          push: true
+          push: ${{ env.PUSH }}
 
-      - id: build1_children
-        run: |
-          { echo 'digests<<EOF'; skopeo inspect --raw "$IMAGE" | jq -r 'try .manifests[].digest' | tac; echo 'EOF'; } | tee -a "$GITHUB_OUTPUT"
-        env:
-          IMAGE: docker://ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}@${{ steps.build1.outputs.digest }}
-
-      - run: sleep 2
-
-      - uses: ./.github/actions/test
-        name: No durations set, do nothing
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          expected-deletions: ''
-
-      - uses: ./.github/actions/test
-        name: Untagged duration set, but no untagged versions
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          untagged-retention-duration: 0dT1s
-          expected-deletions: ''
-
-      - uses: ./.github/actions/test
-        name: All tags match, matching retention duration expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: |
-            !nomatch
-          matching-tags-retention-duration: 0dT1s
-          untagged-retention-duration: 0dT1s
-          expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
-
-      - uses: ./.github/actions/test
-        name: No matching tags, mismatching retention duration expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: |
-            *
-            !latest
-            !tag2
-          mismatching-tags-retention-duration: 0dT1s
-          untagged-retention-duration: 0dT1s
-          expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
-
-      - uses: ./.github/actions/test
-        name: No matching tags, empty tag-patterns, mismatching retention duration expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: |
-            # empty
-          mismatching-tags-retention-duration: 0dT1s
-          untagged-retention-duration: 0dT1s
-          expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
-
-      - uses: ./.github/actions/test
-        name: latest tag matches, tag2 doesn't, both retention durations expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: latest
-          matching-tags-retention-duration: 0dT1s
-          mismatching-tags-retention-duration: 0dT1s
-          untagged-retention-duration: 0dT1s
-          expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
-
-      - uses: ./.github/actions/test
-        name: latest tag matches, tag2 doesn't, mismatching retention duration not expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: |
-            *
-            !tag2
-          matching-tags-retention-duration: 0dT1s
-          mismatching-tags-retention-duration: 1d
-          untagged-retention-duration: 0dT1s
-          expected-deletions: ''
-
-      - uses: ./.github/actions/test
-        name: latest tag matches, tag2 doesn't, matching retention duration not expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: latest
-          matching-tags-retention-duration: 1w
-          mismatching-tags-retention-duration: 0dT1s
-          untagged-retention-duration: 0dT1s
-          expected-deletions: ''
-
-      - uses: ./.github/actions/test
-        name: All tags match, matching retention duration expired, mismatching retention duration not expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: |
-            !*
-            latest
-            tag2
-          matching-tags-retention-duration: 0dT1s
-          mismatching-tags-retention-duration: 1y
-          untagged-retention-duration: 0dT1s
-          expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
-
-      - uses: ./.github/actions/test
-        name: No matching tags, mismatching retention duration expired, matching retention duration not expired
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          tag-patterns: |
-            !*
-          matching-tags-retention-duration: 1m
-          mismatching-tags-retention-duration: 0dT1s
-          untagged-retention-duration: 0dT1s
-          expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
-
+      # A second build with the same tags leaves build1 untagged, producing the
+      # state the test job relies on (build2 tagged + build1 untagged, each with
+      # its own child manifests incl. build provenance attestations).
       - id: meta2
+        if: fromJSON(env.PUSH)
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}
           tags: |
             type=raw,value=latest
             type=raw,value=tag2
+          annotations: |
+            org.opencontainers.image.description=build2-annotation
 
       - id: build2
+        if: fromJSON(env.PUSH)
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: test
@@ -286,56 +186,243 @@ jobs:
           labels: ${{ steps.meta2.outputs.labels }}
           annotations: ${{ steps.meta2.outputs.annotations }}
           cache-from: ${{ steps.meta1.outputs.tags }}
-          push: true
+          push: ${{ env.PUSH }}
 
-      - run: sleep 2
+  test:
+    needs:
+      - build-fixture
+      - dist-check
 
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      NL: "\n"
+      # Points at the published test images (suffix must match build-fixture'
+      # PACKAGE_NAME once new images have been published on main or via
+      # workflow_dispatch from any branch). The tests are agnostic to which
+      # branch built the images.
+      PACKAGE_NAME: ${{ github.event.repository.name }}/test-v1
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          json=$(gh api "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME//\//%2F}/versions" | jq -c .)
+          echo "json=$json" | tee -a "$GITHUB_OUTPUT"
+
+      # build1 is the untagged image. The untagged-retention test case deletes
+      # its index together with its child manifests (incl. build provenance
+      # attestations), so resolve the full set with buildx imagetools.
+      - id: build1-digests
+        name: Get build 1 digests
+        env:
+          VERSIONS: ${{ steps.versions.outputs.json }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}
+        run: |
+          index=$(jq -r '.[] | select(.description == "build1-annotation") | .name' <<<"$VERSIONS")
+          children=$(docker buildx imagetools inspect --raw "${IMAGE}@${index}" | jq -c '[.manifests.[].digest]')
+          echo "index=$index" | tee -a "$GITHUB_OUTPUT"
+          echo "children=$children" | tee -a "$GITHUB_OUTPUT"
+
+      # build2 is the tagged image. The tagged-retention test cases only ever
+      # delete its index — its child manifests are untagged, so they're spared
+      # unless an untagged-retention duration is set (only case "all" does that,
+      # and it deletes every version). Hence we only need build2's index digest.
+      - id: build2-digests
+        name: Get build 2 index digest
+        env:
+          VERSIONS: ${{ steps.versions.outputs.json }}
+        run: |
+          index="$(jq -r '.[] | select(.description == "build2-annotation") | .name' <<<"$VERSIONS")"
+          echo "index=$index" | tee -a "$GITHUB_OUTPUT"
+
+      - id: time
+        name: Get reference time
+        env:
+          VERSIONS: ${{ steps.versions.outputs.json }}
+        run: |
+          t2=$(jq -r '.[] | select(.description == "build2-annotation") | .updated_at' <<<"$VERSIONS")
+          echo "value=$(date -u -d "$t2 + 2 seconds" +'%Y-%m-%dT%H:%M:%SZ')" | tee -a "$GITHUB_OUTPUT"
+
+      # No retention durations are configured, so no version is ever outdated.
       - uses: ./.github/actions/test
-        name: Untagged retention duration not expired
+        name: No durations set, do nothing
         with:
           name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          expected-deletions: ''
+
+      # The untagged retention is expired, so build1 (untagged) is deleted along
+      # with its child manifests; build2 is tagged, so it is spared.
+      - uses: ./.github/actions/test
+        name: Untagged retention expired, tagged version spared
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          untagged-retention-duration: 0dT1s
+          expected-deletions: |
+            ${{ join(fromJSON(steps.build1-digests.outputs.children), env.NL) }}
+            ${{ steps.build1-digests.outputs.index }}
+
+      # build1 is only seconds old, well within the 1-day untagged retention.
+      - uses: ./.github/actions/test
+        name: Untagged retention not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
           untagged-retention-duration: 1d
           expected-deletions: ''
 
+      # `!nomatch` (with the auto-appended `**`) matches both of build2's tags,
+      # so the matching deadline applies and is expired; build2's index is deleted.
       - uses: ./.github/actions/test
-        name: Untagged retention duration expired
+        name: All tags match, matching retention duration expired
         with:
           name: ${{ env.PACKAGE_NAME }}
-          untagged-retention-duration: 0dT1s
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: |
+            !nomatch
+          matching-tags-retention-duration: 0dT1s
           expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
+            ${{ steps.build2-digests.outputs.index }}
 
+      # Both tags are explicitly excluded, so build2 is "mismatching"; the
+      # expired mismatching deadline deletes build2's index.
       - uses: ./.github/actions/test
-        name: Untagged retention duration expired, actual deletion
+        name: No matching tags, mismatching retention duration expired
         with:
           name: ${{ env.PACKAGE_NAME }}
-          untagged-retention-duration: 0dT1s
-          dry-run: false
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: |
+            *
+            !latest
+            !tag2
+          mismatching-tags-retention-duration: 0dT1s
           expected-deletions: |
-            ${{ steps.build1.outputs.digest }}
-            ${{ steps.build1_children.outputs.digests }}
+            ${{ steps.build2-digests.outputs.index }}
 
-      - run: >-
-          gh api --jq '.[].name' "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME////%2F}/versions" | grep "$DIGEST2"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DIGEST2: ${{ steps.build2.outputs.digest }}
+      # A comment-only tag-patterns input is treated as empty, making every
+      # tagged version "mismatching"; the expired deadline deletes build2's index.
+      - uses: ./.github/actions/test
+        name: No matching tags, empty tag-patterns, mismatching retention duration expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: |
+            # empty
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: |
+            ${{ steps.build2-digests.outputs.index }}
 
-      - run: |
-          for digest in $(skopeo inspect --raw "$IMAGE" | jq -r 'try .manifests[].digest')
-          do
-            gh api --jq '.[].name' "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME////%2F}/versions" | grep "$digest"
-          done
-        env:
-          IMAGE: docker://ghcr.io/${{ github.repository_owner }}/${{ env.PACKAGE_NAME }}@${{ steps.build2.outputs.digest }}
-          GH_TOKEN: ${{ github.token }}
+      # Mixed tags use the earlier (less aggressive) of the two deadlines; here
+      # both are expired, so build2's index is deleted.
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, both retention durations expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: latest
+          matching-tags-retention-duration: 0dT1s
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: |
+            ${{ steps.build2-digests.outputs.index }}
 
-      - if: always() && steps.build1.outcome == 'success'
-        run: >-
-          gh api --method DELETE "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME////%2F}"
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # Mixed tags take the earlier deadline; the mismatching one is not expired,
+      # so build2 is spared.
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, mismatching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: |
+            *
+            !tag2
+          matching-tags-retention-duration: 0dT1s
+          mismatching-tags-retention-duration: 1d
+          expected-deletions: ''
 
-      - if: always()
-        run: skopeo logout ghcr.io
+      # Mixed tags take the earlier deadline; the matching one is not expired,
+      # so build2 is spared.
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, matching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: latest
+          matching-tags-retention-duration: 1w
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: ''
+
+      # Mixed tags, but only the matching duration is set. With the mismatching
+      # deadline missing, the retention deadline is null, so build2 is spared.
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, only matching retention duration set
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: latest
+          matching-tags-retention-duration: 0dT1s
+          expected-deletions: ''
+
+      # Mixed tags, but only the mismatching duration is set. With the matching
+      # deadline missing, the retention deadline is null, so build2 is spared.
+      - uses: ./.github/actions/test
+        name: latest tag matches, tag2 doesn't, only mismatching retention duration set
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: latest
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: ''
+
+      # All tags match, so only the matching deadline applies (expired); the
+      # mismatching duration is irrelevant. build2's index is deleted.
+      - uses: ./.github/actions/test
+        name: All tags match, matching retention duration expired, mismatching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: |
+            !*
+            latest
+            tag2
+          matching-tags-retention-duration: 0dT1s
+          mismatching-tags-retention-duration: 1y
+          expected-deletions: |
+            ${{ steps.build2-digests.outputs.index }}
+
+      # No tags match, so only the mismatching deadline applies (expired); the
+      # matching duration is irrelevant. build2's index is deleted.
+      - uses: ./.github/actions/test
+        name: No matching tags, mismatching retention duration expired, matching retention duration not expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: |
+            !*
+          matching-tags-retention-duration: 1m
+          mismatching-tags-retention-duration: 0dT1s
+          expected-deletions: |
+            ${{ steps.build2-digests.outputs.index }}
+
+      # build2 is deleted via the expired matching deadline, and build1 (plus all
+      # untagged child manifests) via the expired untagged deadline; every version goes.
+      - uses: ./.github/actions/test
+        name: All tags match and untagged, both retention durations expired
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          reference-time: ${{ steps.time.outputs.value }}
+          tag-patterns: |
+            !nomatch
+          matching-tags-retention-duration: 0dT1s
+          untagged-retention-duration: 0dT1s
+          expected-deletions: |
+            ${{ join(fromJSON(steps.versions.outputs.json).*.name, env.NL) }}

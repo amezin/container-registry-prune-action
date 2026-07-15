@@ -138,9 +138,10 @@ class RetentionPolicy {
         readonly tagPatterns: Minimatch[],
         readonly matchingTagRetentionDuration: Temporal.Duration | null,
         readonly mismatchingTagRetentionDuration: Temporal.Duration | null,
-        readonly untaggedRetentionDuration: Temporal.Duration | null
+        readonly untaggedRetentionDuration: Temporal.Duration | null,
+        now: Temporal.ZonedDateTime
     ) {
-        this.now = Temporal.Now.zonedDateTimeISO();
+        this.now = now;
 
         this.matchingTagRetentionDeadline = matchingTagRetentionDuration
             ? this.now.subtract(matchingTagRetentionDuration).toInstant()
@@ -342,6 +343,14 @@ async function main() {
         })
     );
 
+    const referenceTime = core.getInput('reference-time', {
+        required: false,
+    });
+
+    const now = referenceTime
+        ? Temporal.Instant.from(referenceTime).toZonedDateTimeISO('UTC')
+        : Temporal.Now.zonedDateTimeISO();
+
     const minimatchOptions: MinimatchOptions = {
         platform: 'linux',
         dot: true,
@@ -366,7 +375,8 @@ async function main() {
         tagPatterns,
         matchingTagRetentionDuration,
         mismatchingTagRetentionDuration,
-        untaggedRetentionDuration
+        untaggedRetentionDuration,
+        now
     );
 
     if (policy.matchingTagRetentionDeadline) {
