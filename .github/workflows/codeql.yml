@@ -34,6 +34,7 @@ jobs:
           languages: ${{ matrix.language }}
           queries: security-and-quality
           config: |
+            threat-models: local
             paths-ignore:
               - dist
 
