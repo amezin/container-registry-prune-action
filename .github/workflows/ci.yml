@@ -256,7 +256,7 @@ jobs:
           echo "value=$(date -u -d "$t2 + 2 seconds" +'%Y-%m-%dT%H:%M:%SZ')" | tee -a "$GITHUB_OUTPUT"
 
       # No retention durations are configured, so no version is ever outdated.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: No durations set, do nothing
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -265,7 +265,7 @@ jobs:
 
       # The untagged retention is expired, so build1 (untagged) is deleted along
       # with its child manifests; build2 is tagged, so it is spared.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: Untagged retention expired, tagged version spared
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -276,7 +276,7 @@ jobs:
             ${{ steps.build1-digests.outputs.index }}
 
       # build1 is only seconds old, well within the 1-day untagged retention.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: Untagged retention not expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -286,7 +286,7 @@ jobs:
 
       # `!nomatch` (with the auto-appended `**`) matches both of build2's tags,
       # so the matching deadline applies and is expired; build2's index is deleted.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: All tags match, matching retention duration expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -299,7 +299,7 @@ jobs:
 
       # Both tags are explicitly excluded, so build2 is "mismatching"; the
       # expired mismatching deadline deletes build2's index.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: No matching tags, mismatching retention duration expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -314,7 +314,7 @@ jobs:
 
       # A comment-only tag-patterns input is treated as empty, making every
       # tagged version "mismatching"; the expired deadline deletes build2's index.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: No matching tags, empty tag-patterns, mismatching retention duration expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -327,7 +327,7 @@ jobs:
 
       # Mixed tags use the earlier (less aggressive) of the two deadlines; here
       # both are expired, so build2's index is deleted.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: latest tag matches, tag2 doesn't, both retention durations expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -340,7 +340,7 @@ jobs:
 
       # Mixed tags take the earlier deadline; the mismatching one is not expired,
       # so build2 is spared.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: latest tag matches, tag2 doesn't, mismatching retention duration not expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -354,7 +354,7 @@ jobs:
 
       # Mixed tags take the earlier deadline; the matching one is not expired,
       # so build2 is spared.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: latest tag matches, tag2 doesn't, matching retention duration not expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -366,7 +366,7 @@ jobs:
 
       # Mixed tags, but only the matching duration is set. With the mismatching
       # deadline missing, the retention deadline is null, so build2 is spared.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: latest tag matches, tag2 doesn't, only matching retention duration set
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -377,7 +377,7 @@ jobs:
 
       # Mixed tags, but only the mismatching duration is set. With the matching
       # deadline missing, the retention deadline is null, so build2 is spared.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: latest tag matches, tag2 doesn't, only mismatching retention duration set
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -388,7 +388,7 @@ jobs:
 
       # All tags match, so only the matching deadline applies (expired); the
       # mismatching duration is irrelevant. build2's index is deleted.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: All tags match, matching retention duration expired, mismatching retention duration not expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -404,7 +404,7 @@ jobs:
 
       # No tags match, so only the mismatching deadline applies (expired); the
       # matching duration is irrelevant. build2's index is deleted.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: No matching tags, mismatching retention duration expired, matching retention duration not expired
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -418,7 +418,7 @@ jobs:
 
       # build2 is deleted via the expired matching deadline, and build1 (plus all
       # untagged child manifests) via the expired untagged deadline; every version goes.
-      - uses: ./.github/actions/test
+      - uses: $/.github/actions/test
         name: All tags match and untagged, both retention durations expired
         with:
           name: ${{ env.PACKAGE_NAME }}

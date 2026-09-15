@@ -36,7 +36,7 @@ runs:
   using: composite
   steps:
     - id: run-action
-      uses: ./.
+      uses: $/.
       with:
         name: ${{ inputs.name }}
         reference-time: ${{ inputs.reference-time }}

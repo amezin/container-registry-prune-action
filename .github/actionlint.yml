@@ -1,0 +1,6 @@
+paths:
+  .github/workflows/ci.yml:
+    ignore:
+      # https://github.com/rhysd/actionlint/issues/711
+      - reusable workflow call "\$/.+" at "uses" is not following the format
+      - specifying action "\$/.+" in invalid format because ref is missing
