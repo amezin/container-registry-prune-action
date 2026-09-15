@@ -8,8 +8,13 @@
   ],
   "packageRules": [
     {
-      "extends": ["helpers:pinGitHubActionDigests"],
-      "versioning": "npm",
+      "extends": ["helpers:pinGitHubActionDigests", ":pinVersions"],
+      "versioning": "npm"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action", "workflow"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
       "automerge": true,
       "addLabels": ["skip-changelog"],
       "minimumReleaseAge": "3 days"
