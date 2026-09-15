@@ -9,7 +9,14 @@
   "packageRules": [
     {
       "extends": ["helpers:pinGitHubActionDigests"],
-      "versioning": "npm"
+      "versioning": "npm",
+      "automerge": true,
+      "addLabels": ["skip-changelog"]
+    },
+    {
+      "extends": ["packages:linters"],
+      "automerge": true,
+      "addLabels": ["skip-changelog"]
     },
     {
       "matchDatasources": ["node-version"],
