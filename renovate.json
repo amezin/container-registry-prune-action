@@ -30,10 +30,22 @@
       "enabled": false
     },
     {
-      "matchPackageNames": ["@types/node", "@octokit/*"],
+      "matchPackageNames": ["@types/node"],
       "matchDatasources": ["npm"],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "extends": ["monorepo:octokit"],
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "matchPackageNames": ["@octokit/types"],
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "enabled": true
     }
   ],
   "postUpdateOptions": ["npmDedupe", "npmInstallTwice"],
