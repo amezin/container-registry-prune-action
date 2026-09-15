@@ -11,7 +11,8 @@
       "extends": ["helpers:pinGitHubActionDigests"],
       "versioning": "npm",
       "automerge": true,
-      "addLabels": ["skip-changelog"]
+      "addLabels": ["skip-changelog"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "extends": ["packages:linters"],
