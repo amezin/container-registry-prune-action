@@ -6,6 +6,26 @@
     ":rebaseStalePrs",
     ":semanticCommitsDisabled"
   ],
+  "customDatasources": {
+    "github-release-assets": {
+      "transformTemplates": [
+        "{'releases':$[draft=false].{'version':$replace(tag_name,/^v/,''),'isStable':$not(prerelease),'digest':assets[$contains(name,{{{packageName}}})][0].digest.($?$replace(/^sha256:/,''):undefined),'releaseTimestamp':published_at}}"
+      ]
+    }
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/codeql.yml"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+(lookupName|packageName)=(?<packageName>\\S+))?(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?\\n[^\\n:=]*[:=]\\s*[\"']?(?<currentValue>[^\\s\"']+)[\"']?(\\s|$)",
+        "#\\s*renovate-digest:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s+currentValue=(?<currentValue>\\S+)(\\s+(lookupName|packageName)=(?<packageName>\\S+))?(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?\\n[^\\n:=]*[:=]\\s*[\"']?(?<currentDigest>[^\\s\"']+)[\"']?(\\s|$)"
+      ]
+    }
+  ],
   "packageRules": [
     {
       "extends": ["helpers:pinGitHubActionDigests", ":pinVersions"],
@@ -14,6 +34,13 @@
     {
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["action", "workflow"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "automerge": true,
+      "addLabels": ["skip-changelog"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "matchDatasources": ["custom.github-release-assets"],
       "matchUpdateTypes": ["major", "minor", "patch"],
       "automerge": true,
       "addLabels": ["skip-changelog"],

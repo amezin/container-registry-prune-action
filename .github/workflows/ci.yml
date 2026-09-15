@@ -85,8 +85,10 @@ jobs:
       contents: read
 
     env:
-      # renovate: datasource=github-releases depName=rhysd/actionlint
-      ACTIONLINT_VERSION: 1.7.12
+      # renovate: datasource=custom.github-release-assets depName=actionlint packageName=/^actionlint_.*_linux_amd64\.tar\.gz$/ registryUrl=https://api.github.com/repos/rhysd/actionlint/releases
+      ACTIONLINT_VERSION: '1.7.12'
+      # renovate-digest: datasource=custom.github-release-assets depName=actionlint currentValue=1.7.12 packageName=/^actionlint_.*_linux_amd64\.tar\.gz$/ registryUrl=https://api.github.com/repos/rhysd/actionlint/releases
+      ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -96,6 +98,7 @@ jobs:
       - working-directory: ${{ runner.temp }}
         run: |
           wget "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256} actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" | sha256sum --check --strict -
           mkdir actionlint
           tar -C actionlint -xf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           echo "$(pwd)/actionlint" >>"$GITHUB_PATH"
