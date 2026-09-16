@@ -51211,7 +51211,7 @@ function octokit_getOctokit(token, options, ...additionalPlugins) {
 }
 
 ;// CONCATENATED MODULE: ./package.json
-const package_namespaceObject = /*#__PURE__*/JSON.parse('{"UU":"@amezin/container-registry-prune-action","rE":"0.4.4"}');
+const package_namespaceObject = /*#__PURE__*/JSON.parse('{"UU":"@amezin/container-registry-prune-action","rE":"0.4.5"}');
 ;// CONCATENATED MODULE: ./src/main.ts
 
 
