@@ -45,7 +45,7 @@
     "globals": "17.12.0",
     "prettier": "3.9.8",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.70.0"
+    "typescript-eslint": "8.70.1"
   },
   "scripts": {
     "build": "ncc build --source-map --license dependencies.txt src/main.ts",
