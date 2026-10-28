@@ -52,6 +52,12 @@
       "addLabels": ["skip-changelog"]
     },
     {
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["@types/node", "globals"],
+      "automerge": true,
+      "addLabels": ["skip-changelog"]
+    },
+    {
       "matchDatasources": ["node-version"],
       "matchUpdateTypes": ["major"],
       "enabled": false
